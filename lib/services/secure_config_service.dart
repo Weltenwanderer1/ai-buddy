@@ -11,6 +11,11 @@ class SecureConfigService {
   static const keyOllamaApiKey = 'OLLAMA_CLOUD_API_KEY';
   static const keyOllamaModel = 'OLLAMA_CLOUD_MODEL';
   static const keyOllamaFallbackModel = 'OLLAMA_CLOUD_FALLBACK_MODEL';
+  static const keyOpenRouterBaseUrl = 'OPENROUTER_BASE_URL';
+  static const keyOpenRouterApiKey = 'OPENROUTER_API_KEY';
+  static const keyOpenRouterModel = 'OPENROUTER_MODEL';
+  static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
+  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama' or 'openrouter'
   static const keyElevenLabsApiKey = 'ELEVENLABS_API_KEY';
   static const keyElevenLabsVoiceId = 'ELEVENLABS_VOICE_ID';
   static const keyElevenLabsModelId = 'ELEVENLABS_MODEL_ID';
@@ -26,6 +31,11 @@ class SecureConfigService {
       keyOllamaApiKey,
       keyOllamaModel,
       keyOllamaFallbackModel,
+      keyOpenRouterBaseUrl,
+      keyOpenRouterApiKey,
+      keyOpenRouterModel,
+      keyOpenRouterFallbackModel,
+      keyLlmProvider,
       keyElevenLabsApiKey,
       keyElevenLabsVoiceId,
       keyElevenLabsModelId,
@@ -69,6 +79,22 @@ class SecureConfigService {
       _cache[keyElevenLabsVoiceId] ?? _env(keyElevenLabsVoiceId) ?? '';
   String get elevenLabsModelId =>
       _cache[keyElevenLabsModelId] ?? _env(keyElevenLabsModelId) ?? 'eleven_multilingual_v2';
+  String get openRouterBaseUrl =>
+      _cache[keyOpenRouterBaseUrl] ?? _env(keyOpenRouterBaseUrl) ?? 'https://openrouter.ai/api';
+  String get openRouterApiKey =>
+      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '';
+  String get openRouterModel =>
+      _cache[keyOpenRouterModel] ?? _env(keyOpenRouterModel) ?? 'anthropic/claude-3.5-sonnet';
+  String get openRouterFallbackModel =>
+      _cache[keyOpenRouterFallbackModel] ?? _env(keyOpenRouterFallbackModel) ?? 'google/gemini-2.0-flash-001';
+  String get llmProvider =>
+      _cache[keyLlmProvider] ?? _env(keyLlmProvider) ?? 'ollama';
+  bool get useOpenRouter => llmProvider == 'openrouter';
+
+  String get activeBaseUrl => useOpenRouter ? openRouterBaseUrl : ollamaBaseUrl;
+  String get activeApiKey => useOpenRouter ? openRouterApiKey : ollamaApiKey;
+  String get activeModel => useOpenRouter ? openRouterModel : ollamaModel;
+  String get activeFallbackModel => useOpenRouter ? openRouterFallbackModel : ollamaFallbackModel;
   String get tavilyApiKey =>
       _cache[keyTavilyApiKey] ?? _env(keyTavilyApiKey) ?? '';
 
@@ -114,7 +140,28 @@ class SecureConfigService {
     _cache[keyTavilyApiKey] = value;
   }
 
+  Future<void> setOpenRouterApiKey(String value) async {
+    await _storage.write(key: keyOpenRouterApiKey, value: value);
+    _cache[keyOpenRouterApiKey] = value;
+  }
+
+  Future<void> setOpenRouterModel(String value) async {
+    await _storage.write(key: keyOpenRouterModel, value: value);
+    _cache[keyOpenRouterModel] = value;
+  }
+
+  Future<void> setOpenRouterFallbackModel(String value) async {
+    await _storage.write(key: keyOpenRouterFallbackModel, value: value);
+    _cache[keyOpenRouterFallbackModel] = value;
+  }
+
+  Future<void> setLlmProvider(String value) async {
+    await _storage.write(key: keyLlmProvider, value: value);
+    _cache[keyLlmProvider] = value;
+  }
+
   bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;
+  bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
   bool get isElevenLabsConfigured => elevenLabsApiKey.isNotEmpty && elevenLabsVoiceId.isNotEmpty;
 
   // TTS engine preference

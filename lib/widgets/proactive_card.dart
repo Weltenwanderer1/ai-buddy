@@ -123,8 +123,6 @@ class ProactiveCard extends StatelessWidget {
 
   Color _colorForType(ProactiveEventType type) {
     switch (type) {
-      case ProactiveEventType.morningBriefing:
-        return Colors.amber.shade400;
       case ProactiveEventType.calendarHeadsup:
         return Colors.blue.shade400;
       case ProactiveEventType.batteryLow:
@@ -138,8 +136,6 @@ class ProactiveCard extends StatelessWidget {
 
   IconData _iconForType(ProactiveEventType type) {
     switch (type) {
-      case ProactiveEventType.morningBriefing:
-        return Icons.wb_sunny_rounded;
       case ProactiveEventType.calendarHeadsup:
         return Icons.calendar_month_rounded;
       case ProactiveEventType.batteryLow:
@@ -153,16 +149,14 @@ class ProactiveCard extends StatelessWidget {
 
   String _actionLabel(ProactiveEventType type) {
     switch (type) {
-      case ProactiveEventType.morningBriefing:
-        return 'Checken';
       case ProactiveEventType.calendarHeadsup:
         return 'Navigieren';
       case ProactiveEventType.batteryLow:
-        return 'Handeln';
+        return 'Sparen';
       case ProactiveEventType.eveningRecap:
-        return 'Antworten';
+        return 'Ansehen';
       case ProactiveEventType.contextualSuggestion:
-        return 'Ausführen';
+        return 'Öffnen';
     }
   }
 }

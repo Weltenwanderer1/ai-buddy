@@ -98,9 +98,6 @@ class ChatService {
     'x',
   ];
 
-  ChatService(this._llm, {ToolRegistry? toolRegistry, this.maxToolRounds = 5})
-      : _toolRegistry = toolRegistry;
-
   /// Classify the user query to pick the right model: flash for simple, pro for complex.
   /// Flash (~1s response) for: greetings, simple questions, commands.
   /// Pro (~3-5s) for: analysis, explanations, writing, complex reasoning.

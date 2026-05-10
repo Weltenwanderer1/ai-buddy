@@ -28,6 +28,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _elevenVoiceController = TextEditingController();
   final _elevenModelController = TextEditingController();
 
+  // OpenRouter controllers
+  final _openRouterKeyController = TextEditingController();
+  final _openRouterModelController = TextEditingController();
+  final _openRouterFallbackController = TextEditingController();
+
   bool _isTestingOllama = false;
   String? _ollamaTestResult;
   bool _isTestingElevenLabs = false;
@@ -36,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   bool _ollamaExpanded = true;
   bool _elevenExpanded = true;
+  String _llmProvider = 'ollama'; // 'ollama' or 'openrouter'
 
   @override
   void initState() {
@@ -49,6 +55,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     _ollamaBaseUrlController.text = config.ollamaBaseUrl;
     _ollamaModelController.text = config.ollamaModel;
     _ollamaFallbackController.text = config.ollamaFallbackModel;
+    _openRouterKeyController.text = config.openRouterApiKey;
+    _openRouterModelController.text = config.openRouterModel;
+    _openRouterFallbackController.text = config.openRouterFallbackModel;
+    _llmProvider = config.llmProvider;
     _elevenKeyController.text = config.elevenLabsApiKey;
     _elevenVoiceController.text = config.elevenLabsVoiceId;
     _elevenModelController.text = config.elevenLabsModelId;
@@ -63,6 +73,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     _elevenKeyController.dispose();
     _elevenVoiceController.dispose();
     _elevenModelController.dispose();
+    _openRouterKeyController.dispose();
+    _openRouterModelController.dispose();
+    _openRouterFallbackController.dispose();
     super.dispose();
   }
 
@@ -73,11 +86,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     await config.setOllamaBaseUrl(_ollamaBaseUrlController.text);
     await config.setOllamaModel(_ollamaModelController.text);
     await config.setOllamaFallbackModel(_ollamaFallbackController.text);
+    await config.setOpenRouterApiKey(_openRouterKeyController.text);
+    await config.setOpenRouterModel(_openRouterModelController.text);
+    await config.setOpenRouterFallbackModel(_openRouterFallbackController.text);
+    await config.setLlmProvider(_llmProvider);
     ollama.updateConfig(
-      baseUrl: config.ollamaBaseUrl,
-      apiKey: config.ollamaApiKey,
-      defaultModel: config.ollamaModel,
-      fallbackModel: config.ollamaFallbackModel,
+      baseUrl: config.activeBaseUrl,
+      apiKey: config.activeApiKey,
+      defaultModel: config.activeModel,
+      fallbackModel: config.activeFallbackModel,
     );
     if (mounted) _showSnack('KI-Modell gespeichert ✅', AppColors.success);
   }
@@ -412,27 +429,104 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _ollamaExpanded,
             onToggle: () => setState(() => _ollamaExpanded = !_ollamaExpanded),
             children: [
-              _GlassTextField(
-                label: 'Base URL',
-                icon: Icons.link_rounded,
-                controller: _ollamaBaseUrlController,
+              // Provider Switch
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: AppColors.bgCard.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _llmProvider = 'ollama'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: _llmProvider == 'ollama' ? AppColors.primaryGradient : null,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Ollama',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _llmProvider == 'ollama' ? Colors.white : AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _llmProvider = 'openrouter'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: _llmProvider == 'openrouter' ? AppColors.secondaryGradient : null,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'OpenRouter',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _llmProvider == 'openrouter' ? Colors.white : AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              _GlassTextField(
-                label: 'API Key',
-                icon: Icons.key_rounded,
-                controller: _ollamaKeyController,
-                obscure: true,
-              ),
-              _GlassTextField(
-                label: 'Modell',
-                icon: Icons.smart_toy_rounded,
-                controller: _ollamaModelController,
-              ),
-              _GlassTextField(
-                label: 'Fallback',
-                icon: Icons.backup_rounded,
-                controller: _ollamaFallbackController,
-              ),
+
+              if (_llmProvider == 'ollama') ...[
+                _GlassTextField(
+                  label: 'Base URL',
+                  icon: Icons.link_rounded,
+                  controller: _ollamaBaseUrlController,
+                ),
+                _GlassTextField(
+                  label: 'API Key',
+                  icon: Icons.key_rounded,
+                  controller: _ollamaKeyController,
+                  obscure: true,
+                ),
+                _GlassTextField(
+                  label: 'Modell',
+                  icon: Icons.smart_toy_rounded,
+                  controller: _ollamaModelController,
+                ),
+                _GlassTextField(
+                  label: 'Fallback',
+                  icon: Icons.backup_rounded,
+                  controller: _ollamaFallbackController,
+                ),
+              ] else ...[
+                _GlassTextField(
+                  label: 'OpenRouter API Key',
+                  icon: Icons.key_rounded,
+                  controller: _openRouterKeyController,
+                  obscure: true,
+                ),
+                _GlassTextField(
+                  label: 'Modell (z.B. anthropic/claude-3.5-sonnet)',
+                  icon: Icons.smart_toy_rounded,
+                  controller: _openRouterModelController,
+                ),
+                _GlassTextField(
+                  label: 'Fallback',
+                  icon: Icons.backup_rounded,
+                  controller: _openRouterFallbackController,
+                ),
+              ],
+
               const SizedBox(height: 8),
               Row(children: [
                 Expanded(child: _GradientButton(

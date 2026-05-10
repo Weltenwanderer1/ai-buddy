@@ -122,6 +122,11 @@ class OllamaCloudService extends ChangeNotifier {
   ///   https://ollama.com/v1           → https://ollama.com/v1/chat/completions
   String get _chatCompletionsPath {
     var base = _normalizedBase;
+    // OpenRouter: URL already ends with /api — keep it
+    final isOpenRouter = base.contains('openrouter');
+    if (isOpenRouter) {
+      return '$base/v1/chat/completions';
+    }
     // Strip common suffixes that users might paste from docs
     if (base.endsWith('/api/v1')) {
       base = base.substring(0, base.length - 6); // https://ollama.com/api/v1 → https://ollama.com

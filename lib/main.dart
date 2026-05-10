@@ -96,8 +96,10 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _chatHistory = ChatHistoryService(); await _chatHistory.init();
       _ollamaService = OllamaCloudService(
-        baseUrl: _secureConfig.ollamaBaseUrl, apiKey: _secureConfig.ollamaApiKey,
-        defaultModel: _secureConfig.ollamaModel, fallbackModel: _secureConfig.ollamaFallbackModel,
+        baseUrl: _secureConfig.activeBaseUrl,
+        apiKey: _secureConfig.activeApiKey,
+        defaultModel: _secureConfig.activeModel,
+        fallbackModel: _secureConfig.activeFallbackModel,
       );
       // Warm up TCP/TLS connection before first user message
       _ollamaService.preconnect();
