@@ -479,9 +479,11 @@ class ChatService {
           await memory.addShortTerm('Erinnerung: $toolArgs', source: 'tool');
         }
       }
+      // After tools executed, break loop and do final call without tools
+      break;
     }
 
-    // Max rounds exhausted — do one final LLM call for a summary
+    // Final LLM call — summarize results for the user
     try {
       final finalResponse = await _llm.chat(
         systemPrompt: systemPrompt,
