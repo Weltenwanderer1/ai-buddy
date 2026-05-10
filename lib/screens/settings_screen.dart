@@ -11,6 +11,7 @@ import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import 'persona_editor_screen.dart';
+import 'self_identity_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -379,6 +380,17 @@ class _SettingsScreenState extends State<SettingsScreen>
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const PersonaEditorScreen()),
+              ),
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.self_improvement_rounded,
+              title: 'Mein Selbst',
+              subtitle: 'Wesen, Regeln, Ziele',
+              color: AppColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SelfIdentityScreen()),
               ),
             ),
             _Divider(),
