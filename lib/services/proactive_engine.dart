@@ -8,7 +8,6 @@ import '../services/persona_service.dart';
 
 /// Events the ProactiveEngine can fire.
 enum ProactiveEventType {
-  morningBriefing,
   calendarHeadsup,
   batteryLow,
   eveningRecap,
@@ -37,7 +36,7 @@ typedef ProactiveCallback = void Function(ProactiveSuggestion suggestion);
 /// Background engine that checks device state and context periodically,
 /// then fires proactive suggestions BEFORE the user asks.
 ///
-/// Checks: morning briefing, calendar heads-up, battery guardian, evening recap.
+/// Checks: calendar heads-up, battery guardian, evening recap.
 class ProactiveEngine extends ChangeNotifier {
   final OllamaCloudService _llm;
   final MemoryService _memory;
@@ -56,14 +55,12 @@ class ProactiveEngine extends ChangeNotifier {
   ProactiveCallback? onSuggestion;
 
   /// Configuration
-  final bool enableMorningBriefing;
   final bool enableCalendarHeadsup;
   final bool enableBatteryGuardian;
   final bool enableEveningRecap;
   final int checkIntervalMinutes;
 
   /// Time windows (hour of day, local time)
-  static const _morningWindow = (6, 10); // 06:00-09:59
   static const _eveningWindow = (20, 23); // 20:00-22:59
   static const _batteryThreshold = 20; // warn below 20%
 
@@ -73,7 +70,6 @@ class ProactiveEngine extends ChangeNotifier {
     required PersonaService persona,
     FlutterLocalNotificationsPlugin? notifications,
     ContextService? context,
-    this.enableMorningBriefing = true,
     this.enableCalendarHeadsup = true,
     this.enableBatteryGuardian = true,
     this.enableEveningRecap = true,
@@ -133,17 +129,6 @@ class ProactiveEngine extends ChangeNotifier {
     final hour = now.hour;
     final context = _context.currentContext();
 
-    // ── Morning Briefing ──
-    if (enableMorningBriefing &&
-        hour >= _morningWindow.$1 &&
-        hour < _morningWindow.$2) {
-      final alreadyFiredToday = await _alreadyFired('morning_briefing', now);
-      if (!alreadyFiredToday) {
-        await _fireMorningBriefing(context, now);
-        return;
-      }
-    }
-
     // ── Evening Recap ──
     if (enableEveningRecap &&
         hour >= _eveningWindow.$1 &&
@@ -159,45 +144,6 @@ class ProactiveEngine extends ChangeNotifier {
     final suggestion = await _buildContextualSuggestion(context, now);
     if (suggestion != null) {
       _dispatchSuggestion(suggestion);
-    }
-  }
-
-  // ─── Morning Briefing ──────────────────────────────────────────────
-
-  Future<void> _fireMorningBriefing(ContextSnapshot ctx, DateTime now) async {
-    try {
-      final recentMemories =
-          _memory.shortTermMemories.take(5).map((m) => m.content).toList();
-      final memoryBlock = recentMemories.isNotEmpty
-          ? 'Letzte Themen: ${recentMemories.join(", ")}'
-          : '';
-
-      final briefing = await _llm.chat(
-        systemPrompt:
-            'Du bist ${_persona.name}, ein freundlicher KI-Assistent. '
-            'Erstelle ein kurzes Morgenbriefing (max 3 Sätze). '
-            'Sei motivierend aber knapp. Erwähne das Wetter nicht '
-            '(du kennst es nicht), aber gib einen positiven Impuls.',
-        messages: [
-          {
-            'role': 'user',
-            'content': 'Guten Morgen! Gib mir ein kurzes Briefing. '
-                'Tageszeit: ${ctx.timeOfDay.name}. '
-                '$memoryBlock'
-          }
-        ],
-      );
-
-      final suggestion = ProactiveSuggestion(
-        type: ProactiveEventType.morningBriefing,
-        title: '🌅 Guten Morgen!',
-        body: briefing,
-        quickAction: 'was steht heute an?',
-      );
-      await _markFired('morning_briefing', now);
-      _dispatchSuggestion(suggestion);
-    } catch (e) {
-      debugPrint('ProactiveEngine: morning briefing failed: $e');
     }
   }
 
@@ -243,7 +189,7 @@ class ProactiveEngine extends ChangeNotifier {
 
   Future<ProactiveSuggestion?> _buildContextualSuggestion(
       ContextSnapshot ctx, DateTime now) async {
-    // Morning but already past briefing window: suggest getting started
+    // Morning suggestion: suggest checking calendar
     if (ctx.timeOfDay == TimeOfDay.morning && now.hour >= 10) {
       final alreadyToday = await _alreadyFired('morning_suggestion', now);
       if (!alreadyToday) {

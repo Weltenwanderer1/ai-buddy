@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'chat_screen.dart';
-import 'briefing_screen.dart';
 import 'memory_browser_screen.dart';
 import 'onboarding_screen.dart';
 import 'settings_screen.dart';
@@ -20,7 +19,6 @@ class _HomeScreenState extends State<HomeScreen> {
   int _idx = 0;
 
   final _screens = const [
-    BriefingScreen(),
     ChatScreen(),
     MemoryBrowserScreen(),
     SettingsScreen(),
@@ -59,28 +57,22 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _NavItem(
-                  icon: Icons.wb_sunny_rounded,
-                  label: 'Briefing',
+                  icon: Icons.chat_bubble_rounded,
+                  label: 'Chat',
                   active: _idx == 0,
                   onTap: () => setState(() => _idx = 0),
                 ),
                 _NavItem(
-                  icon: Icons.chat_bubble_rounded,
-                  label: 'Chat',
+                  icon: Icons.memory,
+                  label: 'Erinnerungen',
                   active: _idx == 1,
                   onTap: () => setState(() => _idx = 1),
                 ),
                 _NavItem(
-                  icon: Icons.memory,
-                  label: 'Erinnerungen',
-                  active: _idx == 2,
-                  onTap: () => setState(() => _idx = 2),
-                ),
-                _NavItem(
                   icon: Icons.settings_rounded,
                   label: 'Einstellungen',
-                  active: _idx == 3,
-                  onTap: () => setState(() => _idx = 3),
+                  active: _idx == 2,
+                  onTap: () => setState(() => _idx = 2),
                 ),
               ],
             ),

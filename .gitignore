@@ -27,3 +27,4 @@ local.properties
 *.apk
 *.bak
 .gradle/
+key.properties
