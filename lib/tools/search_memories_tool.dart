@@ -53,9 +53,9 @@ class SearchMemoriesTool implements ToolInterface {
       );
     }
 
-    final relevant = await _memory.getRelevantMemories(query, limit: limit);
-    
-    if (relevant.isEmpty) {
+    final relevant = await _memory.retrieveRelevant(query, limitPerTier: limit);
+    final allResults = [...relevant['core']!, ...relevant['longTerm']!, ...relevant['shortTerm']!];
+    if (allResults.isEmpty) {
       return ToolResult(
         toolName: definition.name,
         parameters: parameters,
@@ -65,8 +65,8 @@ class SearchMemoriesTool implements ToolInterface {
     }
 
     final lines = <String>[];
-    for (var i = 0; i < relevant.length; i++) {
-      final m = relevant[i];
+    for (var i = 0; i < allResults.length; i++) {
+      final m = allResults[i];
       final source = m.source.isNotEmpty ? '[${m.source}] ' : '';
       final date = m.timestamp.toIso8601String().split('T').first;
       lines.add('${i + 1}. $source($date): ${m.content}');
@@ -77,7 +77,7 @@ class SearchMemoriesTool implements ToolInterface {
       toolName: definition.name,
       parameters: parameters,
       result: result,
-      displayText: '🔍 ${relevant.length} Erinnerungen zu "$query" gefunden',
+      displayText: '🔍 ${allResults.length} Erinnerungen zu "$query" gefunden',
     );
   }
 }

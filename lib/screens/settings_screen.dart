@@ -10,6 +10,7 @@ import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
+import '../services/self_identity_service.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
 
@@ -190,6 +191,20 @@ class _SettingsScreenState extends State<SettingsScreen>
         await context.read<BackupService>().importBackup(path);
         _showSnack('Backup eingespielt ✅', AppColors.success);
       }
+    } catch (e) {
+      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+    }
+  }
+
+  Future<void> _resetApp() async {
+    if (!await _confirm('App komplett zurücksetzen?',
+        'Alles wird gelöscht: Chat, Erinnerungen, Selbstbild, Persona, KI-Entwicklung. Das kann nicht rückgängig gemacht werden.')) return;
+    try {
+      await context.read<ChatHistoryService>().clear();
+      await context.read<MemoryService>().clearAll();
+      await context.read<SelfIdentityService>().clear();
+      await context.read<PersonaEvolutionService>().clear();
+      _showSnack('App zurückgesetzt — neu starten empfohlen', AppColors.error);
     } catch (e) {
       _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
     }
@@ -653,6 +668,14 @@ class _SettingsScreenState extends State<SettingsScreen>
               color: AppColors.primary,
               onTap: _restoreBackup,
             ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.restart_alt_rounded,
+              title: 'App zurücksetzen',
+              subtitle: 'Alles löschen — wie neu installiert',
+              color: AppColors.error,
+              onTap: _resetApp,
+            ),
           ])),
 
           // ── Über ──
@@ -660,9 +683,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.4.0',
+              subtitle: 'v0.7.0',
               color: AppColors.secondary,
-              trailing: _Badge('v0.4.0', color: AppColors.secondary),
+              trailing: _Badge('v0.7.0', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),

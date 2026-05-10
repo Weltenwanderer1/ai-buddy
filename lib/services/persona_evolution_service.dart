@@ -231,4 +231,13 @@ JSON:''';
     notifyListeners();
     await _save();
   }
+
+  Future<void> clear() async {
+    _learnedTraits = [];
+    _avoidTopics = [];
+    _preferredStyle = [];
+    _learnedStyle = {};
+    notifyListeners();
+    await _save();
+  }
 }

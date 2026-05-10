@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
 class PersonaService extends ChangeNotifier {
-  String _name = '';
+  String _name = 'Buddy';
   List<String> _personality = [];
   String _greeting = '';
   String _backstory = '';

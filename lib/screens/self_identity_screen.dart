@@ -337,7 +337,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.glassBg.withOpacity(0.5),
+        color: AppColors.bgCard.withOpacity(0.7),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
       ),
@@ -447,9 +447,10 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
   }
 
   TextStyle _bodyStyle() => TextStyle(
-    fontSize: 14,
-    color: AppColors.textSecondary,
-    height: 1.5,
+    fontSize: 15,
+    color: AppColors.textPrimary,
+    height: 1.6,
+    fontWeight: FontWeight.w400,
   );
 
   String _formatDate(DateTime dt) {

@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
-import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 import 'services/memory_service.dart';
 import 'services/persona_service.dart';
@@ -16,6 +15,7 @@ import 'services/tts_playback_service.dart';
 import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
 import 'services/notification_service.dart';
+import 'services/backup_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'tools/tool_registry.dart';
@@ -59,6 +59,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late PersonaEvolutionService _personaEvolution;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
+  late BackupService _backupService;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -165,6 +166,15 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         catch (e) { debugPrint('AddCal error: $e'); return false; }
       };
 
+      _backupService = BackupService(
+        memory: _memory,
+        persona: _persona,
+        settings: _settings,
+        chatHistory: _chatHistory,
+        personaEvolution: _personaEvolution,
+        selfIdentity: _selfIdentity,
+      );
+
       if (mounted) { _persona.addListener(_onPersonaChanged); setState(() => _initialized = true); }
     } catch (e, st) {
       debugPrint('Init failed: $e\n$st');
@@ -267,6 +277,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _selfIdentity),
         Provider.value(value: _elevenLabsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
+        Provider.value(value: _backupService),
       ],
       child: MaterialApp(title: 'AI-Buddy', theme: _theme(), darkTheme: _theme(),
         home: const HomeScreen(),

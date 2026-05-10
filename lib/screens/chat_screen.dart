@@ -14,12 +14,11 @@ import '../services/live_voice_service.dart';
 import '../services/stt_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
-import '../widgets/quick_action_chips.dart';
+
 import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
 import 'settings_screen.dart';
-import '../widgets/typing_indicator.dart';
-import '../widgets/quick_actions.dart';
+
 import '../widgets/proactive_card.dart';
 import '../services/proactive_engine.dart';
 import '../services/self_identity_service.dart';
@@ -266,61 +265,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     });
   }
 
-  // ─── Quick Actions ────────────────────────────────────────────────────
 
-  void _handleQuickAction(String command, String context) {
-    // Direct tool execution for instant response — no LLM roundtrip needed
-    final registry = _toolRegistry;
-    if (registry == null) return;
-    
-    switch (command) {
-      case 'set_reminder':
-        _sendMessage('Erstelle eine Erinnerung: $context');
-        break;
-      case 'add_calendar':
-        _sendMessage('Trage in meinen Kalender ein: $context');
-        break;
-      case 'web_search':
-        _sendMessage('Suche im Web nach: $context');
-        break;
-      case 'navigate':
-        _sendMessage('Navigiere zum Ziel: $context');
-        break;
-      case 'save_note':
-        // Write directly to memory via tool
-        _executeToolDirectly('write_file', {
-          'path': 'notizen/quick_note_${DateTime.now().millisecondsSinceEpoch}.md',
-          'content': context,
-        });
-        break;
-      case 'search_memories':
-        _sendMessage('Was weisst du ueber: $context?');
-        break;
-      case 'quick_summary':
-        _sendMessage('Fasse kurz zusammen: $context');
-        break;
-    }
-  }
-
-  /// Execute a tool directly without going through the LLM.
-  Future<void> _executeToolDirectly(String toolName, Map<String, dynamic> args) async {
-    final registry = _toolRegistry;
-    if (registry == null) return;
-    try {
-      final result = await registry.execute(toolName, args);
-      final chatHistory = context.read<ChatHistoryService>();
-      await chatHistory.add(ChatMessage(
-        text: result.displayText ?? result.result.toString(),
-        isUser: false,
-        type: result.isError ? MessageType.error : MessageType.toolActivity,
-      ));
-      _scrollToBottom();
-    } catch (e) {
-      debugPrint('Direct tool execution failed: $e');
-    }
-  }
-
-  // ─── Live Voice Integration ───────────────────────────────────────────
 
   Future<void> _toggleLiveVoice() async {
     if (_liveVoice == null || !_liveVoice!.isActive) {
@@ -411,11 +356,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           MessageBubble(message: message),
-                          if (isLastAiMessage)
-                            QuickActionChips(
-                              messageText: message.text,
-                              onAction: (command) => _handleQuickAction(command, message.text),
-                            ),
+    
                         ],
                       );
                     },
@@ -477,7 +418,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               ),
 
             // ─── Quick Actions ───
-            if (!isLiveActive) QuickActions(onSend: _sendMessage),
+
           ],
         ),
       ),
@@ -556,15 +497,22 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.glassBg.withOpacity(0.4),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withOpacity(0.15),
+                    AppColors.secondary.withOpacity(0.1),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: AppColors.glassBorder.withOpacity(0.3),
+                  color: AppColors.primary.withOpacity(0.2),
                 ),
               ),
               child: Icon(
-                Icons.settings_outlined,
-                color: AppColors.textSecondary,
+                Icons.tune_rounded,
+                color: AppColors.primary.withOpacity(0.9),
                 size: 20,
               ),
             ),

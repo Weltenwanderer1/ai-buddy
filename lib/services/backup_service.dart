@@ -9,6 +9,7 @@ import 'persona_service.dart';
 import 'persona_evolution_service.dart';
 import 'chat_history_service.dart';
 import 'settings_service.dart';
+import 'self_identity_service.dart';
 
 /// Backup/Restore service — exports all app data as a JSON zip bundle.
 class BackupService {
@@ -17,8 +18,9 @@ class BackupService {
   final SettingsService settings;
   final ChatHistoryService? chatHistory;
   final PersonaEvolutionService? personaEvolution;
+  final SelfIdentityService? selfIdentity;
 
-  static const int backupVersion = 3;
+  static const int backupVersion = 4;
 
   BackupService({
     required this.memory,
@@ -26,6 +28,7 @@ class BackupService {
     required this.settings,
     this.chatHistory,
     this.personaEvolution,
+    this.selfIdentity,
   });
 
 
@@ -99,6 +102,22 @@ class BackupService {
     }
     if (personaEvolution != null) {
       bundle['persona_evolution'] = personaEvolution!.exportData();
+    }
+
+    if (selfIdentity != null) {
+      bundle['self_identity'] = {
+        'name': selfIdentity!.name,
+        'essence': selfIdentity!.essence,
+        'behaviorRules': selfIdentity!.behaviorRules,
+        'userName': selfIdentity!.userName,
+        'relationshipDescription': selfIdentity!.relationshipDescription,
+        'keyExperiences': selfIdentity!.keyExperiences,
+        'emotionalTone': selfIdentity!.emotionalTone,
+        'purpose': selfIdentity!.purpose,
+        'ongoingGoals': selfIdentity!.ongoingGoals,
+        'lastModified': selfIdentity!.lastModified.toIso8601String(),
+        'lastAutoUpdate': selfIdentity!.lastAutoUpdate.toIso8601String(),
+      };
     }
 
     final jsonStr = const JsonEncoder.withIndent('  ').convert(bundle);

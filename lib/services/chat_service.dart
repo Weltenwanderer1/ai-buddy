@@ -711,20 +711,35 @@ class ChatService {
     final base = persona.buildSystemPrompt(evolutionContext: evolutionContext);
     final parts = <String>[base];
 
-    // KI-Selbstbild hinzufügen (höchste Priorität)
+    // KI-Selbstbild (Core Identity)
     final selfIdentity = _selfIdentity;
     if (selfIdentity != null) {
       parts.add(selfIdentity.selfImagePrompt);
     }
 
-    final relevant = await memory.getRelevantMemories(query, limit: 5);
-    if (relevant.isNotEmpty) {
-      final memoryBlock = relevant
-          .map((m) =>
-              '- [${m.source}/${m.timestamp.toIso8601String().split('T').first}]: ${m.content}')
-          .join('\n');
-      parts.add('\nGedaechtnis:\n$memoryBlock');
+    // Core memories (wichtigste Infos - immer dabei)
+    final coreContext = memory.buildCoreContext();
+    if (coreContext.isNotEmpty) {
+      parts.add(coreContext);
     }
-    return parts.join('\n\n');
+
+    // Relevante Memories (LongTerm + ShortTerm)
+    final relevant = await memory.retrieveRelevant(query, limitPerTier: 5);
+    if (relevant['longTerm']!.isNotEmpty) {
+      final buf = StringBuffer('\n\n=== WICHTIGE ERINNERUNGEN (Langzeit) ===\n');
+      for (final m in relevant['longTerm']!) {
+        buf.writeln('- ${m.content}');
+      }
+      parts.add(buf.toString());
+    }
+    if (relevant['shortTerm']!.isNotEmpty) {
+      final buf = StringBuffer('\n\n=== KUERZILICHER KONTEXT (Kurzeit) ===\n');
+      for (final m in relevant['shortTerm']!) {
+        buf.writeln('- ${m.content}');
+      }
+      parts.add(buf.toString());
+    }
+
+    return parts.join('\n').trim();
   }
 }
