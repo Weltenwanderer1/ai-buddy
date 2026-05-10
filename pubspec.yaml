@@ -1,0 +1,42 @@
+name: ai_buddy
+description: AI Companion App with Chat, Voice, Memory, Persona & Tool System
+publish_to: 'none'
+version: 0.6.0+60
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  path_provider: ^2.1.0
+  shared_preferences: ^2.2.0
+  provider: ^6.1.0
+  flutter_dotenv: ^5.1.0
+  archive: ^3.4.0
+  uuid: ^4.2.0
+  intl: ^0.19.0
+  file_picker: ^8.0.0
+  flutter_secure_storage: ^9.2.0
+  speech_to_text: ^7.0.0
+  just_audio: ^0.9.40
+  rxdart: ^0.28.0
+  flutter_tts: ^4.2.5
+  # Tool system dependencies
+  flutter_local_notifications: ^18.0.1
+  url_launcher: ^6.3.1
+  share_plus: ^10.1.4
+  device_info_plus: ^11.2.0
+  device_calendar: ^4.3.3
+  permission_handler: ^11.3.1
+  timezone: ^0.9.4
+  android_intent_plus: ^5.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true

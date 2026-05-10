@@ -1,0 +1,933 @@
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../core/theme/app_colors.dart';
+import '../services/secure_config_service.dart';
+import '../services/ollama_cloud_service.dart';
+import '../services/elevenlabs_service.dart';
+import '../services/tts_playback_service.dart';
+import '../services/backup_service.dart';
+import '../services/chat_history_service.dart';
+import '../services/memory_service.dart';
+import '../services/persona_service.dart';
+import '../services/persona_evolution_service.dart';
+import 'persona_editor_screen.dart';
+
+class SettingsScreen extends StatefulWidget {
+  const SettingsScreen({super.key});
+  @override State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen>
+    with TickerProviderStateMixin {
+  final _ollamaKeyController = TextEditingController();
+  final _ollamaBaseUrlController = TextEditingController();
+  final _ollamaModelController = TextEditingController();
+  final _ollamaFallbackController = TextEditingController();
+  final _elevenKeyController = TextEditingController();
+  final _elevenVoiceController = TextEditingController();
+  final _elevenModelController = TextEditingController();
+
+  bool _isTestingOllama = false;
+  String? _ollamaTestResult;
+  bool _isTestingElevenLabs = false;
+  String? _elevenLabsTestResult;
+  List<String>? _elevenLabsAvailableVoices;
+
+  bool _ollamaExpanded = true;
+  bool _elevenExpanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadConfig();
+  }
+
+  void _loadConfig() {
+    final config = context.read<SecureConfigService>();
+    _ollamaKeyController.text = config.ollamaApiKey;
+    _ollamaBaseUrlController.text = config.ollamaBaseUrl;
+    _ollamaModelController.text = config.ollamaModel;
+    _ollamaFallbackController.text = config.ollamaFallbackModel;
+    _elevenKeyController.text = config.elevenLabsApiKey;
+    _elevenVoiceController.text = config.elevenLabsVoiceId;
+    _elevenModelController.text = config.elevenLabsModelId;
+  }
+
+  @override
+  void dispose() {
+    _ollamaKeyController.dispose();
+    _ollamaBaseUrlController.dispose();
+    _ollamaModelController.dispose();
+    _ollamaFallbackController.dispose();
+    _elevenKeyController.dispose();
+    _elevenVoiceController.dispose();
+    _elevenModelController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveOllamaConfig() async {
+    final config = context.read<SecureConfigService>();
+    final ollama = context.read<OllamaCloudService>();
+    await config.setOllamaApiKey(_ollamaKeyController.text);
+    await config.setOllamaBaseUrl(_ollamaBaseUrlController.text);
+    await config.setOllamaModel(_ollamaModelController.text);
+    await config.setOllamaFallbackModel(_ollamaFallbackController.text);
+    ollama.updateConfig(
+      baseUrl: config.ollamaBaseUrl,
+      apiKey: config.ollamaApiKey,
+      defaultModel: config.ollamaModel,
+      fallbackModel: config.ollamaFallbackModel,
+    );
+    if (mounted) _showSnack('KI-Modell gespeichert ✅', AppColors.success);
+  }
+
+  Future<void> _saveElevenLabsConfig() async {
+    final config = context.read<SecureConfigService>();
+    final eleven = context.read<ElevenLabsService>();
+    await config.setElevenLabsApiKey(_elevenKeyController.text);
+    await config.setElevenLabsVoiceId(_elevenVoiceController.text);
+    await config.setElevenLabsModelId(_elevenModelController.text);
+    eleven.updateConfig(
+      apiKey: config.elevenLabsApiKey,
+      voiceId: config.elevenLabsVoiceId,
+      modelId: config.elevenLabsModelId,
+    );
+    if (mounted) _showSnack('Spracheinstellungen gespeichert ✅', AppColors.success);
+  }
+
+  Future<void> _testOllama() async {
+    setState(() { _isTestingOllama = true; _ollamaTestResult = null; });
+    try {
+      final ollama = context.read<OllamaCloudService>();
+      final reply = await ollama.chatWithTools(
+        systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
+        messages: [{'role': 'user', 'content': 'Hallo, Test!'}],
+        temperature: 0.1,
+      );
+      final text = reply.content.length > 60
+          ? '${reply.content.substring(0, 60)}...'
+          : reply.content;
+      setState(() => _ollamaTestResult = 'Verbindung OK — $text');
+    } catch (e) {
+      setState(() => _ollamaTestResult = 'Fehler: ${_trunc(e.toString(), 120)}');
+    } finally {
+      if (mounted) setState(() => _isTestingOllama = false);
+    }
+  }
+
+  Future<void> _testElevenLabs() async {
+    setState(() {
+      _isTestingElevenLabs = true;
+      _elevenLabsTestResult = null;
+      _elevenLabsAvailableVoices = null;
+    });
+    try {
+      final tts = context.read<TtsPlaybackService>();
+      final result = await tts.testConnection();
+      setState(() {
+        _elevenLabsTestResult = result.success
+            ? 'Verbindung OK'
+            : 'Fehler: ${result.message}';
+        if (result.availableVoices.isNotEmpty)
+          _elevenLabsAvailableVoices = result.availableVoices;
+      });
+    } catch (e) {
+      setState(() => _elevenLabsTestResult = '${e.toString()}');
+    } finally {
+      if (mounted) setState(() => _isTestingElevenLabs = false);
+    }
+  }
+
+  Future<void> _clearChatHistory() async {
+    if (await _confirm('Chat-Verlauf löschen?',
+        'Alle Nachrichten werden unwiderruflich gelöscht.')) {
+      await context.read<ChatHistoryService>().clear();
+      _showSnack('Chat-Verlauf gelöscht', AppColors.error);
+    }
+  }
+
+  Future<void> _clearMemories() async {
+    if (await _confirm('Erinnerungen löschen?',
+        'Alle gespeicherten Erinnerungen werden gelöscht.')) {
+      await context.read<MemoryService>().clearAll();
+      _showSnack('Erinnerungen gelöscht', AppColors.error);
+    }
+  }
+
+  Future<void> _createBackup() async {
+    try {
+      await context.read<BackupService>().exportBackup();
+      _showSnack('Backup gesichert ✅', AppColors.success);
+    } catch (e) {
+      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+    }
+  }
+
+  Future<void> _restoreBackup() async {
+    if (!await _confirm('Backup wiederherstellen?',
+        'Aktuelle Daten werden überschrieben.')) return;
+    try {
+      final path = await context.read<BackupService>().importBackupWithPicker();
+      if (path != null) {
+        await context.read<BackupService>().importBackup(path);
+        _showSnack('Backup eingespielt ✅', AppColors.success);
+      }
+    } catch (e) {
+      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+    }
+  }
+
+  void _showSnack(String msg, Color c) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Row(mainAxisSize: MainAxisSize.min, children: [
+        Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+        const SizedBox(width: 10),
+        Flexible(child: Text(msg, maxLines: 2)),
+      ]),
+      backgroundColor: c.withOpacity(0.9),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
+  Future<bool> _confirm(String title, String body) async =>
+      (await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          backgroundColor: AppColors.bgElevated,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          title: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(title,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w700))),
+          ]),
+          content: Text(body,
+            style: TextStyle(color: AppColors.textSecondary, fontSize: 14, height: 1.5)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: Text('Abbrechen', style: TextStyle(
+                color: AppColors.textSecondary, fontWeight: FontWeight.w600))),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error.withOpacity(0.2),
+                foregroundColor: AppColors.error,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              child: const Text('Bestätigen', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      )) == true;
+
+  static String _trunc(String s, int max) =>
+      s.length > max ? '${s.substring(0, max)}...' : s;
+
+  void _showKIEntwicklung() {
+    final traits = context.read<PersonaEvolutionService>().learnedTraits;
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.bgElevated.withOpacity(0.95),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        ),
+        child: DraggableScrollableSheet(
+          expand: false,
+          initialChildSize: 0.5,
+          minChildSize: 0.3,
+          maxChildSize: 0.8,
+          builder: (_, scrollCtrl) => Column(children: [
+            Container(
+              width: 40, height: 5,
+              decoration: BoxDecoration(
+                color: AppColors.textTertiary.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(3),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  gradient: AppColors.primaryGradient,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: const Icon(Icons.psychology_rounded, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                const Text('KI-Entwicklung',
+                  style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text('${traits.length} gelernte Merkmale',
+                  style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+              ])),
+            ]),
+            const SizedBox(height: 20),
+            Expanded(
+              child: traits.isEmpty
+                ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
+                    Icon(Icons.psychology_alt_outlined,
+                      size: 48, color: AppColors.textTertiary.withOpacity(0.4)),
+                    const SizedBox(height: 16),
+                    Text('Noch keine Merkmale gelernt',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
+                    const SizedBox(height: 6),
+                    Text('Dein Buddy lernt mit jedem Gespräch mehr über dich.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textTertiary, fontSize: 13, height: 1.5)),
+                  ]))
+                : ListView.builder(
+                    controller: scrollCtrl,
+                    physics: const BouncingScrollPhysics(),
+                    itemCount: traits.length,
+                    itemBuilder: (_, i) => Container(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.bgCard.withOpacity(0.6),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                      ),
+                      child: Row(children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.primaryGradient,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(child: Text((i + 1).toString(),
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(child: Text('${traits[i]}',
+                          style: TextStyle(color: AppColors.textPrimary, fontSize: 15))),
+                        Icon(Icons.check_rounded, size: 18, color: AppColors.success),
+                      ]),
+                    ),
+                  ),
+            ),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final persona = context.watch<PersonaService>();
+    final evolution = context.watch<PersonaEvolutionService>();
+
+    return Scaffold(
+      backgroundColor: AppColors.bgDarkest,
+      body: CustomScrollView(
+        physics: const BouncingScrollPhysics(),
+        slivers: [
+          // ── Sliver Header ──
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    AppColors.primary.withOpacity(0.15),
+                    AppColors.primary.withOpacity(0.02),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+              child: Column(children: [
+                const SizedBox(height: 60),
+                Text('Einstellungen',
+                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary, letterSpacing: -0.5)),
+                const SizedBox(height: 6),
+                Text('Konfiguriere deinen AI-Buddy',
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                const SizedBox(height: 16),
+              ]),
+            ),
+          ),
+
+          // ── Persona ──
+          SliverToBoxAdapter(child: _GlassCard(children: [
+            _ListTile(
+              icon: Icons.face_5_rounded,
+              title: 'Persona bearbeiten',
+              subtitle: persona.name.isEmpty ? 'Standard' : persona.name,
+              color: AppColors.primary,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PersonaEditorScreen()),
+              ),
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.psychology_rounded,
+              title: 'KI-Entwicklung',
+              subtitle: '${evolution.learnedTraits.length} Merkmale gelernt',
+              color: AppColors.secondary,
+              trailing: _Badge('${evolution.learnedTraits.length}'),
+              onTap: _showKIEntwicklung,
+            ),
+          ])),
+
+          // ── KI-Modell ──
+          SliverToBoxAdapter(child: _ExpandableSection(
+            title: 'KI-Modell',
+            icon: Icons.auto_awesome_rounded,
+            color: AppColors.primary,
+            expanded: _ollamaExpanded,
+            onToggle: () => setState(() => _ollamaExpanded = !_ollamaExpanded),
+            children: [
+              _GlassTextField(
+                label: 'Base URL',
+                icon: Icons.link_rounded,
+                controller: _ollamaBaseUrlController,
+              ),
+              _GlassTextField(
+                label: 'API Key',
+                icon: Icons.key_rounded,
+                controller: _ollamaKeyController,
+                obscure: true,
+              ),
+              _GlassTextField(
+                label: 'Modell',
+                icon: Icons.smart_toy_rounded,
+                controller: _ollamaModelController,
+              ),
+              _GlassTextField(
+                label: 'Fallback',
+                icon: Icons.backup_rounded,
+                controller: _ollamaFallbackController,
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: Icons.save_rounded,
+                  label: 'Speichern',
+                  onTap: _saveOllamaConfig,
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: _OutlineButton(
+                  icon: _isTestingOllama ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
+                  label: _isTestingOllama ? 'Teste...' : 'Verbindung testen',
+                  onTap: _isTestingOllama ? null : _testOllama,
+                )),
+              ]),
+              if (_ollamaTestResult != null)
+                _ResultBox(text: _ollamaTestResult!),
+            ],
+          )),
+
+          // ── Sprache ──
+          SliverToBoxAdapter(child: _ExpandableSection(
+            title: 'Sprache',
+            icon: Icons.record_voice_over_rounded,
+            color: AppColors.secondary,
+            expanded: _elevenExpanded,
+            onToggle: () => setState(() => _elevenExpanded = !_elevenExpanded),
+            children: [
+              _GlassTextField(
+                label: 'ElevenLabs Key',
+                icon: Icons.key_rounded,
+                controller: _elevenKeyController,
+                obscure: true,
+              ),
+              _GlassTextField(
+                label: 'Voice ID',
+                icon: Icons.record_voice_over_rounded,
+                controller: _elevenVoiceController,
+              ),
+              _GlassTextField(
+                label: 'Model',
+                icon: Icons.settings_voice_rounded,
+                controller: _elevenModelController,
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: Icons.save_rounded,
+                  label: 'Speichern',
+                  onTap: _saveElevenLabsConfig,
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: _OutlineButton(
+                  icon: _isTestingElevenLabs ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
+                  label: _isTestingElevenLabs ? 'Teste...' : 'Verbindung testen',
+                  onTap: _isTestingElevenLabs ? null : _testElevenLabs,
+                )),
+              ]),
+              if (_elevenLabsTestResult != null)
+                _ResultBox(text: _elevenLabsTestResult!),
+              if (_elevenLabsAvailableVoices != null && _elevenLabsAvailableVoices!.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: _elevenLabsAvailableVoices!.map((v) => GestureDetector(
+                      onTap: () {
+                        setState(() => _elevenVoiceController.text = v);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          gradient: _elevenVoiceController.text == v
+                            ? AppColors.secondaryGradient
+                            : null,
+                          color: _elevenVoiceController.text == v ? null : AppColors.bgCard.withOpacity(0.5),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: _elevenVoiceController.text == v
+                              ? Colors.transparent
+                              : AppColors.glassBorder.withOpacity(0.3),
+                            width: 1,
+                          ),
+                        ),
+                        child: Text(v, style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: _elevenVoiceController.text == v ? FontWeight.w700 : FontWeight.w600,
+                          color: _elevenVoiceController.text == v ? Colors.white : AppColors.textSecondary,
+                        )),
+                      ),
+                    )).toList(),
+                  ),
+                ),
+            ],
+          )),
+
+          // ── Daten ──
+          SliverToBoxAdapter(child: _GlassCard(children: [
+            _ListTile(
+              icon: Icons.delete_forever_outlined,
+              title: 'Chat löschen',
+              color: AppColors.error,
+              onTap: _clearChatHistory,
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.memory_outlined,
+              title: 'Erinnerungen löschen',
+              color: AppColors.error,
+              onTap: _clearMemories,
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.backup_outlined,
+              title: 'Backup erstellen',
+              color: AppColors.success,
+              onTap: _createBackup,
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.restore_outlined,
+              title: 'Wiederherstellen',
+              color: AppColors.primary,
+              onTap: _restoreBackup,
+            ),
+          ])),
+
+          // ── Über ──
+          SliverToBoxAdapter(child: _GlassCard(children: [
+            _ListTile(
+              icon: Icons.favorite_rounded,
+              title: 'AI-Buddy',
+              subtitle: 'v0.4.0',
+              color: AppColors.secondary,
+              trailing: _Badge('v0.4.0', color: AppColors.secondary),
+              onTap: () {},
+            ),
+          ])),
+
+          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+        ],
+      ),
+    );
+  }
+}
+
+// ──── UI Widgets ────
+
+class _GlassCard extends StatelessWidget {
+  final List<Widget> children;
+  const _GlassCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+    );
+  }
+}
+
+class _ExpandableSection extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final bool expanded;
+  final VoidCallback onToggle;
+  final List<Widget> children;
+
+  const _ExpandableSection({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.expanded,
+    required this.onToggle,
+    required this.children,
+  });
+
+  @override
+  State<_ExpandableSection> createState() => _ExpandableSectionState();
+}
+
+class _ExpandableSectionState extends State<_ExpandableSection> {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.bgCard.withOpacity(0.6),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        GestureDetector(
+          onTap: widget.onToggle,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: widget.color.withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(widget.icon, color: widget.color, size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(widget.title,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                const SizedBox(height: 2),
+                Text(widget.expanded ? 'Angeklappt zur Bearbeitung' : 'Zum Bearbeiten aufklappen',
+                  style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              ])),
+              AnimatedRotation(
+                turns: widget.expanded ? 0.5 : 0,
+                duration: const Duration(milliseconds: 250),
+                child: Icon(Icons.keyboard_arrow_down_rounded,
+                  color: AppColors.textSecondary, size: 24),
+              ),
+            ]),
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: Container(),
+          secondChild: Column(children: [...widget.children, const SizedBox(height: 8)]),
+          crossFadeState: widget.expanded
+            ? CrossFadeState.showSecond
+            : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ]),
+    );
+  }
+}
+
+class _ListTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String? subtitle;
+  final Color? color;
+  final Widget? trailing;
+  final VoidCallback onTap;
+
+  const _ListTile({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    this.color,
+    this.trailing,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(children: [
+            Container(
+              width: 40, height: 40,
+              decoration: BoxDecoration(
+                color: (color ?? AppColors.primary).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, size: 20, color: color ?? AppColors.primary),
+            ),
+            const SizedBox(width: 14),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 2),
+                Text(subtitle!,
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
+            ])),
+            if (trailing != null) trailing!,
+          ]),
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassTextField extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final TextEditingController controller;
+  final bool obscure;
+  const _GlassTextField({
+    required this.label,
+    required this.icon,
+    required this.controller,
+    this.obscure = false,
+  });
+
+  @override
+  State<_GlassTextField> createState() => _GlassTextFieldState();
+}
+
+class _GlassTextFieldState extends State<_GlassTextField> {
+  bool _focused = false;
+  bool _obscureText = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final isObscure = widget.obscure && _obscureText;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Focus(
+        onFocusChange: (f) => setState(() => _focused = f),
+        child: TextField(
+          controller: widget.controller,
+          obscureText: isObscure,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
+          decoration: InputDecoration(
+            hintText: widget.label,
+            hintStyle: TextStyle(color: AppColors.textTertiary.withOpacity(0.5), fontSize: 15),
+            prefixIcon: Icon(widget.icon, size: 20, color: _focused
+              ? AppColors.primary
+              : AppColors.textTertiary.withOpacity(0.6)),
+            suffixIcon: widget.obscure
+              ? IconButton(
+                  icon: Icon(_obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
+                    size: 18, color: AppColors.textTertiary),
+                  onPressed: () => setState(() => _obscureText = !_obscureText),
+                )
+              : null,
+            filled: true,
+            fillColor: _focused
+              ? AppColors.textPrimary.withOpacity(0.04)
+              : Colors.white.withOpacity(0.02),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.glassBorder.withOpacity(0.25), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GradientButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const _GradientButton({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 8, 0, 16),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: onTap != null ? [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ] : null,
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 18, color: Colors.white),
+          const SizedBox(width: 8),
+          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _OutlineButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback? onTap;
+  const _OutlineButton({required this.icon, required this.label, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(0, 8, 16, 16),
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: onTap == null
+              ? AppColors.glassBorder.withOpacity(0.2)
+              : AppColors.glassBorder.withOpacity(0.5)),
+        ),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Icon(icon, size: 18, color: onTap == null
+            ? AppColors.textTertiary
+            : AppColors.textPrimary),
+          const SizedBox(width: 8),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
+            color: onTap == null ? AppColors.textTertiary : AppColors.textPrimary)),
+        ]),
+      ),
+    );
+  }
+}
+
+class _ResultBox extends StatelessWidget {
+  final String text;
+  const _ResultBox({required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    final ok = !text.startsWith('Fehler');
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: (ok ? AppColors.success : AppColors.error).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: (ok ? AppColors.success : AppColors.error).withOpacity(0.2)),
+      ),
+      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
+          size: 18, color: ok ? AppColors.success : AppColors.error),
+        const SizedBox(width: 10),
+        Expanded(child: Text(text,
+          style: TextStyle(fontSize: 13, color: ok ? AppColors.success : AppColors.error, height: 1.4))),
+      ]),
+    );
+  }
+}
+
+class _Badge extends StatelessWidget {
+  final String text;
+  final Color? color;
+  const _Badge(this.text, {this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: (color ?? AppColors.primary).withOpacity(0.15),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(text, style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w700,
+        color: color ?? AppColors.primary,
+      )),
+    );
+  }
+}
+
+class _Divider extends StatelessWidget {
+  const _Divider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Divider(
+        color: AppColors.glassBorder.withOpacity(0.3),
+        height: 1,
+      ),
+    );
+  }
+}

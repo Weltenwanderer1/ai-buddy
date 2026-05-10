@@ -1,0 +1,98 @@
+import 'tool_interface.dart';
+import 'tool_result.dart';
+import 'get_current_time_tool.dart';
+import 'get_device_info_tool.dart';
+import 'web_search_tool.dart';
+import 'get_webpage_tool.dart';
+import 'set_reminder_tool.dart';
+import 'open_url_tool.dart';
+import 'share_text_tool.dart';
+import 'read_config_tool.dart';
+import 'update_config_tool.dart';
+import 'get_calendar_events_tool.dart';
+import 'add_calendar_event_tool.dart';
+import 'list_files_tool.dart';
+import 'read_file_tool.dart';
+import 'write_file_tool.dart';
+import 'open_app_tool.dart';
+import 'get_battery_info_tool.dart';
+import 'get_clipboard_tool.dart';
+import 'get_weather_tool.dart';
+import 'navigate_tool.dart';
+import 'music_intent_tool.dart';
+import 'send_sms_tool.dart';
+import 'send_whatsapp_tool.dart';
+import 'search_contacts_tool.dart';
+import 'send_message_to_contact_tool.dart';
+import 'search_memories_tool.dart';
+import '../services/memory_service.dart';
+
+class ToolRegistry {
+  final Map<String, ToolInterface> _tools = {};
+  void register(ToolInterface tool) {
+    _tools[tool.definition.name] = tool;
+  }
+
+  ToolInterface? getTool(String name) => _tools[name];
+  List<Map<String, dynamic>> getToolDefinitions() =>
+      _tools.values.map((t) => t.definition.toApiJson()).toList();
+  List<String> get toolNames => _tools.keys.toList();
+  bool hasTool(String name) => _tools.containsKey(name);
+
+  Future<ToolResult> execute(
+      String name, Map<String, dynamic> parameters) async {
+    final tool = _tools[name];
+    if (tool == null) {
+      return ToolResult(
+          toolName: name,
+          parameters: parameters,
+          result: 'Unbekanntes Tool: $name',
+          isError: true);
+    }
+    try {
+      return await tool.execute(parameters);
+    } catch (e) {
+      return ToolResult(
+          toolName: name,
+          parameters: parameters,
+          result: 'Fehler bei Ausfuehrung von $name: $e',
+          isError: true);
+    }
+  }
+
+  /// Register the search_memories tool after registry creation
+  /// (requires MemoryService which isn't available at createDefault time).
+  void registerSearchMemories(MemoryService memory) {
+    register(SearchMemoriesTool(memory));
+  }
+
+  static ToolRegistry createDefault(
+      {String? tavilyApiKey, String? Function()? rootPathProvider}) {
+    final r = ToolRegistry();
+    r.register(GetCurrentTimeTool());
+    r.register(GetDeviceInfoTool());
+    r.register(WebSearchTool(apiKey: tavilyApiKey));
+    r.register(GetWebpageTool());
+    r.register(SetReminderTool());
+    r.register(OpenUrlTool());
+    r.register(ShareTextTool());
+    r.register(ReadConfigTool());
+    r.register(UpdateConfigTool());
+    r.register(GetCalendarEventsTool());
+    r.register(AddCalendarEventTool());
+    r.register(ListFilesTool(getRootPath: rootPathProvider));
+    r.register(ReadFileTool(getRootPath: rootPathProvider));
+    r.register(WriteFileTool(getRootPath: rootPathProvider));
+    r.register(OpenAppTool());
+    r.register(GetBatteryInfoTool());
+    r.register(GetClipboardTool());
+    r.register(GetWeatherTool());
+    r.register(NavigateTool());
+    r.register(MusicIntentTool());
+    r.register(SendSmsTool());
+    r.register(SendWhatsAppTool());
+    r.register(SearchContactsTool());
+    r.register(SendMessageToContactTool());
+    return r;
+  }
+}
