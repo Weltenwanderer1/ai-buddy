@@ -14,6 +14,7 @@ import 'services/ollama_cloud_service.dart';
 import 'services/elevenlabs_service.dart';
 import 'services/tts_playback_service.dart';
 import 'services/persona_evolution_service.dart';
+import 'services/self_identity_service.dart';
 import 'services/notification_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
@@ -49,6 +50,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late SettingsService _settings;
   late MemoryService _memory;
   late PersonaService _persona;
+  late SelfIdentityService _selfIdentity;
   late ChatHistoryService _chatHistory;
   late SecureConfigService _secureConfig;
   late OllamaCloudService _ollamaService;
@@ -91,6 +93,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       }
       await _memory.init();
       _persona = PersonaService(); await _persona.init();
+      _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _chatHistory = ChatHistoryService(); await _chatHistory.init();
       _ollamaService = OllamaCloudService(
         baseUrl: _secureConfig.ollamaBaseUrl, apiKey: _secureConfig.ollamaApiKey,
@@ -259,14 +262,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _settings), ChangeNotifierProvider.value(value: _memory),
         ChangeNotifierProvider.value(value: _persona), ChangeNotifierProvider.value(value: _chatHistory),
         ChangeNotifierProvider.value(value: _ollamaService), ChangeNotifierProvider.value(value: _personaEvolution),
+        ChangeNotifierProvider.value(value: _selfIdentity),
         Provider.value(value: _elevenLabsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
       ],
       child: MaterialApp(title: 'AI-Buddy', theme: _theme(), darkTheme: _theme(),
-        home: Builder(builder: (context) {
-          final persona = context.watch<PersonaService>();
-          return persona.isComplete ? const HomeScreen() : OnboardingScreen(persona: persona);
-        }),
+        home: const HomeScreen(),
       ),
     );
   }

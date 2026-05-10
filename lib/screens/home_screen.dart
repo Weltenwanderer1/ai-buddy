@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'chat_screen.dart';
 import 'memory_browser_screen.dart';
-import 'onboarding_screen.dart';
 import 'settings_screen.dart';
-import '../services/persona_service.dart';
 import '../core/theme/app_colors.dart';
 
 /// Scaffold mit Bottom Navigation: Chat | Erinnerungen | Einstellungen.
+/// Kein Onboarding mehr — App startet direkt mit Default-Persona.
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -26,18 +24,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final persona = context.watch<PersonaService>();
-
-    if (!persona.isComplete && _idx == 0) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (_) => OnboardingRedirect(onboardingPersona: persona),
-          ));
-        }
-      });
-    }
-
     return Scaffold(
       body: IndexedStack(
         index: _idx,
@@ -122,13 +108,4 @@ class _NavItem extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Platzhalter falls Onboarding nötig.
-class OnboardingRedirect extends StatelessWidget {
-  final PersonaService onboardingPersona;
-  const OnboardingRedirect({super.key, required this.onboardingPersona});
-
-  @override
-  Widget build(BuildContext context) => OnboardingScreen(persona: onboardingPersona);
 }
