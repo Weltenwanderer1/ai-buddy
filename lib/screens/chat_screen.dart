@@ -22,6 +22,7 @@ import '../widgets/typing_indicator.dart';
 import '../widgets/quick_actions.dart';
 import '../widgets/proactive_card.dart';
 import '../services/proactive_engine.dart';
+import '../services/self_identity_service.dart';
 import '../core/theme/app_colors.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -143,6 +144,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final chatHistory = context.read<ChatHistoryService>();
     final ollamaService = context.read<OllamaCloudService>();
     final personaEvolution = context.read<PersonaEvolutionService>();
+    final selfIdentity = context.read<SelfIdentityService>();
 
     setState(() => _isThinking = true);
 
@@ -152,12 +154,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry);
+      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity);
       await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
     } catch (e) {
       debugPrint('Streaming failed: $e');
       try {
-        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry);
+        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity);
         final reply = await chatService.sendMessage(
           userMessage: text,
           persona: persona,

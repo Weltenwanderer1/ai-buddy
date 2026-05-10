@@ -6,6 +6,7 @@ import '../services/ollama_cloud_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
+import '../services/self_identity_service.dart';
 import '../tools/tool_registry.dart';
 import '../tools/tool_result.dart';
 import 'tool_call_parser.dart';
@@ -16,9 +17,14 @@ typedef StreamingCallback = void Function(String partialText);
 class ChatService {
   final OllamaCloudService _llm;
   final ToolRegistry? _toolRegistry;
+  final SelfIdentityService? _selfIdentity;
   final int maxToolRounds;
   int _messageCount = 0;
   static const int evolutionInterval = 10;
+
+  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, this.maxToolRounds = 5})
+      : _toolRegistry = toolRegistry,
+        _selfIdentity = selfIdentity;
 
   /// Cached RegExps for _pickModel (avoid recompiling on every call).
   static final RegExp _cmdPrefixRegex = RegExp(
@@ -706,9 +712,15 @@ class ChatService {
       PersonaService persona, MemoryService memory, String query,
       {String? evolutionContext}) async {
     final base = persona.buildSystemPrompt(evolutionContext: evolutionContext);
-    final relevant = await memory.getRelevantMemories(query, limit: 5);
-    if (relevant.isEmpty && evolutionContext == null) return base;
     final parts = <String>[base];
+
+    // KI-Selbstbild hinzufügen (höchste Priorität)
+    final selfIdentity = _selfIdentity;
+    if (selfIdentity != null) {
+      parts.add(selfIdentity.selfImagePrompt);
+    }
+
+    final relevant = await memory.getRelevantMemories(query, limit: 5);
     if (relevant.isNotEmpty) {
       final memoryBlock = relevant
           .map((m) =>
