@@ -34,6 +34,9 @@ class AppColors {
   static const Color error   = Color(0xFFEF4444);
   static const Color info    = Color(0xFF3B82F6);
 
+  // ── Accent ──
+  static const Color accent  = Color(0xFFEC4899);  // Pink - für Selbstbild / Meta-UI
+
   // ── Gradient Definitions ──
   static const LinearGradient bgGradient = LinearGradient(
     begin: Alignment.topLeft,
