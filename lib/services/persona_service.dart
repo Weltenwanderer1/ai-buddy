@@ -155,4 +155,14 @@ class PersonaService extends ChangeNotifier {
     await _file.writeAsString(
         const JsonEncoder.withIndent('  ').convert(exportData()));
   }
+
+  Future<void> clear() async {
+    _name = '';
+    _personality = [];
+    _greeting = '';
+    _backstory = '';
+    _isComplete = false;
+    await _write();
+    notifyListeners();
+  }
 }

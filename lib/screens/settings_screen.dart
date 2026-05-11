@@ -203,6 +203,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       await context.read<ChatHistoryService>().clear();
       await context.read<MemoryService>().clearAll();
       await context.read<SelfIdentityService>().clear();
+      await context.read<PersonaService>().clear();
       await context.read<PersonaEvolutionService>().clear();
       _showSnack('App zurückgesetzt — neu starten empfohlen', AppColors.error);
     } catch (e) {
