@@ -150,9 +150,7 @@ class _MessageInputState extends State<MessageInput> {
                   color: Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: _hasText
-                        ? AppColors.primary.withOpacity(0.3)
-                        : Colors.white.withOpacity(0.08),
+                    color: Colors.white.withOpacity(0.08),
                   ),
                 ),
                 child: TextField(

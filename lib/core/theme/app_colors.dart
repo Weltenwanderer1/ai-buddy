@@ -63,7 +63,7 @@ class AppColors {
     colors: [Color(0xFF8B5CF6), Color(0xFF6D28D9)],
   );
 
-  static Color assistantBubbleBg = const Color.fromARGB(255, 17, 17, 36);
+  static Color assistantBubbleBg = const Color(0xFF2D2D35);
   static Color assistantBubbleBorder = Colors.white.withOpacity(0.06);
 
   // ── Animations ──

@@ -98,40 +98,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   Future<void> _loadWelcome() async {
-    final persona = context.read<PersonaService>();
-    final memory = context.read<MemoryService>();
-    final chatHistory = context.read<ChatHistoryService>();
-
-    if (chatHistory.messages.isEmpty) {
-      final recent = memory.shortTermMemories.take(5).map((m) => m.content).toList();
-      final longTerm = memory.longTermMemories;
-      
-      String welcome = 'Hallo! Ich bin \${persona.name}. Wie kann ich dir helfen?';
-      
-      // UC4: Continuity mode — detect if user has recent activity
-      final hasRecentActivity = recent.isNotEmpty;
-      final hasLongTermFacts = longTerm.any((m) => m.source == 'user' || m.source == 'assistant');
-      
-      if (hasRecentActivity || hasLongTermFacts) {
-        welcome += '\n\n📋 Ich erinnere mich an unsere Gespräche. ';
-        if (recent.isNotEmpty) {
-          welcome += 'Deine letzten Themen: \${recent.take(3).join(", ")}. ';
-        }
-        welcome += 'Soll ich dich auf den neuesten Stand bringen?';
-        // Add a quick-action welcome message
-        await chatHistory.add(ChatMessage(
-          text: welcome,
-          isUser: false,
-          type: MessageType.system,
-        ));
-      } else {
-        await chatHistory.add(ChatMessage(
-          text: welcome,
-          isUser: false,
-          type: MessageType.system,
-        ));
-      }
-    }
+    // Chat startet leer — keine automatische Begrüßung.
+    // User kann direkt schreiben.
   }
 
   Future<void> _sendMessage(String text) async {
@@ -139,11 +107,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     setState(() => _isSending = true);
 
     final memory = context.read<MemoryService>();
-    final persona = context.read<PersonaService>();
     final chatHistory = context.read<ChatHistoryService>();
     final ollamaService = context.read<OllamaCloudService>();
     final personaEvolution = context.read<PersonaEvolutionService>();
     final selfIdentity = context.read<SelfIdentityService>();
+    final persona = context.read<PersonaService>();
 
     setState(() => _isThinking = true);
 
@@ -348,15 +316,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                     itemCount: chatHistory.messages.length,
                     itemBuilder: (context, index) {
                       final message = chatHistory.messages[index];
-                      final isLastAiMessage = !message.isUser &&
-                          message.type == MessageType.text &&
-                          index == chatHistory.messages.length - 1;
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           MessageBubble(message: message),
-    
                         ],
                       );
                     },
