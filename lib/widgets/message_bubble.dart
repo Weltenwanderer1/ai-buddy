@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../models/chat_message.dart';
 import '../services/tts_playback_service.dart';
-import '../services/persona_service.dart';
 import '../core/theme/app_colors.dart';
 import 'package:provider/provider.dart';
 
@@ -36,7 +35,7 @@ class MessageBubble extends StatelessWidget {
     }
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      padding: const EdgeInsets.fromLTRB(8, 4, 8, 4),
       child: content,
     );
   }
@@ -83,7 +82,7 @@ class MessageBubble extends StatelessWidget {
           Flexible(
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.76,
+                maxWidth: MediaQuery.of(context).size.width * 0.8,
               ),
               decoration: BoxDecoration(
                 gradient: AppColors.userBubble,
@@ -138,40 +137,24 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _aiBubble(BuildContext context) {
-    final personaName = _getPersonaName(context);
     return GestureDetector(
       onLongPressStart: (details) => _showCopyMenu(context, details.globalPosition),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: const BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                personaName.isNotEmpty ? personaName[0].toUpperCase() : 'AI',
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white),
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           Flexible(
             child: Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.72,
+                maxWidth: MediaQuery.of(context).size.width * 0.8,
               ),
               decoration: BoxDecoration(
                 color: AppColors.assistantBubbleBg,
                 borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(4),
+                  topLeft: Radius.circular(20),
                   topRight: Radius.circular(20),
                   bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
+                  bottomRight: Radius.circular(4),
                 ),
                 border: Border.all(
                   color: AppColors.assistantBubbleBorder,
@@ -189,19 +172,6 @@ class MessageBubble extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (personaName.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 6),
-                      child: Text(
-                        personaName,
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary.withOpacity(0.9),
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                    ),
                   SelectableText(
                     message.text,
                     style: TextStyle(
@@ -330,14 +300,6 @@ class MessageBubble extends StatelessWidget {
 
   String _timeString(DateTime dt) =>
       '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-
-  String _getPersonaName(BuildContext context) {
-    try {
-      return context.read<PersonaService>().name;
-    } catch (_) {
-      return 'AI';
-    }
-  }
 }
 
 // ─── Kopier-Menü Overlay ───

@@ -1,9 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import '../services/stt_service.dart';
 import '../services/live_voice_service.dart';
-import '../services/persona_service.dart';
 import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
@@ -109,101 +107,71 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.bgDark.withOpacity(0.9),
-        border: Border(
-          top: BorderSide(color: AppColors.glassBorder.withOpacity(0.5)),
-        ),
-      ),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          child: widget.isLiveModeActive ? _buildLiveModeInput() : _buildNormalInput(),
-        ),
-      ),
+    return SafeArea(
+      child: widget.isLiveModeActive ? _buildLiveModeInput() : _buildNormalInput(),
     );
   }
 
   Widget _buildNormalInput() {
-    final personaName = context.watch<PersonaService>().name;
-    final isLive = widget.isLiveModeActive;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        _ActionButton(
-          icon: Icons.add_circle_outline,
-          onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Datei-Upload kommt bald')),
-          ),
-          tooltip: 'Datei anhängen',
+    return Container(
+      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Colors.white.withOpacity(0.10),
+          width: 1,
         ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(24),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-              child: Container(
-                constraints: const BoxConstraints(maxHeight: 120),
-                decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withOpacity(0.08),
-                  ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Plus-Button links, im Feld
+          IconButton(
+            icon: Icon(Icons.add_circle_outline, color: AppColors.textTertiary, size: 22),
+            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Datei-Upload kommt bald')),
+            ),
+            tooltip: 'Datei anhängen',
+            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+          Expanded(
+            child: TextField(
+              controller: _controller,
+              enabled: !widget.isSending,
+              style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3),
+              decoration: InputDecoration(
+                hintText: 'Schreibe...',
+                hintStyle: TextStyle(
+                  color: AppColors.textTertiary,
+                  fontSize: 15,
                 ),
-                child: TextField(
-                  controller: _controller,
-                  enabled: !widget.isSending,
-                  style: TextStyle(color: Colors.white, fontSize: 15),
-                  decoration: InputDecoration(
-                    hintText: isLive ? 'Schreibe...' : 'Schreibe $personaName...',
-                    hintStyle: TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 15,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                    suffixIcon: _hasText
-                        ? null
-                        : IconButton(
-                            icon: Icon(
-                              _isListening ? Icons.mic : Icons.mic_none,
-                              color: _isListening
-                                  ? AppColors.error
-                                  : AppColors.textTertiary,
-                              size: 22,
-                            ),
-                            onPressed: _isListening ? null : _startListening,
-                            tooltip: 'Diktieren',
-                          ),
-                  ),
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: (_) => _submit(),
-                  maxLines: 4,
-                  minLines: 1,
-                  textCapitalization: TextCapitalization.sentences,
-                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+                isDense: true,
               ),
+              textInputAction: TextInputAction.send,
+              onSubmitted: (_) => _submit(),
+              maxLines: 6,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
             ),
           ),
-        ),
-        const SizedBox(width: 6),
-        AnimatedSwitcher(
-          duration: AppColors.animNormal,
-          child: _hasText
-              ? _GradientSendButton(onSend: _submit)
-              : _ActionButton(
-                  icon: widget.isLiveModeActive
-                      ? Icons.stop_circle_outlined
-                      : Icons.headset_mic_outlined,
-                  onTap: widget.onToggleLiveMode ?? () {},
-                  tooltip: 'Live-Sprachmodus',
-                  activeColor: widget.isLiveModeActive ? AppColors.error : AppColors.primary,
-                ),
-        ),
-      ],
+          // Mic-Button rechts, im Feld
+          IconButton(
+            icon: Icon(
+              _isListening ? Icons.mic : Icons.mic_none,
+              color: _isListening ? AppColors.error : AppColors.textTertiary,
+              size: 22,
+            ),
+            onPressed: _isListening ? null : _startListening,
+            tooltip: 'Diktieren',
+            padding: const EdgeInsets.fromLTRB(4, 10, 12, 10),
+            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          ),
+        ],
+      ),
     );
   }
 
@@ -253,40 +221,6 @@ class _MessageInputState extends State<MessageInput> {
           size: 28,
         ),
       ],
-    );
-  }
-}
-
-/// Send-Button mit Gradient und Glow.
-class _GradientSendButton extends StatelessWidget {
-  final VoidCallback onSend;
-  const _GradientSendButton({required this.onSend});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onSend,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          gradient: AppColors.primaryGradient,
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-              spreadRadius: -2,
-            ),
-          ],
-        ),
-        child: const Icon(
-          Icons.arrow_upward,
-          color: Colors.white,
-          size: 20,
-        ),
-      ),
     );
   }
 }
