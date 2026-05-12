@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -397,94 +398,89 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   Widget _buildHeader(PersonaService persona, bool isLiveActive) {
     return ClipRect(
-      child: Container(
-        color: AppColors.bgDarkest,
-        child: SafeArea(
-          bottom: false,
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-            decoration: BoxDecoration(
-              color: AppColors.bgDarkest.withOpacity(0.75),
-              border: Border(
-                bottom: BorderSide(
-                  color: AppColors.glassBorder.withOpacity(0.2),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Row(
-              children: [
-                // Avatar ohne Shadow
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      persona.name.isNotEmpty ? persona.name[0].toUpperCase() : 'A',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
-                      ),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          color: AppColors.bgDarkest.withOpacity(0.70),
+          child: SafeArea(
+            bottom: false,
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              color: Colors.transparent,
+              child: Row(
+                children: [
+                  // Avatar
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                      shape: BoxShape.circle,
                     ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        persona.name.isNotEmpty ? persona.name : 'AI-Buddy',
-                        style: TextStyle(
-                          fontSize: 17,
+                    child: Center(
+                      child: Text(
+                        persona.name.isNotEmpty ? persona.name[0].toUpperCase() : 'A',
+                        style: const TextStyle(
+                          fontSize: 16,
                           fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
+                          color: Colors.white,
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      _StatusLine(
-                        isThinking: _isThinking && !_isStreaming,
-                        isStreaming: _isStreaming,
-                        isLiveActive: isLiveActive,
-                      ),
-                    ],
-                  ),
-                ),
-                // Settings button
-                GestureDetector(
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const SettingsScreen()),
-                  ),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.primary.withOpacity(0.15),
-                          AppColors.secondary.withOpacity(0.1),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppColors.primary.withOpacity(0.2),
-                      ),
-                    ),
-                    child: Icon(
-                      Icons.tune_rounded,
-                      color: AppColors.primary.withOpacity(0.9),
-                      size: 20,
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          persona.name.isNotEmpty ? persona.name : 'AI-Buddy',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        _StatusLine(
+                          isThinking: _isThinking && !_isStreaming,
+                          isStreaming: _isStreaming,
+                          isLiveActive: isLiveActive,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Settings button
+                  GestureDetector(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SettingsScreen()),
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            AppColors.primary.withOpacity(0.15),
+                            AppColors.secondary.withOpacity(0.1),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.tune_rounded,
+                        color: AppColors.primary.withOpacity(0.9),
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
