@@ -209,6 +209,13 @@ class ChatService {
         memory.addShortTerm(userMessage, source: 'user'),
         memory.addShortTerm(fullReply, source: 'assistant'),
       ]);
+      // Auto-promote: check if conversation content is worth remembering long-term
+      try {
+        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+        await memory.promoteIfImportant(fullReply, 'auto-assess: response from conversation');
+      } catch (e) {
+        debugPrint('Memory promotion error: $e');
+      }
       _messageCount++;
       if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
         _triggerEvolution(personaEvolution, history, userMessage, fullReply);
@@ -287,6 +294,13 @@ class ChatService {
         memory.addShortTerm(userMessage, source: 'user'),
         memory.addShortTerm(reply, source: 'assistant'),
       ]);
+      // Auto-promote: check if conversation content is worth remembering long-term
+      try {
+        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+        await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+      } catch (e) {
+        debugPrint('Memory promotion error: $e');
+      }
       _messageCount++;
       if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
         _triggerEvolution(personaEvolution, history, userMessage, reply);
@@ -411,6 +425,13 @@ class ChatService {
             memory.addShortTerm(userMessage, source: 'user'),
             memory.addShortTerm(reply, source: 'assistant'),
           ]);
+          // Auto-promote: check if conversation content is worth remembering long-term
+          try {
+            await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+            await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+          } catch (e) {
+            debugPrint('Memory promotion error: $e');
+          }
           _messageCount++;
           if (personaEvolution != null &&
               _messageCount % evolutionInterval == 0) {
@@ -501,6 +522,13 @@ class ChatService {
         memory.addShortTerm(userMessage, source: 'user'),
         memory.addShortTerm(finalResponse, source: 'assistant'),
       ]);
+      // Auto-promote: check if conversation content is worth remembering long-term
+      try {
+        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+        await memory.promoteIfImportant(finalResponse, 'auto-assess: response from conversation');
+      } catch (e) {
+        debugPrint('Memory promotion error: $e');
+      }
       return finalResponse;
     } catch (e) {
       debugPrint('Tool loop: Final LLM call failed: $e');

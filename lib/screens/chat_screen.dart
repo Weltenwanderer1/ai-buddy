@@ -90,9 +90,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     try {
       final secureConfig = context.read<SecureConfigService>();
       final memory = context.read<MemoryService>();
+      final selfIdentity = context.read<SelfIdentityService>();
       final tavilyKey = secureConfig.tavilyApiKey;
       _toolRegistry = ToolRegistry.createDefault(tavilyApiKey: tavilyKey.isNotEmpty ? tavilyKey : null);
       _toolRegistry!.registerSearchMemories(memory);
+      _toolRegistry!.registerSelfIdentity(selfIdentity);
+      _toolRegistry!.registerSaveMemory(memory);
     } catch (e) {
       _toolRegistry = ToolRegistry.createDefault();
     }
@@ -482,7 +485,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             ),
           ),
         ),
-      );
+    );
   }
 }
 

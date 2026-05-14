@@ -26,6 +26,9 @@ import 'search_contacts_tool.dart';
 import 'send_message_to_contact_tool.dart';
 import 'search_memories_tool.dart';
 import '../services/memory_service.dart';
+import 'update_self_identity_tool.dart';
+import '../services/self_identity_service.dart';
+import 'save_memory_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -64,6 +67,16 @@ class ToolRegistry {
   /// (requires MemoryService which isn't available at createDefault time).
   void registerSearchMemories(MemoryService memory) {
     register(SearchMemoriesTool(memory));
+  }
+
+  /// Register the update_self_identity tool (requires SelfIdentityService).
+  void registerSelfIdentity(SelfIdentityService selfIdentity) {
+    register(UpdateSelfIdentityTool(selfIdentity));
+  }
+
+  /// Register the save_memory tool (requires MemoryService).
+  void registerSaveMemory(MemoryService memory) {
+    register(SaveMemoryTool(memory));
   }
 
   static ToolRegistry createDefault(

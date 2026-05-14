@@ -124,57 +124,95 @@ class _MessageInputState extends State<MessageInput> {
             borderRadius: BorderRadius.circular(24),
           ),
           child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          // Plus-Button links, im Feld
-          IconButton(
-            icon: Icon(Icons.add_circle_outline, color: AppColors.textTertiary, size: 22),
-            onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Datei-Upload kommt bald')),
-            ),
-            tooltip: 'Datei anhängen',
-            padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-          Expanded(
-            child: TextField(
-              controller: _controller,
-              enabled: !widget.isSending,
-              style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3),
-              decoration: InputDecoration(
-                hintText: 'Schreibe...',
-                hintStyle: TextStyle(
-                  color: AppColors.textTertiary,
-                  fontSize: 15,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Plus-Button links, im Feld
+              IconButton(
+                icon: Icon(Icons.add_circle_outline, color: AppColors.textTertiary, size: 22),
+                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Datei-Upload kommt bald')),
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-                isDense: true,
+                tooltip: 'Datei anhängen',
+                padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
               ),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _submit(),
-              maxLines: 6,
-              minLines: 1,
-              textCapitalization: TextCapitalization.sentences,
-            ),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  enabled: !widget.isSending,
+                  style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3),
+                  decoration: InputDecoration(
+                    hintText: 'Schreibe...',
+                    hintStyle: TextStyle(
+                      color: AppColors.textTertiary,
+                      fontSize: 15,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+                    isDense: true,
+                  ),
+                  textInputAction: TextInputAction.newline,
+                  maxLines: 6,
+                  minLines: 1,
+                  textCapitalization: TextCapitalization.sentences,
+                ),
+              ),
+              // Send-Button oder Mic-Button rechts, im Feld
+              _hasText
+                  ? Container(
+                      width: 36,
+                      height: 36,
+                      margin: const EdgeInsets.fromLTRB(4, 8, 10, 8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(18),
+                        child: InkWell(
+                          onTap: _submit,
+                          borderRadius: BorderRadius.circular(18),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [AppColors.primary, Color(0xFFD946EF)],
+                              ),
+                            ),
+                            child: const Icon(
+                              Icons.send_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
+                        ),
+                      ),
+                    )
+                  : IconButton(
+                      icon: Icon(
+                        _isListening ? Icons.mic : Icons.mic_none,
+                        color: _isListening ? AppColors.error : AppColors.textTertiary,
+                        size: 22,
+                      ),
+                      onPressed: _isListening ? null : _startListening,
+                      tooltip: 'Diktieren',
+                      padding: const EdgeInsets.fromLTRB(4, 10, 12, 10),
+                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                    ),
+            ],
           ),
-          // Mic-Button rechts, im Feld
-          IconButton(
-            icon: Icon(
-              _isListening ? Icons.mic : Icons.mic_none,
-              color: _isListening ? AppColors.error : AppColors.textTertiary,
-              size: 22,
-            ),
-            onPressed: _isListening ? null : _startListening,
-            tooltip: 'Diktieren',
-            padding: const EdgeInsets.fromLTRB(4, 10, 12, 10),
-            constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-          ),
-        ],
+        ),
       ),
-    ),
-  ),
-);
+    );
   }
 
   Widget _buildLiveModeInput() {

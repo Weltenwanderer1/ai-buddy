@@ -23,7 +23,7 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -50,6 +50,7 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
     final memory = context.watch<MemoryService>();
     final shortFiltered = _filter(memory.shortTermMemories);
     final longFiltered = _filter(memory.longTermMemories);
+    final coreFiltered = _filter(memory.coreMemories);
 
     return Scaffold(
       backgroundColor: AppColors.bgDarkest,
@@ -75,7 +76,7 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${memory.shortTermMemories.length + memory.longTermMemories.length} Erinnerungen gespeichert',
+                    '${memory.shortTermMemories.length + memory.longTermMemories.length + memory.coreMemories.length} Erinnerungen gespeichert',
                     style: TextStyle(
                       fontSize: 14,
                       color: AppColors.textSecondary,
@@ -128,6 +129,15 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
                       AppColors.primary,
                     ),
                   ),
+                  Expanded(
+                    child: _buildTabButton(
+                      'Core',
+                      coreFiltered.length.toString(),
+                      _tabController.index == 2,
+                      () => _tabController.animateTo(2),
+                      AppColors.accent,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -143,6 +153,7 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
                 children: [
                   _buildMemorySection(context, shortFiltered, isShortTerm: true),
                   _buildMemorySection(context, longFiltered, isShortTerm: false),
+                  _buildMemorySection(context, coreFiltered, isShortTerm: false, isCore: true),
                 ],
               ),
             ),
@@ -257,9 +268,9 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
   }
 
   Widget _buildMemorySection(BuildContext context, List<MemoryItem> items,
-      {required bool isShortTerm}) {
+      {required bool isShortTerm, bool isCore = false}) {
     if (items.isEmpty) {
-      return _buildEmptyState(isShortTerm);
+      return _buildEmptyState(isShortTerm, isCore: isCore);
     }
 
     return ListView.builder(
@@ -268,13 +279,17 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
       itemCount: items.length,
       itemBuilder: (context, index) {
         final item = items[index];
-        return _buildMemoryCard(item, index, isShortTerm);
+        return _buildMemoryCard(item, index, isShortTerm, isCore: isCore);
       },
     );
   }
 
-  Widget _buildEmptyState(bool isShortTerm) {
-    final color = isShortTerm ? AppColors.secondary : AppColors.primary;
+  Widget _buildEmptyState(bool isShortTerm, {bool isCore = false}) {
+    final color = isCore
+        ? AppColors.accent
+        : isShortTerm
+            ? AppColors.secondary
+            : AppColors.primary;
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -287,14 +302,22 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
               shape: BoxShape.circle,
             ),
             child: Icon(
-              isShortTerm ? Icons.hourglass_empty_rounded : Icons.auto_awesome_rounded,
+              isCore
+                  ? Icons.psychology_rounded
+                  : isShortTerm
+                      ? Icons.hourglass_empty_rounded
+                      : Icons.auto_awesome_rounded,
               size: 36,
               color: color.withOpacity(0.5),
             ),
           ),
           const SizedBox(height: 20),
           Text(
-            isShortTerm ? 'Kurzzeitgedächtnis leer' : 'Langzeitgedächtnis leer',
+            isCore
+                ? 'Kerngedächtnis leer'
+                : isShortTerm
+                    ? 'Kurzzeitgedächtnis leer'
+                    : 'Langzeitgedächtnis leer',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w700,
@@ -305,9 +328,11 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              isShortTerm
-                  ? 'Neue Gespräche erscheinen hier im Kurzzeitgedächtnis.'
-                  : 'Wichtige Erinnerungen werden hier im Langzeitgedächtnis gespeichert.',
+              isCore
+                  ? 'Identitätsprägende Fakten werden hier im Kerngedächtnis gespeichert.'
+                  : isShortTerm
+                      ? 'Neue Gespräche erscheinen hier im Kurzzeitgedächtnis.'
+                      : 'Wichtige Erinnerungen werden hier im Langzeitgedächtnis gespeichert.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 14,
@@ -321,12 +346,16 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
     );
   }
 
-  Widget _buildMemoryCard(MemoryItem item, int index, bool isShortTerm) {
+  Widget _buildMemoryCard(MemoryItem item, int index, bool isShortTerm, {bool isCore = false}) {
     final repeatCount = item.metadata['repeatCount'] as int? ?? 1;
     final date = item.timestamp;
     final dateStr = '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year}';
     final timeStr = '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
-    final color = isShortTerm ? AppColors.secondary : AppColors.primary;
+    final color = isCore
+        ? AppColors.accent
+        : isShortTerm
+            ? AppColors.secondary
+            : AppColors.primary;
 
     return AnimatedOpacity(
       opacity: 1.0,
@@ -358,7 +387,11 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      isShortTerm ? Icons.short_text_rounded : Icons.star_rounded,
+                      isCore
+                          ? Icons.psychology_rounded
+                          : isShortTerm
+                              ? Icons.short_text_rounded
+                              : Icons.star_rounded,
                       color: color,
                       size: 20,
                     ),
@@ -435,7 +468,55 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
                   ],
                 ),
               ),
-              if (isShortTerm) ...[
+              if (isCore) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.accent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.psychology_rounded,
+                            size: 12,
+                            color: AppColors.accent,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Core',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.accent,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Spacer(),
+                    GestureDetector(
+                      onTap: () => _confirmDelete(context, item, isShortTerm: false, isCore: true),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: AppColors.error.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          Icons.delete_outline_rounded,
+                          size: 16,
+                          color: AppColors.error.withOpacity(0.7),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (isShortTerm) ...[
                 const SizedBox(height: 8),
                 Row(
                   children: [
@@ -540,7 +621,7 @@ class _MemoryBrowserScreenState extends State<MemoryBrowserScreen>
   }
 
   Future<void> _confirmDelete(BuildContext context, MemoryItem item,
-      {required bool isShortTerm}) async {
+      {required bool isShortTerm, bool isCore = false}) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
