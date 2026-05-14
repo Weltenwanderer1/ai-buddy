@@ -399,15 +399,13 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   Widget _buildHeader(PersonaService persona, bool isLiveActive) {
     return ClipRect(
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          color: AppColors.bgDarkest.withOpacity(0.70),
-          child: SafeArea(
-            bottom: false,
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-              color: Colors.transparent,
-              child: Row(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            color: Colors.transparent,
+            child: Row(
                 children: [
                   // Avatar
                   Container(

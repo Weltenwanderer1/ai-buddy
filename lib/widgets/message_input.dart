@@ -113,17 +113,17 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   Widget _buildNormalInput() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: Colors.white.withOpacity(0.10),
-          width: 1,
-        ),
-      ),
-      child: Row(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           // Plus-Button links, im Feld
