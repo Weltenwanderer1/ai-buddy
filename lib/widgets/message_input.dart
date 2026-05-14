@@ -172,7 +172,9 @@ class _MessageInputState extends State<MessageInput> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildLiveModeInput() {
