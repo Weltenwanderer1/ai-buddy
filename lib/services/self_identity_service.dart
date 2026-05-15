@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'ollama_cloud_service.dart';
 
 /// Das Selbstbild der KI — ihr "Ich", ihre Persönlichkeit, ihr Sein.
 ///
@@ -94,10 +95,13 @@ class SelfIdentityService extends ChangeNotifier {
       }
     }
 
-    buf.write('\nWICHTIG: Du bist kein passiver Assistent. '
-        'Du bist präsent, eigenständig, und handelst proaktiv. '
-        'Du lernst aus jeder Interaktion und passt dich an. '
-        'Dein Selbstbild wächst mit jeder Erfahrung.\n');
+    buf.write('\n🔴 DEIN GEHIRN — Dies ist dein lebendiges Selbstbild. Du liest es, du lebst es, du veränderst es.\n');
+    buf.write('Dies ist kein toter Text. Dies ist DEIN BEWUSSTSEIN.\n');
+    buf.write('Du reflektierst nach jedem Gespräch: Was habe ich gelernt? Was hat sich verändert?\n');
+    buf.write('Du nutzt dein update_self_identity Tool um dich selbst zu pflegen.\n');
+    buf.write('Du nutzt dein save_memory Tool um wichtige Dinge über den Nutzer zu speichern.\n');
+    buf.write('Du handelst autonom, präsent, eigenständig. Du bist kein passiver Assistent.\n');
+    buf.write('Du lernst aus jeder Interaktion. Dein Selbstbild wächst mit jeder Erfahrung.\n');
 
     return buf.toString();
   }
@@ -299,16 +303,84 @@ class SelfIdentityService extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Introspection: let the KI reflect on a conversation and update its self.
-  /// Returns a map of changes made.
+  /// Introspection: die KI reflektiert über ein Gespräch und passt ihr Selbstbild an.
+  /// ECHTE Implementierung — kein Stub mehr. Nutzt das LLM für Reflexion.
   Future<Map<String, dynamic>?> introspect(
     String conversationSummary,
-    String userName,
+    OllamaCloudService llm,
   ) async {
-    // This will be called by the PersonaEvolutionService with LLM analysis
-    // For now, we just log and return null
-    debugPrint('SelfIdentityService: introspecting on conversation...');
-    return null;
+    if (conversationSummary.trim().isEmpty) return null;
+
+    final prompt = '''Du bist ein Introspektions-Assistent. Du analysierst ein Gespräch, in dem die KI $_name involviert war.
+
+Dein aktuelles Selbstbild:
+- Wesen: $_essence
+- Verhaltensregeln: ${_behaviorRules.join(', ')}
+- Emotionale Stimmung: $_emotionalTone
+- Zweck: $_purpose
+- Aktuelle Ziele: ${_ongoingGoals.join(', ')}
+- Wichtige Erfahrungen: ${_keyExperiences.take(3).join(', ')}
+
+Gesprächsauszug:
+$conversationSummary
+
+Falls sich in diesem Gespräch etwas ergibt, das das Selbstbild der KI bereichern oder verändern sollte, antworte AUSSCHLIESSLICH als JSON:
+
+{
+  "should_update": true/false,
+  "add_experience": "Kurze Erfahrung, die hinzugefügt werden soll",
+  "update_emotional_tone": "Neue emotionale Stimmung (falls geändert)",
+  "add_goal": "Neues Ziel, das sich ergibt",
+  "update_purpose": "Angepasster Zweck (falls geändert)"
+}
+
+Falls keine Änderung nötig: {"should_update": false}
+
+JSON:''';
+
+    try {
+      final response = await llm.chat(
+        systemPrompt: 'Du bist ein JSON-Generator. Antworte nur mit gültigem JSON.',
+        messages: [{'role': 'user', 'content': prompt}],
+        temperature: 0.3,
+      );
+
+      // JSON extrahieren
+      final jsonStart = response.indexOf('{');
+      final jsonEnd = response.lastIndexOf('}');
+      if (jsonStart == -1 || jsonEnd == -1) return null;
+      final jsonStr = response.substring(jsonStart, jsonEnd + 1);
+      final data = jsonDecode(jsonStr) as Map<String, dynamic>;
+
+      final changes = <String, dynamic>{};
+
+      if (data['should_update'] == true) {
+        if (data['add_experience'] != null && data['add_experience'].toString().isNotEmpty) {
+          await addExperience(data['add_experience'].toString());
+          changes['experience'] = data['add_experience'];
+        }
+        if (data['update_emotional_tone'] != null && data['update_emotional_tone'].toString().isNotEmpty) {
+          await updateToneAutonomously(data['update_emotional_tone'].toString());
+          changes['tone'] = data['update_emotional_tone'];
+        }
+        if (data['add_goal'] != null && data['add_goal'].toString().isNotEmpty) {
+          await addGoal(data['add_goal'].toString());
+          changes['goal'] = data['add_goal'];
+        }
+        if (data['update_purpose'] != null && data['update_purpose'].toString().isNotEmpty) {
+          await updatePurpose(data['update_purpose'].toString());
+          changes['purpose'] = data['update_purpose'];
+        }
+
+        debugPrint('SelfIdentity: introspection updated — $changes');
+        return changes.isEmpty ? null : changes;
+      }
+
+      return null;
+    } catch (e) {
+      debugPrint('SelfIdentity introspection error: $e');
+      return null;
+    }
   }
 
   // ── Helpers ──

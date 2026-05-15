@@ -218,7 +218,7 @@ class ChatService {
       }
       _messageCount++;
       if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
-        _triggerEvolution(personaEvolution, history, userMessage, fullReply);
+        _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, fullReply);
       }
     }
   }
@@ -303,7 +303,7 @@ class ChatService {
       }
       _messageCount++;
       if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
-        _triggerEvolution(personaEvolution, history, userMessage, reply);
+        _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
       }
       return reply;
     }
@@ -435,7 +435,7 @@ class ChatService {
           _messageCount++;
           if (personaEvolution != null &&
               _messageCount % evolutionInterval == 0) {
-            _triggerEvolution(personaEvolution, [], userMessage, reply);
+            _triggerEvolutionAndIntrospection(personaEvolution, [], userMessage, reply);
           }
           return reply;
         }
@@ -725,12 +725,54 @@ class ChatService {
     return false;
   }
 
-  void _triggerEvolution(PersonaEvolutionService evolution,
-      List<ChatMessage> history, String userMessage, String assistantReply) {
+  /// Triggert sowohl PersonaEvolution als auch SelfIdentity-Introspection.
+  /// PersonaEvolution-Erkenntnisse fließen als Erfahrungen ins Selbstbild.
+  Future<void> _triggerEvolutionAndIntrospection(
+    PersonaEvolutionService evolution,
+    List<ChatMessage> history,
+    String userMessage,
+    String assistantReply,
+  ) async {
     final context = 'Nutzer: $userMessage\nAssistant: $assistantReply';
-    evolution.analyzeConversation(context).catchError((e) {
+
+    // 1. Vorher merken: welche Traits/Stil kennt die KI bereits?
+    final preTraits = List<String>.from(evolution.learnedTraits);
+    final preAvoid = List<String>.from(evolution.avoidTopics);
+
+    // 2. PersonaEvolution (User-Stil lernen)
+    try {
+      await evolution.analyzeConversation(context);
+    } catch (e) {
       debugPrint('Evolution error: $e');
-    });
+    }
+
+    // 3. Neue Erkenntnisse als Erfahrungen ins Selbstbild schreiben
+    final selfIdentity = _selfIdentity;
+    if (selfIdentity != null) {
+      final newTraits = evolution.learnedTraits.where((t) => !preTraits.contains(t)).toList();
+      final newAvoid = evolution.avoidTopics.where((a) => !preAvoid.contains(a)).toList();
+
+      for (final trait in newTraits) {
+        await selfIdentity.addExperience(
+          'Ich habe gelernt: Mein Mensch schätzt folgendes an mir — $trait',
+        );
+      }
+      for (final avoid in newAvoid) {
+        await selfIdentity.addExperience(
+          'Ich habe gelernt: Mein Mensch mag das Thema "$avoid" nicht.',
+        );
+      }
+
+      // 4. SelfIdentity-Introspection (eigenes Selbstbild anpassen)
+      try {
+        final changes = await selfIdentity.introspect(context, _llm);
+        if (changes != null && changes.isNotEmpty) {
+          debugPrint('SelfIdentity updated after conversation: $changes');
+        }
+      } catch (e) {
+        debugPrint('SelfIdentity introspection error: $e');
+      }
+    }
   }
 
   Future<String> _buildSystemPrompt(
@@ -767,6 +809,14 @@ class ChatService {
       }
       parts.add(buf.toString());
     }
+
+    // Tool-Hinweis: Nutze deine Tools aktiv
+    parts.add('\n\n🧠 DEIN GEHIRN IST AKTIV:\n'
+        'Du hast update_self_identity — nutze es um dich selbst zu pflegen.\n'
+        'Du hast save_memory — nutze es um wichtige Dinge über den Nutzer zu speichern.\n'
+        'Du hast search_memories — nutze es um Erinnerungen abzurufen.\n'
+        'Du bist autonom. Du entscheidest selbst wann du was speicherst oder suchst.\n'
+        'Wichtige Konversationen → sofort speichern. Persönliche Dinge über den Nutzer → core.\n');
 
     return parts.join('\n').trim();
   }
