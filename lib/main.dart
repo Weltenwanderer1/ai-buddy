@@ -14,6 +14,7 @@ import 'services/elevenlabs_service.dart';
 import 'services/tts_playback_service.dart';
 import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
+import 'services/buddy_notes_service.dart';
 import 'services/notification_service.dart';
 import 'services/backup_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
@@ -57,6 +58,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late ElevenLabsService _elevenLabsService;
   late TtsPlaybackService _ttsPlaybackService;
   late PersonaEvolutionService _personaEvolution;
+  late BuddyNotesService _buddyNotes;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
   late BackupService _backupService;
@@ -71,6 +73,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _ttsPlaybackService.dispose(); _ollamaService.dispose();
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
+      _selfIdentity.dispose(); _buddyNotes.dispose();
       _notificationService.dispose();
     }
     super.dispose();
@@ -95,6 +98,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       await _memory.init();
       _persona = PersonaService(); await _persona.init();
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
+      _buddyNotes = BuddyNotesService(); await _buddyNotes.init();
       _chatHistory = ChatHistoryService(); await _chatHistory.init();
       _ollamaService = OllamaCloudService(
         baseUrl: _secureConfig.activeBaseUrl,
@@ -275,6 +279,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _persona), ChangeNotifierProvider.value(value: _chatHistory),
         ChangeNotifierProvider.value(value: _ollamaService), ChangeNotifierProvider.value(value: _personaEvolution),
         ChangeNotifierProvider.value(value: _selfIdentity),
+        ChangeNotifierProvider.value(value: _buddyNotes),
         Provider.value(value: _elevenLabsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),

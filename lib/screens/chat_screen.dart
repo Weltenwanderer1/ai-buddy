@@ -8,6 +8,7 @@ import '../widgets/message_input.dart';
 import '../services/chat_service.dart';
 import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
+import '../services/buddy_notes_service.dart';
 import '../services/persona_service.dart';
 import '../services/ollama_cloud_service.dart';
 import '../services/persona_evolution_service.dart';
@@ -91,11 +92,13 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       final secureConfig = context.read<SecureConfigService>();
       final memory = context.read<MemoryService>();
       final selfIdentity = context.read<SelfIdentityService>();
+      final buddyNotes = context.read<BuddyNotesService>();
       final tavilyKey = secureConfig.tavilyApiKey;
       _toolRegistry = ToolRegistry.createDefault(tavilyApiKey: tavilyKey.isNotEmpty ? tavilyKey : null);
       _toolRegistry!.registerSearchMemories(memory);
       _toolRegistry!.registerSelfIdentity(selfIdentity);
       _toolRegistry!.registerSaveMemory(memory);
+      _toolRegistry!.registerBuddyNotes(buddyNotes);
     } catch (e) {
       _toolRegistry = ToolRegistry.createDefault();
     }

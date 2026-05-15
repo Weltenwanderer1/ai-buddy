@@ -30,6 +30,9 @@ import 'update_self_identity_tool.dart';
 import '../services/self_identity_service.dart';
 import 'save_memory_tool.dart';
 
+import 'buddy_notes_tool.dart';
+import '../services/buddy_notes_service.dart';
+
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
   void register(ToolInterface tool) {
@@ -72,6 +75,11 @@ class ToolRegistry {
   /// Register the update_self_identity tool (requires SelfIdentityService).
   void registerSelfIdentity(SelfIdentityService selfIdentity) {
     register(UpdateSelfIdentityTool(selfIdentity));
+  }
+
+  /// Register the buddy_notes tool (requires BuddyNotesService).
+  void registerBuddyNotes(BuddyNotesService notes) {
+    register(BuddyNotesTool(notes));
   }
 
   /// Register the save_memory tool (requires MemoryService).

@@ -30,3 +30,4 @@ export 'get_battery_info_tool.dart';
 export 'get_clipboard_tool.dart';
 export 'get_weather_tool.dart';
 export 'search_memories_tool.dart';
+\nexport 'buddy_notes_tool.dart';\n

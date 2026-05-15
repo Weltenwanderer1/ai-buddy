@@ -11,8 +11,11 @@ import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
+import '../services/buddy_notes_service.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
+import 'buddy_notes_screen.dart';
+import 'memory_browser_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -434,6 +437,28 @@ class _SettingsScreenState extends State<SettingsScreen>
               color: AppColors.secondary,
               trailing: _Badge('${evolution.learnedTraits.length}'),
               onTap: _showKIEntwicklung,
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.memory_rounded,
+              title: 'Erinnerungen',
+              subtitle: 'Core, Langzeit, Kurzzeit',
+              color: AppColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const MemoryBrowserScreen()),
+              ),
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.notes_rounded,
+              title: 'Buddy Notizen',
+              subtitle: 'Werkzeuge, Skills, Passwörter',
+              color: AppColors.primary,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
+              ),
             ),
           ])),
 
