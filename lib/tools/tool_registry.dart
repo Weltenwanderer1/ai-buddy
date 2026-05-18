@@ -32,6 +32,8 @@ import 'save_memory_tool.dart';
 
 import 'buddy_notes_tool.dart';
 import '../services/buddy_notes_service.dart';
+import 'get_location_tool.dart';
+import '../services/location_service.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -85,6 +87,11 @@ class ToolRegistry {
   /// Register the save_memory tool (requires MemoryService).
   void registerSaveMemory(MemoryService memory) {
     register(SaveMemoryTool(memory));
+  }
+
+  /// Register the get_location tool (requires LocationService).
+  void registerLocation(LocationService location) {
+    register(GetLocationTool(location));
   }
 
   static ToolRegistry createDefault(

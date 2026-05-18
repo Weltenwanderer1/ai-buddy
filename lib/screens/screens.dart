@@ -1,1 +1,2 @@
-export 'buddy_notes_screen.dart';\nexport 'memory_browser_screen.dart';\n
+export 'buddy_notes_screen.dart';
+export 'memory_browser_screen.dart';

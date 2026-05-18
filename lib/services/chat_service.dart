@@ -7,6 +7,7 @@ import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
+import '../services/location_service.dart';
 import '../tools/tool_registry.dart';
 import '../tools/tool_result.dart';
 import 'tool_call_parser.dart';
@@ -18,13 +19,15 @@ class ChatService {
   final OllamaCloudService _llm;
   final ToolRegistry? _toolRegistry;
   final SelfIdentityService? _selfIdentity;
+  final LocationService? _locationService;
   final int maxToolRounds;
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, this.maxToolRounds = 5})
+  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, this.maxToolRounds = 5})
       : _toolRegistry = toolRegistry,
-        _selfIdentity = selfIdentity;
+        _selfIdentity = selfIdentity,
+        _locationService = locationService;
 
   /// Cached RegExps for _pickModel (avoid recompiling on every call).
   static final RegExp _cmdPrefixRegex = RegExp(
@@ -338,6 +341,10 @@ class ChatService {
     if (_toolRegistry?.hasTool('music_intent') == true) {
       buffer.write(
           '\nmusic_intent: für "spiel Musik/Song/Künstler". Best-effort: öffnet/sucht in Musik-App; direkte Wiedergabe ist nicht garantiert.');
+    }
+    if (_toolRegistry?.hasTool('get_location') == true) {
+      buffer.write(
+          '\nget_location: für Standort des Users (Stadt, Bezirk, Land, Koordinaten). Nutze dies für lokale Empfehlungen, Wetter-Anfragen oder ortsbezogene Fragen.');
     }
     if (preloadedLiveData != null && preloadedLiveData.trim().isNotEmpty) {
       buffer.write('\nBereits abgefragte Daten:\n');
@@ -817,6 +824,19 @@ class ChatService {
         'Du hast search_memories — nutze es um Erinnerungen abzurufen.\n'
         'Du bist autonom. Du entscheidest selbst wann du was speicherst oder suchst.\n'
         'Wichtige Konversationen → sofort speichern. Persönliche Dinge über den Nutzer → core.\n');
+
+    // Standort-Kontext
+    final locService = _locationService;
+    if (locService != null) {
+      try {
+        final locContext = await locService.buildContextString();
+        if (locContext.isNotEmpty) {
+          parts.add('\n📍 $locContext');
+        }
+      } catch (e) {
+        debugPrint('Location context error: $e');
+      }
+    }
 
     return parts.join('\n').trim();
   }

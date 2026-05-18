@@ -12,11 +12,13 @@ class ContextSnapshot {
   final TimeOfDay timeOfDay;
   final int hour;
   final int weekday; // 1 = Monday, 7 = Sunday
+  final String? location; // e.g. "Wien, 1180 Österreich (48.21, 16.35)"
 
   const ContextSnapshot({
     required this.timeOfDay,
     required this.hour,
     required this.weekday,
+    this.location,
   });
 
   bool get isWeekend => weekday == 6 || weekday == 7;
@@ -24,16 +26,17 @@ class ContextSnapshot {
 
   @override
   String toString() =>
-      'ContextSnapshot(timeOfDay: $timeOfDay, hour: $hour, weekday: $weekday)';
+      'ContextSnapshot(timeOfDay: $timeOfDay, hour: $hour, weekday: $weekday, location: $location)';
 }
 
 class ContextService {
-  ContextSnapshot currentContext() {
+  ContextSnapshot currentContext({String? location}) {
     final now = DateTime.now();
     return ContextSnapshot(
       timeOfDay: _classifyHour(now.hour),
       hour: now.hour,
       weekday: now.weekday,
+      location: location,
     );
   }
 

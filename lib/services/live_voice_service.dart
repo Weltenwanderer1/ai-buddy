@@ -7,6 +7,7 @@ import 'chat_history_service.dart';
 import 'chat_service.dart';
 import 'memory_service.dart';
 import 'persona_service.dart';
+import 'location_service.dart';
 import '../models/chat_message.dart';
 import '../tools/tool_registry.dart';
 
@@ -28,6 +29,7 @@ class LiveVoiceService extends ChangeNotifier {
   final MemoryService _memory;
   final PersonaService _persona;
   final ToolRegistry? _toolRegistry;
+  final LocationService? _locationService;
 
   LiveVoiceState _state = LiveVoiceState.idle;
   String? _lastTranscript;
@@ -53,13 +55,15 @@ class LiveVoiceService extends ChangeNotifier {
     required MemoryService memory,
     required PersonaService persona,
     ToolRegistry? toolRegistry,
+    LocationService? locationService,
   })  : _stt = stt,
         _tts = tts,
         _llm = llm,
         _chatHistory = chatHistory,
         _memory = memory,
         _persona = persona,
-        _toolRegistry = toolRegistry;
+        _toolRegistry = toolRegistry,
+        _locationService = locationService;
 
   /// Start the live voice loop.
   Future<void> start() async {
@@ -147,7 +151,7 @@ class LiveVoiceService extends ChangeNotifier {
         await _chatHistory.add(userMsg);
 
         // Call LLM via ChatService (with tools!)
-        final chatService = ChatService(_llm, toolRegistry: _toolRegistry);
+        final chatService = ChatService(_llm, toolRegistry: _toolRegistry, locationService: _locationService);
         final reply = await chatService.sendMessage(
           userMessage: transcript,
           persona: _persona,

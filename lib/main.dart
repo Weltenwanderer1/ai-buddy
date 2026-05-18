@@ -17,6 +17,7 @@ import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
 import 'services/notification_service.dart';
 import 'services/backup_service.dart';
+import 'services/location_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'tools/tool_registry.dart';
@@ -62,6 +63,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
   late BackupService _backupService;
+  late LocationService _locationService;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -119,6 +121,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _notificationService = NotificationService();
       try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
 
+      _locationService = LocationService();
+
       final appDocDir = await getApplicationDocumentsDirectory();
       final rootPath = appDocDir.path;
 
@@ -126,6 +130,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         tavilyApiKey: _secureConfig.tavilyApiKey.isNotEmpty ? _secureConfig.tavilyApiKey : null,
         rootPathProvider: () => rootPath,
       );
+      _toolRegistry.registerLocation(_locationService);
 
       SetReminderTool.scheduleCallback = ({required title, required body, required scheduledTime}) {
         return _notificationService.scheduleNotification(title: title, body: body, scheduledTime: scheduledTime);
@@ -283,6 +288,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         Provider.value(value: _elevenLabsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
+        ChangeNotifierProvider.value(value: _locationService),
       ],
       child: MaterialApp(title: 'AI-Buddy', theme: _theme(), darkTheme: _theme(),
         home: const HomeScreen(),
