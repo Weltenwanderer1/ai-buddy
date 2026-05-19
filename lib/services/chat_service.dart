@@ -515,6 +515,18 @@ class ChatService {
             metadata: result.extraData,
           ));
         }
+        // Location: send map pin with current location
+        if (toolName == 'get_location' && !result.isError && onToolActivity != null) {
+          final ed = result.extraData;
+          if (ed != null && ed['lat'] != null && ed['lon'] != null) {
+            onToolActivity(ChatMessage(
+              text: result.result.split('\n').first,
+              isUser: false,
+              type: MessageType.locationMap,
+              metadata: ed,
+            ));
+          }
+        }
         if (toolName == 'set_reminder' && !result.isError) {
           await memory.addShortTerm('Erinnerung: $toolArgs', source: 'tool');
         }

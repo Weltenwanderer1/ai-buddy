@@ -29,6 +29,7 @@ class MessageBubble extends StatelessWidget {
       MessageType.error => _errorBubble(context),
       MessageType.voice => message.isUser ? _userBubble(context) : _aiBubble(context),
       MessageType.navigation => _navigationBubble(context),
+      MessageType.locationMap => _locationMapBubble(context),
     };
 
     if (animation != null) {
@@ -369,6 +370,108 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Location Map Bubble (blauer Punkt, keine Route) ──
+  Widget _locationMapBubble(BuildContext context) {
+    final md = message.metadata;
+    if (md == null) return _aiBubble(context);
+    final lat = (md['lat'] as num?)?.toDouble();
+    final lon = (md['lon'] as num?)?.toDouble();
+    final label = md['label'] as String? ?? 'Standort';
+    if (lat == null || lon == null) return _aiBubble(context);
+
+    final center = LatLng(lat, lon);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => NavigationMapScreen(
+              target: center,
+              destinationName: label,
+            ),
+          ));
+        },
+        child: Container(
+          height: 240,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: center,
+                  initialZoom: 15,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.weltenwanderer.ai_buddy',
+                  ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: center,
+                        width: 36, height: 36,
+                        child: const Icon(Icons.my_location, color: Color(0xFF4FC3F7), size: 36),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Fullscreen hint
+              Positioned(
+                top: 8, right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fullscreen, color: Colors.white70, size: 14),
+                      SizedBox(width: 4),
+                      Text('Karte', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
+                ),
+              ),
+              // Label bar
+              Positioned(
+                bottom: 0, left: 0, right: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: const BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.my_location, color: Color(0xFF4FC3F7), size: 16),
+                      const SizedBox(width: 6),
+                      Text(
+                        label,
+                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
         ),

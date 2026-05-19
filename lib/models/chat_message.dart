@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:uuid/uuid.dart';
 
-enum MessageType { text, system, error, voice, toolActivity, navigation }
+enum MessageType { text, system, error, voice, toolActivity, navigation, locationMap }
 
 class ChatMessage {
   final String id;

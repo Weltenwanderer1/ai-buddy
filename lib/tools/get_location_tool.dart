@@ -65,6 +65,11 @@ class GetLocationTool implements ToolInterface {
         parameters: parameters,
         result: parts.join('\n'),
         displayText: '📍 ${loc.toShortString()}',
+        extraData: {
+          'lat': loc.latitude,
+          'lon': loc.longitude,
+          'label': loc.toShortString(),
+        },
       );
     } catch (e) {
       return ToolResult(

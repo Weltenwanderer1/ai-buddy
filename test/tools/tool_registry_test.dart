@@ -13,7 +13,7 @@ import 'package:ai_buddy/tools/update_config_tool.dart';
 import 'package:ai_buddy/tools/get_calendar_events_tool.dart';
 import 'package:ai_buddy/tools/add_calendar_event_tool.dart';
 import 'package:ai_buddy/tools/open_app_tool.dart';
-import 'package:ai_buddy/tools/navigate_tool.dart';
+import 'package:ai_buddy/tools/navigate_to_tool.dart';
 
 void main() {
   group('ToolRegistry', () {
@@ -339,28 +339,28 @@ void main() {
     });
   });
 
-  group('NavigateTool', () {
+  group('NavigateToTool', () {
     test('returns error for empty destination', () async {
-      final tool = NavigateTool();
+      final tool = NavigateToTool();
       final result = await tool.execute({'destination': ''});
       expect(result.isError, isTrue);
       expect(result.result, contains('Kein Ziel'));
     });
 
     test('definition has correct name', () {
-      final tool = NavigateTool();
+      final tool = NavigateToTool();
       expect(tool.definition.name, 'open_navigation');
     });
 
     test('definition includes destination as required', () {
-      final tool = NavigateTool();
+      final tool = NavigateToTool();
       final required = tool.definition.parametersSchema['required'] as List;
       expect(required, contains('destination'));
     });
 
     test('normalizes transport modes', () {
       // Test indirectly: the tool should accept various mode names
-      final tool = NavigateTool();
+      final tool = NavigateToTool();
       // These are internal, test by ensuring definition is correct
       expect(tool.definition.name, 'open_navigation');
       expect(tool.definition.description, contains('navigiere'));
@@ -369,7 +369,7 @@ void main() {
     });
 
     test('description contains German navigation commands', () {
-      final tool = NavigateTool();
+      final tool = NavigateToTool();
       final desc = tool.definition.description.toLowerCase();
       expect(desc, contains('navigier'));
       expect(desc, contains('fahr'));
