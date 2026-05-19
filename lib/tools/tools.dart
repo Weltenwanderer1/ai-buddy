@@ -19,7 +19,6 @@ export 'add_calendar_event_tool.dart';
 export 'list_files_tool.dart';
 export 'read_file_tool.dart';
 export 'write_file_tool.dart';
-export 'navigate_tool.dart';
 export 'open_app_tool.dart';
 export 'music_intent_tool.dart';
 export 'send_sms_tool.dart';

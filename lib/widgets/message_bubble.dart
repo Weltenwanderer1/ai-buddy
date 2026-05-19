@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import '../models/chat_message.dart';
 import '../services/tts_playback_service.dart';
 import '../core/theme/app_colors.dart';
@@ -264,8 +265,11 @@ class MessageBubble extends StatelessWidget {
       (targetData['lon'] as num).toDouble(),
     );
     final destinationName = md['destination_name'] as String? ?? 'Ziel';
+
+    final routePoints = route?.points;
     
-    return Center(
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
       child: GestureDetector(
         onTap: () {
           Navigator.push(context, MaterialPageRoute(
@@ -277,26 +281,94 @@ class MessageBubble extends StatelessWidget {
           ));
         },
         child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          height: 240,
           decoration: BoxDecoration(
-            color: AppColors.primary.withOpacity(0.12),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(color: AppColors.primary.withOpacity(0.3)),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
             children: [
-              Icon(Icons.map, size: 20, color: AppColors.primary),
-              const SizedBox(width: 8),
-              Text(
-                'Route auf Karte',
-                style: TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              FlutterMap(
+                options: MapOptions(
+                  initialCenter: target,
+                  initialZoom: 14,
+                  interactionOptions: const InteractionOptions(
+                    flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
+                  ),
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.weltenwanderer.ai_buddy',
+                  ),
+                  if (routePoints != null && routePoints.length > 1)
+                    PolylineLayer(
+                      polylines: [
+                        Polyline(
+                          points: routePoints,
+                          strokeWidth: 4,
+                          color: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                  MarkerLayer(
+                    markers: [
+                      Marker(
+                        point: target,
+                        width: 36, height: 36,
+                        child: const Icon(Icons.location_pin, color: Color(0xFFFF9500), size: 36),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              // Fullscreen hint
+              Positioned(
+                top: 8, right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black54,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.fullscreen, color: Colors.white70, size: 14),
+                      SizedBox(width: 4),
+                      Text('Karte', style: TextStyle(color: Colors.white70, fontSize: 11)),
+                    ],
+                  ),
                 ),
               ),
+              // Route info bar
+              if (route != null)
+                Positioned(
+                  bottom: 0, left: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black87,
+                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.navigation, color: Color(0xFF4FC3F7), size: 16),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${route!.distanceText} · ${route!.durationText}',
+                          style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        const Spacer(),
+                        Text(
+                          '${route!.steps.length} Schritte',
+                          style: const TextStyle(color: Colors.white54, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

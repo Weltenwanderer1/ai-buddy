@@ -328,7 +328,7 @@ class ChatService {
     }
     if (_toolRegistry?.hasTool('open_navigation') == true) {
       buffer.write(
-          '\nopen_navigation: für Navigation/Route/"fahr mich zu". Parameter destination, optional mode auto/fuss/fahrrad/oepnv.');
+          '\nopen_navigation: Ziel-Eingabe genügt. Profile: walking (Wandern/Laufen → Karte IN der App), cycling (Rad → Karte IN der App), driving (Auto → Google Maps extern mit Turn-by-turn). Kein mode angeben = walking.');
     }
     if (_toolRegistry?.hasTool('get_weather') == true) {
       buffer.write(
@@ -507,7 +507,7 @@ class ChatService {
         conversationMessages
             .add(result.toToolResultMessage(toolCallId: toolCall.id));
         // Navigation: send special navigation message with map data
-        if (toolName == 'navigate_to' && !result.isError && onToolActivity != null) {
+        if (toolName == 'open_navigation' && !result.isError && onToolActivity != null) {
           onToolActivity(ChatMessage(
             text: result.result.split('\n').first,
             isUser: false,

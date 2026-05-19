@@ -39,15 +39,21 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   }
 
   Future<void> _init() async {
-    final loc = await LocationService().getLocation();
-    final tilesDir = await TileDownloadService.getTilesDir();
-    if (mounted) {
-      setState(() {
-        if (loc != null) _userLocation = LatLng(loc.latitude, loc.longitude);
-        _offlineTilesDir = tilesDir;
-      });
-      _fitBounds();
-    }
+    // Try getting location — non-critical, map works without it
+    try {
+      final loc = await LocationService().getLocation();
+      if (mounted && loc != null) {
+        setState(() {
+          _userLocation = LatLng(loc.latitude, loc.longitude);
+        });
+      }
+    } catch (_) {}
+    // Offline tiles
+    try {
+      final tilesDir = await TileDownloadService.getTilesDir();
+      if (mounted) setState(() => _offlineTilesDir = tilesDir);
+    } catch (_) {}
+    if (mounted) _fitBounds();
   }
 
   void _fitBounds() {
