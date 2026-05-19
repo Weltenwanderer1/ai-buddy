@@ -5,7 +5,9 @@ import '../services/live_voice_service.dart';
 import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
-/// Modernes Message-Input mit Glas-Effekt, Gradient-Send-Button und animierten Icons.
+/// Minimaler Glas-Look Message-Input.
+/// Eine einzelne lange, abgerundete Eingabeleiste.
+/// Keine extra Container darum — direkt über dem normalen Hintergrund.
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final void Function(String text, {MessageType type})? onSendWithType;
@@ -113,102 +115,83 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   Widget _buildNormalInput() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-        child: Container(
-          margin: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-          decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.04),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              // Plus-Button links, im Feld
-              IconButton(
-                icon: Icon(Icons.add_circle_outline, color: AppColors.textTertiary, size: 22),
-                onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Datei-Upload kommt bald')),
-                ),
-                tooltip: 'Datei anhängen',
-                padding: const EdgeInsets.fromLTRB(12, 10, 4, 10),
-                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+    return Container(
+      // Kein extra Container der um die Eingabeleiste herum liegt — direkt die Leiste
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            // Glas-Look: leicht durchscheinend, mit feinem Rand
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.12),
+                width: 0.5,
               ),
-              Expanded(
-                child: TextField(
-                  controller: _controller,
-                  enabled: !widget.isSending,
-                  style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.3),
-                  decoration: InputDecoration(
-                    hintText: 'Schreibe...',
-                    hintStyle: TextStyle(
-                      color: AppColors.textTertiary,
-                      fontSize: 15,
+            ),
+            padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                // Plus-Button — links INNERHALB der Eingabeleiste
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  child: InkWell(
+                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Datei-Upload kommt bald')),
                     ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
-                    isDense: true,
-                  ),
-                  textInputAction: TextInputAction.newline,
-                  maxLines: 6,
-                  minLines: 1,
-                  textCapitalization: TextCapitalization.sentences,
-                ),
-              ),
-              // Send-Button oder Mic-Button rechts, im Feld
-              _hasText
-                  ? Container(
-                      width: 36,
-                      height: 36,
-                      margin: const EdgeInsets.fromLTRB(4, 8, 10, 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(18),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Material(
-                        color: Colors.transparent,
-                        borderRadius: BorderRadius.circular(18),
-                        child: InkWell(
-                          onTap: _submit,
-                          borderRadius: BorderRadius.circular(18),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(18),
-                              gradient: const LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [AppColors.primary, Color(0xFFD946EF)],
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.send_rounded,
-                              color: Colors.white,
-                              size: 18,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )
-                  : IconButton(
-                      icon: Icon(
-                        _isListening ? Icons.mic : Icons.mic_none,
-                        color: _isListening ? AppColors.error : AppColors.textTertiary,
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.add,
+                        color: AppColors.textTertiary.withOpacity(0.7),
                         size: 22,
                       ),
-                      onPressed: _isListening ? null : _startListening,
-                      tooltip: 'Diktieren',
-                      padding: const EdgeInsets.fromLTRB(4, 10, 12, 10),
-                      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
                     ),
-            ],
+                  ),
+                ),
+                // Textfeld — nimmt den Rest
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    enabled: !widget.isSending,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.35,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'Schreibe...',
+                      hintStyle: TextStyle(
+                        color: AppColors.textTertiary.withOpacity(0.5),
+                        fontSize: 15,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+                      isDense: true,
+                    ),
+                    textInputAction: TextInputAction.newline,
+                    maxLines: 6,
+                    minLines: 1,
+                    textCapitalization: TextCapitalization.sentences,
+                  ),
+                ),
+                // Rechte Seite: Send-Button ODER Mic-Button
+                _hasText
+                    ? _SendButton(onTap: _submit)
+                    : _MicButton(
+                        isListening: _isListening,
+                        onTap: _isListening ? null : _startListening,
+                      ),
+              ],
+            ),
           ),
         ),
       ),
@@ -216,88 +199,125 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   Widget _buildLiveModeInput() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: AppColors.success.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.success.withOpacity(0.3)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _PulsingDot(color: AppColors.success),
-              const SizedBox(width: 6),
-              Text(
-                'LIVE',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.success,
-                  letterSpacing: 1.2,
-                ),
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.12),
+                width: 0.5,
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            'Sprachmodus aktiv — sprich einfach',
-            style: TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-              fontStyle: FontStyle.italic,
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                _PulsingDot(color: AppColors.success),
+                const SizedBox(width: 8),
+                Text(
+                  'LIVE',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.success,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Sprachmodus aktiv — sprich einfach',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+                Material(
+                  color: Colors.transparent,
+                  borderRadius: BorderRadius.circular(24),
+                  child: InkWell(
+                    onTap: widget.onToggleLiveMode ?? () {},
+                    borderRadius: BorderRadius.circular(24),
+                    child: Container(
+                      width: 44,
+                      height: 44,
+                      alignment: Alignment.center,
+                      child: Icon(
+                        Icons.stop_circle_outlined,
+                        color: AppColors.error.withOpacity(0.8),
+                        size: 24,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
-        _ActionButton(
-          icon: Icons.stop_circle_outlined,
-          onTap: widget.onToggleLiveMode ?? () {},
-          tooltip: 'Live-Modus beenden',
-          activeColor: AppColors.error,
-          size: 28,
-        ),
-      ],
+      ),
     );
   }
 }
 
-/// Runder Action-Button (Mic, Add, etc.).
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
+/// Dezenter Send-Button ohne Gradient, ohne Glow.
+class _SendButton extends StatelessWidget {
   final VoidCallback onTap;
-  final String? tooltip;
-  final Color? activeColor;
-  final double size;
-
-  const _ActionButton({
-    required this.icon,
-    required this.onTap,
-    this.tooltip,
-    this.activeColor,
-    this.size = 24,
-  });
+  const _SendButton({required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: tooltip ?? '',
-      child: Material(
-        color: Colors.transparent,
-        shape: const CircleBorder(),
-        child: InkWell(
-          onTap: onTap,
-          customBorder: const CircleBorder(),
-          child: Padding(
-            padding: const EdgeInsets.all(8),
-            child: Icon(
-              icon,
-              color: activeColor ?? AppColors.textTertiary,
-              size: size,
-            ),
+    return Material(
+      color: AppColors.primary.withOpacity(0.85),
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          child: const Icon(
+            Icons.arrow_upward_rounded,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Dezenter Mic-Button.
+class _MicButton extends StatelessWidget {
+  final bool isListening;
+  final VoidCallback? onTap;
+  const _MicButton({this.isListening = false, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          width: 44,
+          height: 44,
+          alignment: Alignment.center,
+          child: Icon(
+            isListening ? Icons.mic : Icons.mic_none,
+            color: isListening
+                ? AppColors.error.withOpacity(0.8)
+                : AppColors.textTertiary.withOpacity(0.7),
+            size: 22,
           ),
         ),
       ),
@@ -346,9 +366,9 @@ class _PulsingDotState extends State<_PulsingDot>
             shape: BoxShape.circle,
             boxShadow: [
               BoxShadow(
-                color: widget.color.withOpacity(0.3 * (1 - _ctrl.value)),
-                blurRadius: 8,
-                spreadRadius: 2,
+                color: widget.color.withOpacity(0.2 * (1 - _ctrl.value)),
+                blurRadius: 6,
+                spreadRadius: 1,
               ),
             ],
           ),
