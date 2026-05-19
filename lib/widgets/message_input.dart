@@ -1,13 +1,11 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/stt_service.dart';
 import '../services/live_voice_service.dart';
 import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
-/// Telegram-style Message Input.
-/// Eine einzelne lange, abgerundete "Pille" mit Glas-Effekt.
-/// Keine Container drumherum — direkt über dem normalen Hintergrund.
+/// Telegram-style Message Input — Referenz-Screenshot Design.
+/// Äußere dunkle Pille, innere Pille für Textfeld mit blauem Focus-Rahmen.
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final void Function(String text, {MessageType type})? onSendWithType;
@@ -32,15 +30,20 @@ class MessageInput extends StatefulWidget {
 
 class _MessageInputState extends State<MessageInput> {
   final _controller = TextEditingController();
+  final _focusNode = FocusNode();
   bool _isListening = false;
   final SttService _stt = SttService();
   bool _sttInitialized = false;
   bool _hasText = false;
+  bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
     _initStt();
+    _focusNode.addListener(() {
+      setState(() => _isFocused = _focusNode.hasFocus);
+    });
     _controller.addListener(() {
       final has = _controller.text.isNotEmpty;
       if (has != _hasText) setState(() => _hasText = has);
@@ -103,6 +106,7 @@ class _MessageInputState extends State<MessageInput> {
   @override
   void dispose() {
     _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -117,26 +121,36 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C22).withOpacity(0.85),
+        color: const Color(0xFF1C1C22), // Dunkle äußere Pille
         borderRadius: BorderRadius.circular(28),
       ),
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Plus-Button (links)
+          // Plus-Button (links, außerhalb der inneren Pille)
           _IconButton(
             icon: Icons.add,
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Datei-Upload kommt bald')),
             ),
           ),
-          // Textfeld mit Abstand zu den Buttons
+          const SizedBox(width: 4),
+          // Innere Pille — das Textfeld mit blauem Rahmen wenn fokussiert
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 6),
+            child: Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF2A2A32), // Etwas heller als äußere Pille
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: _isFocused ? const Color(0xFF5B9BD5) : const Color(0xFF2A2A32),
+                  width: 1.5,
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
               child: TextField(
                 controller: _controller,
+                focusNode: _focusNode,
                 enabled: !widget.isSending,
                 style: const TextStyle(
                   color: Colors.white,
@@ -146,12 +160,13 @@ class _MessageInputState extends State<MessageInput> {
                 decoration: InputDecoration(
                   hintText: 'Schreibe...',
                   hintStyle: TextStyle(
-                    color: AppColors.textTertiary.withOpacity(0.5),
+                    color: AppColors.textTertiary.withOpacity(0.6),
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
-                  contentPadding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
+                  contentPadding: EdgeInsets.zero,
                   isDense: true,
+                  isCollapsed: true,
                 ),
                 textInputAction: TextInputAction.newline,
                 maxLines: 6,
@@ -160,17 +175,15 @@ class _MessageInputState extends State<MessageInput> {
               ),
             ),
           ),
-          // Rechte Seite mit Abstand
-          Padding(
-            padding: const EdgeInsets.only(left: 2),
-            child: _hasText
-                ? _SendButton(onTap: _submit)
-                : _IconButton(
-                    icon: _isListening ? Icons.mic : Icons.mic_none,
-                    onTap: _isListening ? null : _startListening,
-                    color: _isListening ? AppColors.error : null,
-                  ),
-          ),
+          const SizedBox(width: 4),
+          // Rechte Seite: Send oder Mic (außerhalb der inneren Pille)
+          _hasText
+              ? _SendButton(onTap: _submit)
+              : _IconButton(
+                  icon: _isListening ? Icons.mic : Icons.mic_none,
+                  onTap: _isListening ? null : _startListening,
+                  color: _isListening ? AppColors.error : null,
+                ),
         ],
       ),
     );
@@ -180,7 +193,7 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C22).withOpacity(0.85),
+        color: const Color(0xFF1C1C22),
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -275,7 +288,7 @@ class _IconButton extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(
             icon,
-            color: color ?? AppColors.textTertiary.withOpacity(0.6),
+            color: color ?? AppColors.textTertiary.withOpacity(0.7),
             size: 22,
           ),
         ),
