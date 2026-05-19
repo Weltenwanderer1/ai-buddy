@@ -26,6 +26,7 @@ import '../widgets/proactive_card.dart';
 import '../services/proactive_engine.dart';
 import '../services/self_identity_service.dart';
 import '../core/theme/app_colors.dart';
+import '../core/version.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -427,7 +428,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                       color: Colors.white,
                     ),
                   ),
-                  const SizedBox(height: 1),
+                  Text(
+                    appVersion,
+                    style: TextStyle(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withOpacity(0.4),
+                      height: 1.0,
+                    ),
+                  ),
                   _StatusLine(
                     isThinking: _isThinking && !_isStreaming,
                     isStreaming: _isStreaming,
