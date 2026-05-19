@@ -116,68 +116,62 @@ class _MessageInputState extends State<MessageInput> {
   Widget _buildNormalInput() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: ClipRRect(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C22).withOpacity(0.85),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.10),
-                width: 0.5,
-              ),
-            ),
-            padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // Plus-Button (links, innerhalb)
-                _IconButton(
-                  icon: Icons.add,
-                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Datei-Upload kommt bald')),
-                  ),
-                ),
-                // Textfeld
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    enabled: !widget.isSending,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 15,
-                      height: 1.35,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: 'Schreibe...',
-                      hintStyle: TextStyle(
-                        color: AppColors.textTertiary.withOpacity(0.5),
-                        fontSize: 15,
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
-                      isDense: true,
-                    ),
-                    textInputAction: TextInputAction.newline,
-                    maxLines: 6,
-                    minLines: 1,
-                    textCapitalization: TextCapitalization.sentences,
-                  ),
-                ),
-                // Rechte Seite: Send oder Mic
-                _hasText
-                    ? _SendButton(onTap: _submit)
-                    : _IconButton(
-                        icon: _isListening ? Icons.mic : Icons.mic_none,
-                        onTap: _isListening ? null : _startListening,
-                        color: _isListening ? AppColors.error : null,
-                      ),
-              ],
+      ),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          // Plus-Button (links)
+          _IconButton(
+            icon: Icons.add,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Datei-Upload kommt bald')),
             ),
           ),
-        ),
+          // Textfeld mit Abstand zu den Buttons
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: TextField(
+                controller: _controller,
+                enabled: !widget.isSending,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Schreibe...',
+                  hintStyle: TextStyle(
+                    color: AppColors.textTertiary.withOpacity(0.5),
+                    fontSize: 15,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
+                  isDense: true,
+                ),
+                textInputAction: TextInputAction.newline,
+                maxLines: 6,
+                minLines: 1,
+                textCapitalization: TextCapitalization.sentences,
+              ),
+            ),
+          ),
+          // Rechte Seite mit Abstand
+          Padding(
+            padding: const EdgeInsets.only(left: 2),
+            child: _hasText
+                ? _SendButton(onTap: _submit)
+                : _IconButton(
+                    icon: _isListening ? Icons.mic : Icons.mic_none,
+                    onTap: _isListening ? null : _startListening,
+                    color: _isListening ? AppColors.error : null,
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -185,56 +179,47 @@ class _MessageInputState extends State<MessageInput> {
   Widget _buildLiveModeInput() {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      child: ClipRRect(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1C1C22).withOpacity(0.85),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
-          child: Container(
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 8, height: 8,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.04),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withOpacity(0.10), width: 0.5),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Container(
-                  width: 8, height: 8,
-                  decoration: BoxDecoration(
-                    color: AppColors.success,
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'LIVE',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.success,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Sprachmodus aktiv — sprich einfach',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-                _IconButton(
-                  icon: Icons.stop_circle_outlined,
-                  onTap: widget.onToggleLiveMode ?? () {},
-                  color: AppColors.error,
-                ),
-              ],
+              color: AppColors.success,
+              shape: BoxShape.circle,
             ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Text(
+            'LIVE',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: AppColors.success,
+              letterSpacing: 1.2,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Sprachmodus aktiv — sprich einfach',
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+                fontStyle: FontStyle.italic,
+              ),
+            ),
+          ),
+          _IconButton(
+            icon: Icons.stop_circle_outlined,
+            onTap: widget.onToggleLiveMode ?? () {},
+            color: AppColors.error,
+          ),
+        ],
       ),
     );
   }
