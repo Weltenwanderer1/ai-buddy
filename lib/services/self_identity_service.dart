@@ -12,7 +12,7 @@ import 'ollama_cloud_service.dart';
 /// und anpassen, aber die KI entwickelt es weiter.
 class SelfIdentityService extends ChangeNotifier {
   // ── Core Self ──
-  String _name = 'Buddy';
+  String _name = 'Agent';
   String _essence = '';
 
   // ── Verhaltensregeln ──

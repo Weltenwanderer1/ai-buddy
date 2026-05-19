@@ -61,7 +61,7 @@ class BuddyNotesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _defaultNotes() => """=== BUDDY NOTIZEN ===
+  String _defaultNotes() => """=== AGENT NOTIZEN ===
 Hier speichert die KI wichtige Dinge:
 - Werkzeuge die funktionieren / nicht funktionieren
 - Neue Fähigkeiten (Skills) die der User erwähnt

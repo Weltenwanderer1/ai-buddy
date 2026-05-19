@@ -82,7 +82,7 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
                       ),
                     ),
                     const SizedBox(width: 16),
-                    Expanded(child: Text('Buddy Notizen',
+                    Expanded(child: Text('Agent Notizen',
                       style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
                     if (_dirty)
                       GestureDetector(

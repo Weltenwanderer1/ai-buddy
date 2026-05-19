@@ -328,7 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Text('Noch keine Merkmale gelernt',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    Text('Dein Buddy lernt mit jedem Gespräch mehr über dich.',
+                    Text('Dein Agent lernt mit jedem Gespräch mehr über dich.',
                       textAlign: TextAlign.center,
                       style: TextStyle(color: AppColors.textTertiary, fontSize: 13, height: 1.5)),
                   ]))
@@ -399,7 +399,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary, letterSpacing: -0.5)),
                 const SizedBox(height: 6),
-                Text('Konfiguriere deinen AI-Buddy',
+                Text('Konfiguriere deinen AI-Agent',
                   style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 16),
               ]),
@@ -452,7 +452,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.notes_rounded,
-              title: 'Buddy Notizen',
+              title: 'Agent Notizen',
               subtitle: 'Werkzeuge, Skills, Passwörter',
               color: AppColors.primary,
               onTap: () => Navigator.push(
@@ -708,7 +708,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.favorite_rounded,
-              title: 'AI-Buddy',
+              title: 'AI-Agent',
               subtitle: 'v0.7.0',
               color: AppColors.secondary,
               trailing: _Badge('v0.7.0', color: AppColors.secondary),
