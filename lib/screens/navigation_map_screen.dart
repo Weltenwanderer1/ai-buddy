@@ -1,3 +1,4 @@
+import 'dart:io' show File;
 import 'dart:math' show max, min;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -5,7 +6,9 @@ import 'package:latlong2/latlong.dart';
 import '../core/theme/app_colors.dart';
 import '../services/navigation_service.dart';
 import '../services/location_service.dart';
+import '../services/tile_download_service.dart';
 
+/// Fullscreen map with route overlay, offline-first tiles, turn-by-turn instructions.
 class NavigationMapScreen extends StatefulWidget {
   final LatLng? target;
   final RouteResult? routeResult;
@@ -26,17 +29,23 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   final MapController _mapController = MapController();
   LatLng? _userLocation;
   int? _selectedStepIndex;
+  String? _offlineTilesDir;
+  bool _showSteps = false;
 
   @override
   void initState() {
     super.initState();
-    _initLocation();
+    _init();
   }
 
-  Future<void> _initLocation() async {
+  Future<void> _init() async {
     final loc = await LocationService().getLocation();
-    if (loc != null && mounted) {
-      setState(() => _userLocation = LatLng(loc.latitude, loc.longitude));
+    final tilesDir = await TileDownloadService.getTilesDir();
+    if (mounted) {
+      setState(() {
+        if (loc != null) _userLocation = LatLng(loc.latitude, loc.longitude);
+        _offlineTilesDir = tilesDir;
+      });
       _fitBounds();
     }
   }
@@ -56,8 +65,8 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
     _mapController.fitCamera(
       CameraFit.bounds(
         bounds: LatLngBounds(
-          LatLng(minLat - 0.002, minLng - 0.002),
-          LatLng(maxLat + 0.002, maxLng + 0.002),
+          LatLng(minLat - 0.003, minLng - 0.003),
+          LatLng(maxLat + 0.003, maxLng + 0.003),
         ),
         padding: const EdgeInsets.all(60),
       ),
@@ -68,6 +77,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
   Widget build(BuildContext context) {
     final route = widget.routeResult;
     final points = route?.points;
+    final hasOffline = _offlineTilesDir != null;
     return Scaffold(
       backgroundColor: AppColors.bgDarkest,
       body: Stack(
@@ -76,16 +86,24 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
             mapController: _mapController,
             options: MapOptions(
               initialCenter: widget.target ?? _userLocation ?? const LatLng(48.2082, 16.3738),
-              initialZoom: 13,
+              initialZoom: 14,
               interactionOptions: const InteractionOptions(
                 flags: InteractiveFlag.drag | InteractiveFlag.pinchZoom | InteractiveFlag.scrollWheelZoom,
               ),
             ),
             children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.weltenwanderer.ai_buddy',
-              ),
+              // Offline-first: use local tiles if available, fallback to online
+              if (hasOffline)
+                TileLayer(
+                  urlTemplate: 'file://$_offlineTilesDir/{z}/{x}/{y}.png',
+                  tileProvider: FileTileProvider(),
+                )
+              else
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.weltenwanderer.ai_buddy',
+                ),
+              // Route polyline
               if (points != null && points.length > 1)
                 PolylineLayer(
                   polylines: [
@@ -98,6 +116,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     ),
                   ],
                 ),
+              // Markers
               MarkerLayer(
                 markers: [
                   if (_userLocation != null)
@@ -125,9 +144,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               ),
             ],
           ),
+          // ── Top Bar ──
           SafeArea(
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               child: Row(
                 children: [
                   GestureDetector(
@@ -149,7 +169,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                     ),
                   ),
                   const Spacer(),
-                  if (route != null)
+                  if (route != null) ...[
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
@@ -159,8 +179,48 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(route.distanceText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          Text(route.distanceText, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
                           Text(route.durationText, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                    if (route.steps.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() => _showSteps = !_showSteps),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.format_list_bulleted, color: Colors.white, size: 16),
+                              const SizedBox(width: 4),
+                              Text('${route.steps.length}', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                  const SizedBox(width: 4),
+                  // Offline indicator
+                  if (hasOffline)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.success.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.wifi_off, color: AppColors.success, size: 14),
+                          const SizedBox(width: 4),
+                          Text('Offline', style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.w600)),
                         ],
                       ),
                     ),
@@ -168,11 +228,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen> {
               ),
             ),
           ),
-          if (route != null && route.steps.isNotEmpty)
+          // ── Bottom Steps Panel ──
+          if (route != null && _showSteps && route.steps.isNotEmpty)
             Positioned(
               bottom: 0, left: 0, right: 0,
               child: DraggableScrollableSheet(
-                initialChildSize: 0.22, minChildSize: 0.12, maxChildSize: 0.55, snap: true,
+                initialChildSize: 0.28, minChildSize: 0.12, maxChildSize: 0.55, snap: true,
                 builder: (context, scrollController) => Container(
                   decoration: BoxDecoration(
                     color: AppColors.bgCard.withOpacity(0.95),

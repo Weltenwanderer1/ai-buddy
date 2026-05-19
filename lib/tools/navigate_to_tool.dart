@@ -96,9 +96,9 @@ class NavigateToTool implements ToolInterface {
       toolName: definition.name,
       parameters: parameters,
       result: buf.toString(),
-      displayText: 'Navigation nach $destination gestartet',
+      displayText: '🗺️ Navigation nach $destination gestartet',
       extraData: {
-        'route': route,
+        'route': route.toJson(),  // Vorher: rohes RouteResult-Objekt → JSON-Serialisierung bricht!
         'target': {'lat': to.latitude, 'lon': to.longitude},
         'destination_name': destination,
         'show_map': true,
