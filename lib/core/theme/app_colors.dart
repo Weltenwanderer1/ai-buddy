@@ -18,10 +18,10 @@ class AppColors {
   static const Color textSecondary = Color(0xFF8E8E93);
   static const Color textTertiary  = Color(0xFF5A5A60);
 
-  // ── Accent: Dezentes Blau-Cyan (statt lila) ──
-  static const Color primary      = Color(0xFF5B9BD5);  // Sanftes Blau
-  static const Color primaryDark  = Color(0xFF4A8BC4);
-  static Color primaryGlow       = const Color(0xFF5B9BD5).withOpacity(0.25);
+  // ── Accent: Periwinkle Blau (wie Input-Bar Kreis-Buttons) ──
+  static const Color primary      = Color(0xFF6B8DD6);  // Periwinkle
+  static const Color primaryDark  = Color(0xFF5B7EC4);
+  static Color primaryGlow       = const Color(0xFF6B8DD6).withOpacity(0.25);
 
   // ── Secondary Accent ──
   static const Color secondary     = Color(0xFF64D2FF);  // Helles Cyan
@@ -63,7 +63,7 @@ class AppColors {
   static const LinearGradient userBubble = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF2D5A87), Color(0xFF3A6FA0)],  // Dezentes Blau, kein Lila
+    colors: [Color(0xFF5B7EC4), Color(0xFF6B8DD6)],  // Periwinkle
   );
 
   static Color assistantBubbleBg    = const Color(0xFF1E1E24);

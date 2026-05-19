@@ -394,20 +394,20 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         ),
         child: Row(
           children: [
-            // Avatar: einfacher Kreis, kein Gradient
+            // Avatar: Periwinkle-Kreis, weißer Buchstabe
             Container(
-              width: 38,
-              height: 38,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.2),
+                color: AppColors.primary.withOpacity(0.25),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                border: Border.all(color: AppColors.primary.withOpacity(0.4)),
               ),
               child: Center(
                 child: Text(
                   persona.name.isNotEmpty ? persona.name[0].toUpperCase() : 'A',
                   style: const TextStyle(
-                    fontSize: 15,
+                    fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
                   ),
