@@ -121,14 +121,14 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C22), // Dunkle äußere Pille
+        color: const Color(0xFF1C1C22),
         borderRadius: BorderRadius.circular(28),
       ),
-      padding: const EdgeInsets.fromLTRB(10, 6, 10, 6),
+      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Plus-Button (links, außerhalb der inneren Pille)
+          // Plus-Button (links)
           _IconButton(
             icon: Icons.add,
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(
@@ -136,18 +136,10 @@ class _MessageInputState extends State<MessageInput> {
             ),
           ),
           const SizedBox(width: 4),
-          // Innere Pille — das Textfeld mit blauem Rahmen wenn fokussiert
+          // Textfeld — direkt in der äußeren Pille, keine innere Pille
           Expanded(
-            child: Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF2A2A32), // Etwas heller als äußere Pille
-                borderRadius: BorderRadius.circular(22),
-                border: Border.all(
-                  color: _isFocused ? const Color(0xFF5B9BD5) : const Color(0xFF2A2A32),
-                  width: 1.5,
-                ),
-              ),
-              padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
               child: TextField(
                 controller: _controller,
                 focusNode: _focusNode,
@@ -164,7 +156,7 @@ class _MessageInputState extends State<MessageInput> {
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
+                  contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
                   isDense: true,
                   isCollapsed: true,
                 ),
@@ -176,7 +168,7 @@ class _MessageInputState extends State<MessageInput> {
             ),
           ),
           const SizedBox(width: 4),
-          // Rechte Seite: Send oder Mic (außerhalb der inneren Pille)
+          // Rechte Seite: Send oder Mic
           _hasText
               ? _SendButton(onTap: _submit)
               : _IconButton(
