@@ -63,8 +63,8 @@ class AppColors {
   static const LinearGradient userBubble = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    stops: [0.0, 0.7],  // 70% Orange, 30% Lila-Verlauf
-    colors: [Color(0xFFFF5500), Color(0xFF5B2FFF)],
+    stops: [0.0, 0.7],
+    colors: [Color(0xFFFF8833), Color(0xFFA855F7)],  // Pastell-Orange → Pastell-Lila
   );
 
   static const LinearGradient assistantBubbleBg = LinearGradient(

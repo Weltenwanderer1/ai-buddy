@@ -880,10 +880,11 @@ class _ListTile extends StatelessWidget {
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color: (color ?? AppColors.primary).withOpacity(0.15),
+                color: Colors.white.withOpacity(0.06),
                 borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white.withOpacity(0.08)),
               ),
-              child: Icon(icon, size: 20, color: color ?? AppColors.primary),
+              child: Icon(icon, size: 20, color: AppColors.textSecondary),
             ),
             const SizedBox(width: 14),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [

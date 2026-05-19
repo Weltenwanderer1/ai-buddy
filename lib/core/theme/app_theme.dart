@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'app_colors.dart';
 
 /// Globales App-Theme für AI-Buddy.
@@ -29,6 +30,10 @@ class AppTheme {
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
+        systemOverlayStyle: SystemUiOverlayStyle(
+          statusBarColor: AppColors.bgDarkest,
+          statusBarIconBrightness: Brightness.light,
+        ),
         titleTextStyle: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.w700,
