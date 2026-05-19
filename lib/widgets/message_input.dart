@@ -4,8 +4,13 @@ import '../services/live_voice_service.dart';
 import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
-/// Telegram-style Message Input — Referenz-Screenshot Design.
-/// Äußere dunkle Pille, innere Pille für Textfeld mit blauem Focus-Rahmen.
+/// Messaging Input Bar — Referenz-Screenshot Design.
+/// Eine einzelne dunkle Pille mit:
+/// - Links: blauer Kreis mit Hamburger-Menü
+/// - Dann: Smiley-Icon (outline)
+/// - Mitte: Textfeld mit "Nachricht" Placeholder
+/// - Dann: Paperclip (outline)
+/// - Rechts: blauer Kreis mit Mic (oder weißer Send-Pfeil wenn Text da)
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final void Function(String text, {MessageType type})? onSendWithType;
@@ -30,20 +35,15 @@ class MessageInput extends StatefulWidget {
 
 class _MessageInputState extends State<MessageInput> {
   final _controller = TextEditingController();
-  final _focusNode = FocusNode();
   bool _isListening = false;
   final SttService _stt = SttService();
   bool _sttInitialized = false;
   bool _hasText = false;
-  bool _isFocused = false;
 
   @override
   void initState() {
     super.initState();
     _initStt();
-    _focusNode.addListener(() {
-      setState(() => _isFocused = _focusNode.hasFocus);
-    });
     _controller.addListener(() {
       final has = _controller.text.isNotEmpty;
       if (has != _hasText) setState(() => _hasText = has);
@@ -106,7 +106,6 @@ class _MessageInputState extends State<MessageInput> {
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
@@ -124,54 +123,69 @@ class _MessageInputState extends State<MessageInput> {
         color: const Color(0xFF1C1C22),
         borderRadius: BorderRadius.circular(28),
       ),
-      padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
+      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Plus-Button (links)
-          _IconButton(
-            icon: Icons.add,
+          // Links: blauer Kreis mit Hamburger-Menü
+          _BlueCircleButton(
+            icon: Icons.menu_rounded,
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Datei-Upload kommt bald')),
+              const SnackBar(content: Text('Menü kommt bald')),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Smiley (outline, kein Hintergrund)
+          _GhostIcon(
+            icon: Icons.emoji_emotions_outlined,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Emoji kommt bald')),
             ),
           ),
           const SizedBox(width: 4),
-          // Textfeld — direkt in der äußeren Pille, keine innere Pille
+          // Textfeld
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: TextField(
-                controller: _controller,
-                focusNode: _focusNode,
-                enabled: !widget.isSending,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.35,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Schreibe...',
-                  hintStyle: TextStyle(
-                    color: AppColors.textTertiary.withOpacity(0.6),
-                    fontSize: 15,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-                  isDense: true,
-                  isCollapsed: true,
-                ),
-                textInputAction: TextInputAction.newline,
-                maxLines: 6,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
+            child: TextField(
+              controller: _controller,
+              enabled: !widget.isSending,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.35,
               ),
+              decoration: InputDecoration(
+                hintText: 'Nachricht',
+                hintStyle: TextStyle(
+                  color: AppColors.textTertiary.withOpacity(0.6),
+                  fontSize: 15,
+                ),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                isDense: true,
+                isCollapsed: true,
+              ),
+              textInputAction: TextInputAction.newline,
+              maxLines: 6,
+              minLines: 1,
+              textCapitalization: TextCapitalization.sentences,
             ),
           ),
           const SizedBox(width: 4),
-          // Rechte Seite: Send oder Mic
+          // Paperclip (outline, kein Hintergrund)
+          _GhostIcon(
+            icon: Icons.attach_file_rounded,
+            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Anhang kommt bald')),
+            ),
+          ),
+          const SizedBox(width: 6),
+          // Rechts: blauer Kreis mit Mic oder Send-Pfeil
           _hasText
-              ? _SendButton(onTap: _submit)
-              : _IconButton(
+              ? _BlueCircleButton(
+                  icon: Icons.arrow_upward_rounded,
+                  onTap: _submit,
+                )
+              : _BlueCircleButton(
                   icon: _isListening ? Icons.mic : Icons.mic_none,
                   onTap: _isListening ? null : _startListening,
                   color: _isListening ? AppColors.error : null,
@@ -219,7 +233,7 @@ class _MessageInputState extends State<MessageInput> {
               ),
             ),
           ),
-          _IconButton(
+          _BlueCircleButton(
             icon: Icons.stop_circle_outlined,
             onTap: widget.onToggleLiveMode ?? () {},
             color: AppColors.error,
@@ -230,26 +244,30 @@ class _MessageInputState extends State<MessageInput> {
   }
 }
 
-/// Send-Button: dezenter Pfeil auf semitransparentem Primary.
-class _SendButton extends StatelessWidget {
-  final VoidCallback onTap;
-  const _SendButton({required this.onTap});
+/// Blauer Kreis-Button (wie im Screenshot: periwinkle/lavender).
+/// Für Menü (links) und Mic/Send (rechts).
+class _BlueCircleButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback? onTap;
+  final Color? color;
+
+  const _BlueCircleButton({required this.icon, this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.primary.withOpacity(0.85),
-      borderRadius: BorderRadius.circular(24),
+      color: const Color(0xFF6B8DD6).withOpacity(0.9), // Periwinkle blau
+      shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        customBorder: const CircleBorder(),
         child: Container(
-          width: 44,
-          height: 44,
+          width: 40,
+          height: 40,
           alignment: Alignment.center,
-          child: const Icon(
-            Icons.arrow_upward_rounded,
-            color: Colors.white,
+          child: Icon(
+            icon,
+            color: color ?? Colors.white,
             size: 20,
           ),
         ),
@@ -258,29 +276,29 @@ class _SendButton extends StatelessWidget {
   }
 }
 
-/// Icon-Button für Plus und Mic — dezent, ohne Hintergrund.
-class _IconButton extends StatelessWidget {
+/// Ghost-Icon: kein Hintergrund, nur Umriss-Icon in Grau.
+/// Für Smiley und Paperclip.
+class _GhostIcon extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
-  final Color? color;
 
-  const _IconButton({required this.icon, this.onTap, this.color});
+  const _GhostIcon({required this.icon, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
-      borderRadius: BorderRadius.circular(24),
+      shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(24),
+        customBorder: const CircleBorder(),
         child: Container(
-          width: 44,
-          height: 44,
+          width: 36,
+          height: 36,
           alignment: Alignment.center,
           child: Icon(
             icon,
-            color: color ?? AppColors.textTertiary.withOpacity(0.7),
+            color: AppColors.textTertiary.withOpacity(0.7),
             size: 22,
           ),
         ),
