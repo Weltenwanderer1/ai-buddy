@@ -3,6 +3,20 @@
     android:height="48dp"
     android:viewportWidth="48"
     android:viewportHeight="48">
-    <path android:fillColor="#673AB7" android:pathData="M24,4a20,20 0,1 0,0.1 0z" />
-    <path android:fillColor="#FFFFFF" android:pathData="M14,32 L22,12 L26,12 L34,32 L29,32 L27.5,28 L20.5,28 L19,32 Z M22,24 L26,24 L24,18 Z" />
+    <!-- Background: anthracite dark -->
+    <path android:fillColor="#121216" android:pathData="M12,4h24a8,8 0,0 1,8 8v24a8,8 0,0 1,-8 8h-24a8,8 0,0 1,-8 -8v-24a8,8 0,0 1,8 -8z" />
+    <!-- Outer ring: periwinkle -->
+    <path android:fillColor="#6B8DD6" android:pathData="M24,8a16,16 0,1 0,0.1 0z" android:fillAlpha="0.9" />
+    <!-- Inner circle: slightly darker -->
+    <path android:fillColor="#0B0B0F" android:pathData="M24,11a13,13 0,1 0,0.1 0z" />
+    <!-- AI / Brain circuit lines -->
+    <path android:strokeColor="#6B8DD6" android:strokeWidth="1.5" android:strokeLineCap="round"
+        android:pathData="M24,17 L24,21 M20,23 L24,21 L28,23 M18,28 L20,23 L20,31 M28,23 L28,31 L30,28" />
+    <!-- Center node -->
+    <path android:fillColor="#6B8DD6" android:pathData="M23,20.5a1.5,1.5 0,1 0,0.1 0z" />
+    <path android:fillColor="#6B8DD6" android:pathData="M19.5,22.5a1.2,1.2 0,1 0,0.1 0z" />
+    <path android:fillColor="#6B8DD6" android:pathData="M28.5,22.5a1.2,1.2 0,1 0,0.1 0z" />
+    <path android:fillColor="#6B8DD6" android:pathData="M19.5,30.5a1.2,1.2 0,1 0,0.1 0z" />
+    <path android:fillColor="#6B8DD6" android:pathData="M28.5,30.5a1.2,1.2 0,1 0,0.1 0z" />
+    <path android:fillColor="#6B8DD6" android:pathData="M29.5,27.5a1.2,1.2 0,1 0,0.1 0z" />
 </vector>
