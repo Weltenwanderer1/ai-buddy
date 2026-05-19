@@ -21,11 +21,19 @@ Thumbs.db
 
 # Generated
 *.lock
-!pubspec.lockkey.properties
+!pubspec.lock
+
+# Signing / Build
+key.properties
 upload-keystore.jks
 local.properties
 *.apk
 *.bak
 .gradle/
-key.properties
 flutter_*.log
+
+# Hermes plans (not part of app)
+.hermes/
+
+# Keystore
+.keystore/
