@@ -18,7 +18,7 @@ import 'open_app_tool.dart';
 import 'get_battery_info_tool.dart';
 import 'get_clipboard_tool.dart';
 import 'get_weather_tool.dart';
-import 'navigate_tool.dart';
+import 'navigate_to_tool.dart'; // New navigation tool (OSRM, offline-ready)
 import 'music_intent_tool.dart';
 import 'send_sms_tool.dart';
 import 'send_whatsapp_tool.dart';
@@ -115,7 +115,7 @@ class ToolRegistry {
     r.register(GetBatteryInfoTool());
     r.register(GetClipboardTool());
     r.register(GetWeatherTool());
-    r.register(NavigateTool());
+    r.register(NavigateToTool()); // OSRM-based open-source navigation
     r.register(MusicIntentTool());
     r.register(SendSmsTool());
     r.register(SendWhatsAppTool());

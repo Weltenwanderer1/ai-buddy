@@ -5,6 +5,7 @@ class ToolResult {
   final String result;
   final bool isError;
   final String? displayText;
+  final Map<String, dynamic>? extraData;
 
   const ToolResult({
     required this.toolName,
@@ -12,6 +13,7 @@ class ToolResult {
     required this.result,
     this.isError = false,
     this.displayText,
+    this.extraData,
   });
 
   /// Short text to display in the chat as a system bubble.

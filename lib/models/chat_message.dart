@@ -1,6 +1,7 @@
+import 'dart:convert';
 import 'package:uuid/uuid.dart';
 
-enum MessageType { text, system, error, voice, toolActivity }
+enum MessageType { text, system, error, voice, toolActivity, navigation }
 
 class ChatMessage {
   final String id;
@@ -8,6 +9,7 @@ class ChatMessage {
   final bool isUser;
   final DateTime timestamp;
   final MessageType type;
+  final Map<String, dynamic>? metadata; // Extra data e.g. route, target coords
 
   ChatMessage({
     String? id,
@@ -15,6 +17,7 @@ class ChatMessage {
     required this.isUser,
     DateTime? timestamp,
     this.type = MessageType.text,
+    this.metadata,
   })  : id = id ?? const Uuid().v4(),
         timestamp = timestamp ?? DateTime.now();
 
@@ -24,6 +27,7 @@ class ChatMessage {
         'isUser': isUser,
         'timestamp': timestamp.toIso8601String(),
         'type': type.name,
+        if (metadata != null) 'metadata': jsonEncode(metadata),
       };
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) => ChatMessage(
@@ -37,6 +41,15 @@ class ChatMessage {
           (t) => t.name == (json['type'] as String?),
           orElse: () => MessageType.text,
         ),
+        metadata: json['metadata'] != null
+            ? (() {
+                try {
+                  return jsonDecode(json['metadata'] as String) as Map<String, dynamic>;
+                } catch (_) {
+                  return null;
+                }
+              })()
+            : null,
       );
 
   @override

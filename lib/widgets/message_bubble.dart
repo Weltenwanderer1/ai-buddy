@@ -3,6 +3,9 @@ import 'package:flutter/services.dart';
 import '../models/chat_message.dart';
 import '../services/tts_playback_service.dart';
 import '../core/theme/app_colors.dart';
+import '../screens/navigation_map_screen.dart';
+import '../services/navigation_service.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 /// Telegram-style Nachrichten-Bubbles.
@@ -24,6 +27,7 @@ class MessageBubble extends StatelessWidget {
       MessageType.toolActivity => _toolActivity(context),
       MessageType.error => _errorBubble(context),
       MessageType.voice => message.isUser ? _userBubble(context) : _aiBubble(context),
+      MessageType.navigation => _navigationBubble(context),
     };
 
     if (animation != null) {
@@ -211,6 +215,90 @@ class MessageBubble extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+
+
+  Widget _navigationBubble(BuildContext context) {
+    final md = message.metadata;
+    if (md == null) return _aiBubble(context);
+    final routeData = md['route'];
+    final targetData = md['target'];
+    if (routeData == null || targetData == null) return _aiBubble(context);
+    
+    // Reconstruct route
+    RouteResult? route;
+    try {
+      final points = (routeData['points'] as List).map((p) {
+        final pp = p as Map;
+        return LatLng(pp['latitude'] as double, pp['longitude'] as double);
+      }).toList();
+      final steps = (routeData['steps'] as List).map((s) {
+        final ss = s as Map;
+        return RouteStep(
+          instruction: ss['instruction'] as String,
+          distance: (ss['distance'] as num).toDouble(),
+          duration: (ss['duration'] as num).toDouble(),
+          location: LatLng(
+            (ss['location'] as Map)['latitude'] as double,
+            (ss['location'] as Map)['longitude'] as double,
+          ),
+        );
+      }).toList();
+      route = RouteResult(
+        points: points,
+        distanceMeters: routeData['distanceMeters'] as double,
+        durationSeconds: routeData['durationSeconds'] as double,
+        steps: steps,
+        profile: routeData['profile'] as String,
+      );
+    } catch (_) {
+      route = null;
+    }
+    
+    final target = LatLng(
+      (targetData['lat'] as num).toDouble(),
+      (targetData['lon'] as num).toDouble(),
+    );
+    final destinationName = md['destination_name'] as String? ?? 'Ziel';
+    
+    return Center(
+      child: GestureDetector(
+        onTap: () {
+          Navigator.push(context, MaterialPageRoute(
+            builder: (_) => NavigationMapScreen(
+              target: target,
+              routeResult: route,
+              destinationName: destinationName,
+            ),
+          ));
+        },
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.map, size: 20, color: AppColors.primary),
+              const SizedBox(width: 8),
+              Text(
+                'Route auf Karte',
+                style: TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

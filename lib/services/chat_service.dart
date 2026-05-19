@@ -506,6 +506,15 @@ class ChatService {
         }
         conversationMessages
             .add(result.toToolResultMessage(toolCallId: toolCall.id));
+        // Navigation: send special navigation message with map data
+        if (toolName == 'navigate_to' && !result.isError && onToolActivity != null) {
+          onToolActivity(ChatMessage(
+            text: result.result.split('\n').first,
+            isUser: false,
+            type: MessageType.navigation,
+            metadata: result.extraData,
+          ));
+        }
         if (toolName == 'set_reminder' && !result.isError) {
           await memory.addShortTerm('Erinnerung: $toolArgs', source: 'tool');
         }
