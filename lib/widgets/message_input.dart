@@ -134,51 +134,38 @@ class _MessageInputState extends State<MessageInput> {
               const SnackBar(content: Text('Menü kommt bald')),
             ),
           ),
-          const SizedBox(width: 6),
-          // Smiley (outline, kein Hintergrund)
-          _GhostIcon(
-            icon: Icons.emoji_emotions_outlined,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Emoji kommt bald')),
-            ),
-          ),
-          const SizedBox(width: 4),
-          // Textfeld
+          const SizedBox(width: 8),
+          // Textfeld — breiter, mehr Padding links/rechts
           Expanded(
-            child: TextField(
-              controller: _controller,
-              enabled: !widget.isSending,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.35,
-              ),
-              decoration: InputDecoration(
-                hintText: 'Nachricht',
-                hintStyle: TextStyle(
-                  color: AppColors.textTertiary.withOpacity(0.6),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TextField(
+                controller: _controller,
+                enabled: !widget.isSending,
+                style: const TextStyle(
+                  color: Colors.white,
                   fontSize: 15,
+                  height: 1.35,
                 ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-                isDense: true,
-                isCollapsed: true,
+                decoration: InputDecoration(
+                  hintText: 'Nachricht',
+                  hintStyle: TextStyle(
+                    color: AppColors.textTertiary.withOpacity(0.6),
+                    fontSize: 15,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                  isDense: true,
+                  isCollapsed: true,
+                ),
+                textInputAction: TextInputAction.newline,
+                maxLines: 6,
+                minLines: 1,
+                textCapitalization: TextCapitalization.sentences,
               ),
-              textInputAction: TextInputAction.newline,
-              maxLines: 6,
-              minLines: 1,
-              textCapitalization: TextCapitalization.sentences,
             ),
           ),
-          const SizedBox(width: 4),
-          // Paperclip (outline, kein Hintergrund)
-          _GhostIcon(
-            icon: Icons.attach_file_rounded,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Anhang kommt bald')),
-            ),
-          ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           // Rechts: blauer Kreis mit Mic oder Send-Pfeil
           _hasText
               ? _BlueCircleButton(
