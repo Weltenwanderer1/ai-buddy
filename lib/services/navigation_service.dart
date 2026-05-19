@@ -46,9 +46,14 @@ class NavigationService {
 
   Future<RouteResult?> getRoute(LatLng from, LatLng to,
       {String profile = 'walking'}) async {
+    // Try current server with requested profile
     var result = await _tryGetRoute(from, to, _osrmBase, profile);
     if (result == null && _osrmBase == kDefaultOsrm) {
       result = await _tryGetRoute(from, to, kFallbackOsrm, profile);
+    }
+    // Fallback: if walking fails on primary, try fallback with 'foot'
+    if (result == null && profile == 'walking') {
+      result = await _tryGetRoute(from, to, kFallbackOsrm, 'foot');
     }
     return result;
   }

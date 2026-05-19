@@ -229,34 +229,36 @@ class MessageBubble extends StatelessWidget {
     if (md == null) return _aiBubble(context);
     final routeData = md['route'];
     final targetData = md['target'];
-    if (routeData == null || targetData == null) return _aiBubble(context);
+    if (targetData == null) return _aiBubble(context);
     
     // Reconstruct route
     RouteResult? route;
     try {
-      final points = (routeData['points'] as List).map((p) {
-        final pp = p as Map;
-        return LatLng(pp['latitude'] as double, pp['longitude'] as double);
-      }).toList();
-      final steps = (routeData['steps'] as List).map((s) {
-        final ss = s as Map;
-        return RouteStep(
-          instruction: ss['instruction'] as String,
-          distance: (ss['distance'] as num).toDouble(),
-          duration: (ss['duration'] as num).toDouble(),
-          location: LatLng(
-            (ss['location'] as Map)['latitude'] as double,
-            (ss['location'] as Map)['longitude'] as double,
-          ),
+      if (routeData != null) {
+        final points = (routeData['points'] as List).map((p) {
+          final pp = p as Map;
+          return LatLng(pp['latitude'] as double, pp['longitude'] as double);
+        }).toList();
+        final steps = (routeData['steps'] as List).map((s) {
+          final ss = s as Map;
+          return RouteStep(
+            instruction: ss['instruction'] as String,
+            distance: (ss['distance'] as num).toDouble(),
+            duration: (ss['duration'] as num).toDouble(),
+            location: LatLng(
+              (ss['location'] as Map)['latitude'] as double,
+              (ss['location'] as Map)['longitude'] as double,
+            ),
+          );
+        }).toList();
+        route = RouteResult(
+          points: points,
+          distanceMeters: routeData['distanceMeters'] as double,
+          durationSeconds: routeData['durationSeconds'] as double,
+          steps: steps,
+          profile: routeData['profile'] as String,
         );
-      }).toList();
-      route = RouteResult(
-        points: points,
-        distanceMeters: routeData['distanceMeters'] as double,
-        durationSeconds: routeData['durationSeconds'] as double,
-        steps: steps,
-        profile: routeData['profile'] as String,
-      );
+      }
     } catch (_) {
       route = null;
     }
@@ -266,9 +268,9 @@ class MessageBubble extends StatelessWidget {
       (targetData['lon'] as num).toDouble(),
     );
     final destinationName = md['destination_name'] as String? ?? 'Ziel';
+    final modeIcon = route?.profile == 'cycling' ? '🚲' : '🚶';
 
-    final routePoints = route?.points;
-    
+    // ── Compact navigation card (tap → fullscreen map) ──
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: GestureDetector(
@@ -282,93 +284,59 @@ class MessageBubble extends StatelessWidget {
           ));
         },
         child: Container(
-          height: 240,
+          padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
+            color: AppColors.bgCard.withValues(alpha: 0.6),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              FlutterMap(
-                options: MapOptions(
-                  initialCenter: target,
-                  initialZoom: 14,
-                  interactionOptions: const InteractionOptions(
-                    flags: InteractiveFlag.pinchZoom | InteractiveFlag.drag,
-                  ),
-                ),
+              // Destination
+              Row(
                 children: [
-                  TileLayer(
-                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                    userAgentPackageName: 'com.weltenwanderer.ai_buddy',
+                  const Icon(Icons.location_pin, color: Color(0xFFFF9500), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(destinationName,
+                        style: const TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.w600, fontSize: 15),
+                        overflow: TextOverflow.ellipsis),
                   ),
-                  if (routePoints != null && routePoints.length > 1)
-                    PolylineLayer(
-                      polylines: [
-                        Polyline(
-                          points: routePoints,
-                          strokeWidth: 4,
-                          color: AppColors.primary,
-                        ),
-                      ],
-                    ),
-                  MarkerLayer(
-                    markers: [
-                      Marker(
-                        point: target,
-                        width: 36, height: 36,
-                        child: const Icon(Icons.location_pin, color: Color(0xFFFF9500), size: 36),
-                      ),
-                    ],
-                  ),
+                  const Icon(Icons.map, color: AppColors.primary, size: 20),
                 ],
               ),
-              // Fullscreen hint
-              Positioned(
-                top: 8, right: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black54,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.fullscreen, color: Colors.white70, size: 14),
-                      SizedBox(width: 4),
-                      Text('Karte', style: TextStyle(color: Colors.white70, fontSize: 11)),
-                    ],
-                  ),
+              if (route != null) ...[
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Text(modeIcon, style: const TextStyle(fontSize: 16)),
+                    const SizedBox(width: 8),
+                    Text(route.distanceText,
+                        style: const TextStyle(color: Colors.white,
+                            fontWeight: FontWeight.bold, fontSize: 14)),
+                    const SizedBox(width: 12),
+                    Text(route.durationText,
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14)),
+                    const Spacer(),
+                    Text('${route.steps.length} Schritte',
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 12)),
+                  ],
                 ),
-              ),
-              // Route info bar
-              if (route != null)
-                Positioned(
-                  bottom: 0, left: 0, right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.black87,
-                      borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.navigation, color: Color(0xFF4FC3F7), size: 16),
-                        const SizedBox(width: 6),
-                        Text(
-                          '${route!.distanceText} · ${route!.durationText}',
-                          style: const TextStyle(color: Colors.white70, fontSize: 12),
-                        ),
-                        const Spacer(),
-                        Text(
-                          '${route!.steps.length} Schritte',
-                          style: const TextStyle(color: Colors.white54, fontSize: 11),
-                        ),
-                      ],
-                    ),
-                  ),
+                const SizedBox(height: 8),
+                // First 2 steps preview
+                if (route.steps.length > 1) ...[
+                  Text('→ ${route.steps[1].instruction}',
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                ],
+              ],
+              if (route == null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text('Auf Karte anzeigen',
+                      style: TextStyle(color: AppColors.primary, fontSize: 13)),
                 ),
             ],
           ),

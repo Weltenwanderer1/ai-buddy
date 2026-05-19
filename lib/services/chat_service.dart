@@ -328,7 +328,7 @@ class ChatService {
     }
     if (_toolRegistry?.hasTool('open_navigation') == true) {
       buffer.write(
-          '\nopen_navigation: Ziel-Eingabe genügt. Profile: walking (Wandern/Laufen → Karte IN der App), cycling (Rad → Karte IN der App), driving (Auto → Google Maps extern mit Turn-by-turn). Kein mode angeben = walking.');
+          '\nopen_navigation: Standard ist ZU FUSS. Zeigt OSM-Karte IN der App mit Live-Tracking + Schritt-fuer-Schritt. Profile: walking (default, Fuss), cycling (Rad, auch in App), driving (Auto → Google Maps). Nur bei Auto "driving" angeben.');
     }
     if (_toolRegistry?.hasTool('get_weather') == true) {
       buffer.write(
