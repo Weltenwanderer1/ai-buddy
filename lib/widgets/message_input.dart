@@ -120,7 +120,7 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C22),
+        color: const Color(0xFF24242A), // Leicht heller als vorher
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
@@ -186,7 +186,7 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF1C1C22),
+        color: const Color(0xFF24242A), // Leicht heller als vorher
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

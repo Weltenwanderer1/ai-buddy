@@ -59,14 +59,18 @@ class AppColors {
     colors: [Color(0xFF64D2FF), Color(0xFF5B9BD5)],
   );
 
-  // ── Message Bubble Colors (Telegram-Stil) ──
+      // ── Message Bubble Colors ──
   static const LinearGradient userBubble = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF5B7EC4), Color(0xFF6B8DD6)],  // Periwinkle
+    colors: [Color(0xFFFF7B3A), Color(0xFF6B8DD6)],  // Orange → Lila
   );
 
-  static Color assistantBubbleBg    = const Color(0xFF1E1E24);
+  static const LinearGradient assistantBubbleBg = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF1E1E24), Color(0xFF2A2A32)],  // Dunkles Anthrazit → Helles Anthrazit
+  );
   static Color assistantBubbleBorder = Colors.white.withOpacity(0.04);
 
   // ── Animation Durations ──

@@ -126,7 +126,7 @@ class MessageBubble extends StatelessWidget {
               margin: const EdgeInsets.only(right: 64),
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               decoration: BoxDecoration(
-                color: AppColors.assistantBubbleBg,
+                gradient: AppColors.assistantBubbleBg,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
@@ -179,6 +179,11 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _toolActivity(BuildContext context) {
+    final bool isComplete = message.text.contains('✅') || 
+                           message.text.contains('gesetzt') || 
+                           message.text.contains('erledigt') ||
+                           !message.text.contains('wird ausgefuehrt');
+    
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 6),
@@ -191,12 +196,10 @@ class MessageBubble extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
-              width: 12, height: 12,
-              child: CircularProgressIndicator(
-                strokeWidth: 1.5,
-                color: AppColors.primary.withOpacity(0.7),
-              ),
+            Icon(
+              isComplete ? Icons.check_circle_outline_rounded : Icons.pending_outlined,
+              size: 14,
+              color: AppColors.primary.withOpacity(0.7),
             ),
             const SizedBox(width: 8),
             Text(
