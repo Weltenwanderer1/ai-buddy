@@ -5,9 +5,9 @@ import '../services/live_voice_service.dart';
 import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
-/// Minimaler Glas-Look Message-Input.
-/// Eine einzelne lange, abgerundete Eingabeleiste.
-/// Keine extra Container darum — direkt über dem normalen Hintergrund.
+/// Telegram-style Message Input.
+/// Eine einzelne lange, abgerundete "Pille" mit Glas-Effekt.
+/// Keine Container drumherum — direkt über dem normalen Hintergrund.
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final void Function(String text, {MessageType type})? onSendWithType;
@@ -80,7 +80,6 @@ class _MessageInputState extends State<MessageInput> {
     final text = _controller.text.trim();
     if (text.isEmpty) return;
 
-    // Slash commands with pre-processing
     if (text == '/briefing') {
       _controller.clear();
       widget.onSend('Gib mir ein kurzes Briefing: Welche Termine habe ich heute im Kalender? Gibt es offene Erinnerungen? Was steht heute an?');
@@ -116,48 +115,32 @@ class _MessageInputState extends State<MessageInput> {
 
   Widget _buildNormalInput() {
     return Container(
-      // Kein extra Container der um die Eingabeleiste herum liegt — direkt die Leiste
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
-            // Glas-Look: leicht durchscheinend, mit feinem Rand
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: Colors.white.withOpacity(0.12),
+                color: Colors.white.withOpacity(0.10),
                 width: 0.5,
               ),
             ),
-            padding: const EdgeInsets.fromLTRB(4, 4, 4, 4),
+            padding: const EdgeInsets.fromLTRB(6, 6, 6, 6),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                // Plus-Button — links INNERHALB der Eingabeleiste
-                Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Datei-Upload kommt bald')),
-                    ),
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.add,
-                        color: AppColors.textTertiary.withOpacity(0.7),
-                        size: 22,
-                      ),
-                    ),
+                // Plus-Button (links, innerhalb)
+                _IconButton(
+                  icon: Icons.add,
+                  onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Datei-Upload kommt bald')),
                   ),
                 ),
-                // Textfeld — nimmt den Rest
+                // Textfeld
                 Expanded(
                   child: TextField(
                     controller: _controller,
@@ -174,7 +157,7 @@ class _MessageInputState extends State<MessageInput> {
                         fontSize: 15,
                       ),
                       border: InputBorder.none,
-                      contentPadding: const EdgeInsets.fromLTRB(0, 12, 0, 12),
+                      contentPadding: const EdgeInsets.fromLTRB(4, 10, 4, 10),
                       isDense: true,
                     ),
                     textInputAction: TextInputAction.newline,
@@ -183,12 +166,13 @@ class _MessageInputState extends State<MessageInput> {
                     textCapitalization: TextCapitalization.sentences,
                   ),
                 ),
-                // Rechte Seite: Send-Button ODER Mic-Button
+                // Rechte Seite: Send oder Mic
                 _hasText
                     ? _SendButton(onTap: _submit)
-                    : _MicButton(
-                        isListening: _isListening,
+                    : _IconButton(
+                        icon: _isListening ? Icons.mic : Icons.mic_none,
                         onTap: _isListening ? null : _startListening,
+                        color: _isListening ? AppColors.error : null,
                       ),
               ],
             ),
@@ -200,24 +184,27 @@ class _MessageInputState extends State<MessageInput> {
 
   Widget _buildLiveModeInput() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.06),
+              color: Colors.white.withOpacity(0.04),
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.12),
-                width: 0.5,
-              ),
+              border: Border.all(color: Colors.white.withOpacity(0.10), width: 0.5),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                _PulsingDot(color: AppColors.success),
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    color: AppColors.success,
+                    shape: BoxShape.circle,
+                  ),
+                ),
                 const SizedBox(width: 8),
                 Text(
                   'LIVE',
@@ -239,23 +226,10 @@ class _MessageInputState extends State<MessageInput> {
                     ),
                   ),
                 ),
-                Material(
-                  color: Colors.transparent,
-                  borderRadius: BorderRadius.circular(24),
-                  child: InkWell(
-                    onTap: widget.onToggleLiveMode ?? () {},
-                    borderRadius: BorderRadius.circular(24),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      alignment: Alignment.center,
-                      child: Icon(
-                        Icons.stop_circle_outlined,
-                        color: AppColors.error.withOpacity(0.8),
-                        size: 24,
-                      ),
-                    ),
-                  ),
+                _IconButton(
+                  icon: Icons.stop_circle_outlined,
+                  onTap: widget.onToggleLiveMode ?? () {},
+                  color: AppColors.error,
                 ),
               ],
             ),
@@ -266,7 +240,7 @@ class _MessageInputState extends State<MessageInput> {
   }
 }
 
-/// Dezenter Send-Button ohne Gradient, ohne Glow.
+/// Send-Button: dezenter Pfeil auf semitransparentem Primary.
 class _SendButton extends StatelessWidget {
   final VoidCallback onTap;
   const _SendButton({required this.onTap});
@@ -294,11 +268,13 @@ class _SendButton extends StatelessWidget {
   }
 }
 
-/// Dezenter Mic-Button.
-class _MicButton extends StatelessWidget {
-  final bool isListening;
+/// Icon-Button für Plus und Mic — dezent, ohne Hintergrund.
+class _IconButton extends StatelessWidget {
+  final IconData icon;
   final VoidCallback? onTap;
-  const _MicButton({this.isListening = false, this.onTap});
+  final Color? color;
+
+  const _IconButton({required this.icon, this.onTap, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -313,67 +289,12 @@ class _MicButton extends StatelessWidget {
           height: 44,
           alignment: Alignment.center,
           child: Icon(
-            isListening ? Icons.mic : Icons.mic_none,
-            color: isListening
-                ? AppColors.error.withOpacity(0.8)
-                : AppColors.textTertiary.withOpacity(0.7),
+            icon,
+            color: color ?? AppColors.textTertiary.withOpacity(0.6),
             size: 22,
           ),
         ),
       ),
-    );
-  }
-}
-
-/// Pulsierender grüner Punkt für LIVE-Indikator.
-class _PulsingDot extends StatefulWidget {
-  final Color color;
-  const _PulsingDot({required this.color});
-
-  @override
-  State<_PulsingDot> createState() => _PulsingDotState();
-}
-
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (context, child) {
-        return Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: widget.color.withOpacity(0.5 + _ctrl.value * 0.5),
-            shape: BoxShape.circle,
-            boxShadow: [
-              BoxShadow(
-                color: widget.color.withOpacity(0.2 * (1 - _ctrl.value)),
-                blurRadius: 6,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-        );
-      },
     );
   }
 }
