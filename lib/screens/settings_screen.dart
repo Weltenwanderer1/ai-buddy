@@ -12,6 +12,8 @@ import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/buddy_notes_service.dart';
+import '../services/tile_download_service.dart';
+import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
 import 'buddy_notes_screen.dart';
@@ -448,6 +450,20 @@ class _SettingsScreenState extends State<SettingsScreen>
                 context,
                 MaterialPageRoute(builder: (_) => const MemoryBrowserScreen()),
               ),
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.map_rounded,
+              title: 'Offline-Karten',
+              subtitle: 'Kacheln fuer Navigation ohne Netz',
+              color: AppColors.primary,
+              trailing: FutureBuilder<bool>(
+                future: TileDownloadService.hasOfflineTiles(),
+                builder: (_, snap) => snap.hasData && snap.data == true
+                  ? const Icon(Icons.check_circle, color: Color(0xFF34C759), size: 20)
+                  : const Icon(Icons.download_for_offline, color: Color(0xFF5A5A60), size: 20),
+              ),
+              onTap: () => showDialog(context: context, builder: (_) => const OfflineMapDialog()),
             ),
             _Divider(),
             _ListTile(
