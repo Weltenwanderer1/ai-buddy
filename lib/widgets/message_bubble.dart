@@ -109,17 +109,18 @@ class MessageBubble extends StatelessWidget {
   /// Eigene lerp (kein extra Import nötig)
   double _lerp(double a, double b, double t) => a + (b - a) * t.clamp(0.0, 1.0);
 
-  /// Dynamischer Farbverlauf: Orange → Lila → Rot → Orange …
-  /// Ändert sich subtil beim Scrollen basierend auf Offset + Bubble-Index.
+  /// Dynamischer Farbverlauf: Orange → Lila → Blau → Orange …
+  /// Sehr subtil — verschiebt sich langsam beim Scrollen.
   LinearGradient _dynamicUserGradient(double scrollOffset, int idx) {
-    final phase = (scrollOffset * 0.005 + idx * 0.3) % (pi * 2);
+    // Viel langsamerer Scroll-Einfluss (10x weniger empfindlich)
+    final phase = (scrollOffset * 0.0003 + idx * 0.1) % (pi * 2);
     
-    // Farben im HSL-Raum drehen: Orange(20°) → Lila(270°) → Rot(0°)
-    final t = (sin(phase) + 1) / 2; // 0..1 oszillierend
+    final t = (sin(phase) + 1) / 2; // 0..1 sanft oszillierend
     
-    final c1 = _hsvToColor(_lerp(20, 35, t), 0.95, 0.65);   // Orange-Range
-    final c2 = _hsvToColor(_lerp(270, 300, t), 0.85, 0.55); // Lila-Range
-    final c3 = _hsvToColor(_lerp(340, 10, t), 0.90, 0.60);   // Rot-Range
+    // Pastell-Orange → Pastell-Lila → Pastell-Blau (helle, wenig gesättigte Töne)
+    final c1 = _hsvToColor(_lerp(30, 45, t), 0.65, 0.85);   // Warmes Pastell-Orange
+    final c2 = _hsvToColor(_lerp(255, 275, t), 0.55, 0.80); // Pastell-Lila
+    final c3 = _hsvToColor(_lerp(195, 215, t), 0.55, 0.85); // Pastell-Blau
     
     return LinearGradient(
       begin: Alignment.topLeft,
