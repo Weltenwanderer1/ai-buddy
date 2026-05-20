@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
@@ -9,7 +10,7 @@ import 'secure_config_service.dart';
 /// TTS engine selection.
 enum TtsEngine {
   elevenLabs,
-  device,
+  device;
 }
 
 /// TTS playback service — supports ElevenLabs API and Device-native TTS.
@@ -19,6 +20,7 @@ class TtsPlaybackService extends ChangeNotifier {
   final AudioPlayer _player = AudioPlayer();
   String? currentlyPlayingId;
   bool autoPlay = false;
+  Completer<void>? _playbackCompleter;
 
   /// Current TTS engine.
   TtsEngine _engine = TtsEngine.elevenLabs;
@@ -76,7 +78,13 @@ class TtsPlaybackService extends ChangeNotifier {
     if (_engine == TtsEngine.device) {
       return _speakDevice(cleanText, messageId: messageId);
     }
-    return _speakElevenLabs(cleanText, messageId: messageId);
+
+    final ok = await _speakElevenLabs(cleanText, messageId: messageId);
+    if (!ok) {
+      debugPrint('TTS: ElevenLabs synthesis failed ($lastError). Falling back to local device TTS.');
+      return _speakDevice(cleanText, messageId: messageId);
+    }
+    return true;
   }
 
   Future<bool> _speakDevice(String text, {String? messageId}) async {
@@ -148,13 +156,30 @@ class TtsPlaybackService extends ChangeNotifier {
 
       currentlyPlayingId = messageId;
       notifyListeners();
+
       await _player.setFilePath(cacheFile.path);
-      await _player.play();
-      await _player.processingStateStream.firstWhere(
-        (state) => state == ProcessingState.completed,
-      );
-      currentlyPlayingId = null;
-      notifyListeners();
+
+      final completer = Completer<void>();
+      _playbackCompleter = completer;
+
+      final subscription = _player.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      }, onError: (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      });
+
+      try {
+        await _player.play();
+        await completer.future;
+      } finally {
+        await subscription.cancel();
+        _playbackCompleter = null;
+        currentlyPlayingId = null;
+        notifyListeners();
+      }
+
       return true;
     } catch (e) {
       currentlyPlayingId = null;
@@ -174,6 +199,9 @@ class TtsPlaybackService extends ChangeNotifier {
       await _deviceTts.stop();
     } else {
       await _player.stop();
+      if (_playbackCompleter != null && !_playbackCompleter!.isCompleted) {
+        _playbackCompleter!.complete();
+      }
     }
     currentlyPlayingId = null;
     notifyListeners();

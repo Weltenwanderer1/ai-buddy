@@ -683,33 +683,40 @@ class _SettingsScreenState extends State<SettingsScreen>
                   child: Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: _elevenLabsAvailableVoices!.map((v) => GestureDetector(
-                      onTap: () {
-                        setState(() => _elevenVoiceController.text = v);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        decoration: BoxDecoration(
-                          gradient: _elevenVoiceController.text == v
-                            ? AppColors.secondaryGradient
-                            : null,
-                          color: _elevenVoiceController.text == v ? null : AppColors.bgCard.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: _elevenVoiceController.text == v
-                              ? Colors.transparent
-                              : AppColors.glassBorder.withValues(alpha: 0.3),
-                            width: 1,
+                    children: _elevenLabsAvailableVoices!.map((v) {
+                      final match = RegExp(r'^(.+)\s\(([^)]+)\)$').firstMatch(v);
+                      final name = match != null ? match.group(1)!.trim() : v;
+                      final id = match != null ? match.group(2)!.trim() : v;
+                      final isSelected = _elevenVoiceController.text.trim() == id;
+
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() => _elevenVoiceController.text = id);
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: isSelected
+                              ? AppColors.secondaryGradient
+                              : null,
+                            color: isSelected ? null : AppColors.bgCard.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: isSelected
+                                ? Colors.transparent
+                                : AppColors.glassBorder.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
                           ),
+                          child: Text(name, style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                            color: isSelected ? Colors.white : AppColors.textSecondary,
+                          )),
                         ),
-                        child: Text(v, style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: _elevenVoiceController.text == v ? FontWeight.w700 : FontWeight.w600,
-                          color: _elevenVoiceController.text == v ? Colors.white : AppColors.textSecondary,
-                        )),
-                      ),
-                    )).toList(),
+                      );
+                    }).toList(),
                   ),
                 ),
             ],

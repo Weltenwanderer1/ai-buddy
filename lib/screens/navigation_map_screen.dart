@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'dart:math' show max, min, sqrt, sin, cos, atan2;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -352,17 +353,14 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
               },
             ),
             children: [
-              // Tiles
-              if (hasOffline)
-                TileLayer(
-                  urlTemplate: 'file://$_offlineTilesDir/{z}/{x}/{y}.png',
-                  tileProvider: FileTileProvider(),
-                )
-              else
-                TileLayer(
-                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                  userAgentPackageName: 'com.weltenwanderer.ai_buddy',
-                ),
+              // Hybrid Offline/Online Tiles
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.weltenwanderer.ai_buddy',
+                tileProvider: hasOffline
+                    ? _HybridTileProvider(offlineDir: _offlineTilesDir!)
+                    : NetworkTileProvider(),
+              ),
               // Route polyline
               if (points != null && points.length > 1)
                 PolylineLayer(
@@ -785,5 +783,24 @@ class _NavigationBottomBar extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Custom TileProvider that checks local offline directory first,
+/// and falls back to network requests if the tile is not cached.
+class _HybridTileProvider extends TileProvider {
+  final String offlineDir;
+
+  _HybridTileProvider({required this.offlineDir});
+
+  @override
+  ImageProvider getImage(TileCoordinates coordinates, TileLayer options) {
+    final localFile = File('$offlineDir/${coordinates.z}/${coordinates.x}/${coordinates.y}.png');
+    if (localFile.existsSync()) {
+      return FileImage(localFile);
+    }
+    
+    final url = 'https://tile.openstreetmap.org/${coordinates.z}/${coordinates.x}/${coordinates.y}.png';
+    return NetworkImage(url);
   }
 }

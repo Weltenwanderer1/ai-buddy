@@ -12,10 +12,16 @@ class ElevenLabsService {
   ElevenLabsService({
     required this.apiKey,
     required this.voiceId,
-    this.modelId = 'eleven_multilingual_v2',
+    this.modelId = 'eleven_flash_v2_5',
   });
 
-  bool get isAvailable => apiKey.isNotEmpty && voiceId.isNotEmpty;
+  /// Extracts raw voice ID by removing friendly name parentheses if present.
+  String get rawVoiceId {
+    final match = RegExp(r'\(([^)]+)\)').firstMatch(voiceId);
+    return match != null ? match.group(1)!.trim() : voiceId.trim();
+  }
+
+  bool get isAvailable => apiKey.isNotEmpty && rawVoiceId.isNotEmpty;
 
   /// Update config (e.g. after settings change).
   void updateConfig({String? apiKey, String? voiceId, String? modelId}) {
@@ -31,11 +37,12 @@ class ElevenLabsService {
       return [];
     }
 
-    debugPrint('ElevenLabs: synthesize(${text.length} chars) voice=$voiceId model=$modelId');
+    final targetVoice = rawVoiceId;
+    debugPrint('ElevenLabs: synthesize(${text.length} chars) voice=$targetVoice model=$modelId');
 
     try {
       final response = await http.post(
-        Uri.parse('https://api.elevenlabs.io/v1/text-to-speech/$voiceId'),
+        Uri.parse('https://api.elevenlabs.io/v1/text-to-speech/$targetVoice'),
         headers: {
           'xi-api-key': apiKey,
           'Content-Type': 'application/json',
@@ -64,8 +71,6 @@ class ElevenLabsService {
     }
   }
 
-  /// Test the ElevenLabs API connection.
-  /// Returns a human-readable result message.
   Future<ElevenLabsTestResult> testConnection() async {
     if (apiKey.isEmpty) {
       return ElevenLabsTestResult(
@@ -73,7 +78,8 @@ class ElevenLabsService {
         message: 'API Key nicht konfiguriert',
       );
     }
-    if (voiceId.isEmpty) {
+    final targetVoice = rawVoiceId;
+    if (targetVoice.isEmpty) {
       return ElevenLabsTestResult(
         success: false,
         message: 'Voice ID nicht konfiguriert',
@@ -109,24 +115,24 @@ class ElevenLabsService {
         final id = v['voice_id'] as String? ?? '';
         final name = v['name'] as String? ?? '';
         voiceNames.add('$name ($id)');
-        if (id == voiceId) voiceFound = true;
+        if (id == targetVoice) voiceFound = true;
       }
 
       if (!voiceFound) {
         // Try to find voice by name (user might have entered name instead of ID)
         final voiceByName = voices.where(
-          (v) => (v['name'] as String? ?? '').toLowerCase() == voiceId.toLowerCase(),
+          (v) => (v['name'] as String? ?? '').toLowerCase() == targetVoice.toLowerCase(),
         );
         if (voiceByName.isNotEmpty) {
           return ElevenLabsTestResult(
             success: false,
-            message: 'Voice ID "$voiceId" nicht gefunden. Meinst du "${voiceByName.first['name']}" (ID: ${voiceByName.first['voice_id']})?',
+            message: 'Voice ID "$targetVoice" nicht gefunden. Meinst du "${voiceByName.first['name']}" (ID: ${voiceByName.first['voice_id']})?',
             availableVoices: voiceNames.toList(),
           );
         }
         return ElevenLabsTestResult(
           success: false,
-          message: 'Voice ID "$voiceId" existiert nicht in deinem Account.',
+          message: 'Voice ID "$targetVoice" existiert nicht in deinem Account.',
           availableVoices: voiceNames.toList(),
         );
       }
@@ -134,7 +140,7 @@ class ElevenLabsService {
       // 2. Test actual TTS synthesis with a short text
       const testText = 'Test.';
       final ttsResponse = await http.post(
-        Uri.parse('https://api.elevenlabs.io/v1/text-to-speech/$voiceId'),
+        Uri.parse('https://api.elevenlabs.io/v1/text-to-speech/$targetVoice'),
         headers: {
           'xi-api-key': apiKey,
           'Content-Type': 'application/json',
