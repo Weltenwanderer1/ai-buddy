@@ -330,7 +330,15 @@ class ChatService {
       buffer.write(
           '\nopen_navigation: Standard ist ZU FUSS. Zeigt OSM-Karte IN der App mit Live-Tracking + Schritt-fuer-Schritt. Profile: walking (default, Fuss), cycling (Rad, auch in App), driving (Auto → Google Maps). Nur bei Auto "driving" angeben.');
       buffer.write(
-          '\nWICHTIG: Wenn ein Nutzer zu einem Ort navigieren will und du den Namen kennst aber nicht die Adresse, rufe zuerst search_memories mit dem Namen auf. Lies die Ergebnisse — dort steht oft die Adresse. Dann rufe open_navigation mit der Adresse als destination auf.');
+          '\nWICHTIG: Wenn ein Nutzer zu einem Ort navigieren will und du die Adresse nicht kennst:');
+      buffer.write(
+          '\n1. Prüfe zuerst search_memories — dort steht oft die Adresse.');
+      buffer.write(
+          '\n2. Wenn Memories keine Adresse haben, rufe web_search mit dem Ortsnamen auf (z.B. "Magister Chalusch Wien Adresse"). Lies die Ergebnisse und extrahiere die Adresse.');
+      buffer.write(
+          '\n3. Dann rufe open_navigation mit der gefundenen Adresse als destination auf.');
+      buffer.write(
+          '\nSage NIEMALS "Ich kann die Adresse nicht finden" — nutze web_search!');
       buffer.write(
           '\nWenn der Nutzer "Google Maps" sagt, rufe open_navigation mit profile=driving auf (nicht open_app "maps").');
     }
@@ -349,6 +357,10 @@ class ChatService {
     if (_toolRegistry?.hasTool('get_location') == true) {
       buffer.write(
           '\nget_location: für Standort des Users (Stadt, Bezirk, Land, Koordinaten). Nutze dies für lokale Empfehlungen, Wetter-Anfragen oder ortsbezogene Fragen.');
+    }
+    if (_toolRegistry?.hasTool('web_search') == true) {
+      buffer.write(
+          '\nweb_search: für Internet-Suche. Nutze dies wenn du aktuelle Fakten, Adressen, Öffnungszeiten oder andere Informationen brauchst die du nicht kennst. Immer nutzen bevor du "Ich weiß das nicht" sagst.');
     }
     if (preloadedLiveData != null && preloadedLiveData.trim().isNotEmpty) {
       buffer.write('\nBereits abgefragte Daten:\n');
