@@ -116,11 +116,10 @@ class MessageBubble extends StatelessWidget {
   }
 
   /// Screen-space Palette: Oben Orange → unten Lila/Blau.
-  /// Jede Bubble hat einen Grundton = (index + scroll*0.015) auf der Palette.
-  /// Innerhalb der Bubble ein kleiner Farbverlauf (Mini-Slice der Palette).
+  /// 1 Durchlauf pro Bildschirmhöhe: idx*0.5 = 14 Bubbles = 7 Schritte, scroll*0.009 ≈ 1 Palette/800px.
   LinearGradient _screenSpaceGradient(double scrollOffset, int idx) {
     // Virtuelle Position auf der Palette (float = erlaubt Zwischenfarben)
-    final pos = (idx + scrollOffset * 0.015) % (_palette.length - 1);
+    final pos = (idx * 0.5 + scrollOffset * 0.009) % (_palette.length - 1);
     final p0 = pos.floor();
     final p1 = p0 + 1;
     final t = pos - p0; // 0.0 .. 1.0 zwischen zwei Palettenfarben
