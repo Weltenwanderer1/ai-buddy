@@ -329,6 +329,10 @@ class ChatService {
     if (_toolRegistry?.hasTool('open_navigation') == true) {
       buffer.write(
           '\nopen_navigation: Standard ist ZU FUSS. Zeigt OSM-Karte IN der App mit Live-Tracking + Schritt-fuer-Schritt. Profile: walking (default, Fuss), cycling (Rad, auch in App), driving (Auto → Google Maps). Nur bei Auto "driving" angeben.');
+      buffer.write(
+          '\nWICHTIG: Wenn ein Nutzer zu einem Ort navigieren will und du den Namen kennst aber nicht die Adresse, rufe zuerst search_memories mit dem Namen auf. Lies die Ergebnisse — dort steht oft die Adresse. Dann rufe open_navigation mit der Adresse als destination auf.');
+      buffer.write(
+          '\nWenn der Nutzer "Google Maps" sagt, rufe open_navigation mit profile=driving auf (nicht open_app "maps").');
     }
     if (_toolRegistry?.hasTool('get_weather') == true) {
       buffer.write(
@@ -701,6 +705,8 @@ class ChatService {
 
     if (registry.hasTool('open_app')) {
       for (final known in _knownAppNames) {
+        // "maps" gets handled by navigation fallback below, not open_app
+        if (known == 'maps') continue;
         if (lower.contains(known)) {
           final hasOpenIntent = RegExp(
                   r'(öffne|oeffne|offne|starte|mach\s+.*auf|app|launch|aufmachen|anmachen|ich\s+will|ich\s+möchte|ich\s+moechte)',
@@ -717,6 +723,28 @@ class ChatService {
           }
         }
       }
+    }
+
+    // "Google Maps" / "maps" → open_navigation with driving profile
+    if (registry.hasTool('open_navigation') &&
+        RegExp(r'\b(google\s*maps|maps|google\s*map|karte)\b', caseSensitive: false)
+            .hasMatch(lower)) {
+      // Try to extract destination from the message
+      final destMatch = RegExp(
+        r'(?:nach|zu|zum|zur|zu\s+magister|zu\s+herr|zu\s+frau)\s+(.+?)(?:\s+(?:bitte|mal|jetzt|[.!?,;:\s]))*$',
+        caseSensitive: false,
+      ).firstMatch(userMessage.trim());
+      final destination = destMatch?.group(1)?.trim() ?? '';
+      return [
+        ToolCall(
+            id: 'fallback_nav_gmaps_0',
+            type: 'function',
+            name: 'open_navigation',
+            arguments: {
+              if (destination.isNotEmpty) 'destination': destination,
+              'profile': 'driving',
+            })
+      ];
     }
 
     return const [];
