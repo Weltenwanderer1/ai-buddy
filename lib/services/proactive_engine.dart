@@ -241,7 +241,7 @@ class ProactiveEngine extends ChangeNotifier {
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'proactive_engine',
-          'AI-Agent Proaktiv',
+          'AI-Buddy Proaktiv',
           channelDescription: 'Proaktive Vorschläge und Erinnerungen',
           importance: Importance.defaultImportance,
           priority: Priority.defaultPriority,

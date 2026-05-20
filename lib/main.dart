@@ -118,7 +118,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       final openRouterTts = OpenRouterTtsService(
         apiKey: _secureConfig.openRouterApiKey.isNotEmpty
             ? _secureConfig.openRouterApiKey
-            : _secureConfig.ollamaApiKey, // Fallback: Ollama Cloud key works on OpenRouter too
+            : '',  // No fallback — OpenRouter TTS needs its own key
         model: _secureConfig.openRouterTtsModel,
         voice: _secureConfig.openRouterTtsVoice,
       );

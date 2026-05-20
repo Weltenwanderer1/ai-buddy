@@ -34,11 +34,11 @@ class ToolCallParser {
     }
     final calls = <ToolCall>[];
     final invokeRegex = RegExp(
-      r'''<invoke\s+name=["']([^"']+)["']\s*>([\s\S]*?)</invoke>''',
+      r'<invoke\s+name=["\x27]([^"\x27]+)["\x27]\s*>([\s\S]*?)</invoke>',
       caseSensitive: false,
     );
     final parameterRegex = RegExp(
-      r'''<parameter\s+name=["']([^"']+)["']\s*>([\s\S]*?)</parameter>''',
+      r'<parameter\s+name=["\x27]([^"\x27]+)["\x27]\s*>([\s\S]*?)</parameter>',
       caseSensitive: false,
     );
 
@@ -71,7 +71,7 @@ class ToolCallParser {
       snippets.add(match.group(1) ?? '');
     }
 
-    final tagged = RegExp(r'<tool_call>\s*([\s\S]*?)\s*</tool_call>',
+    final tagged = RegExp(r'<![CDATA[\s*([\s\S]*?)\s*]]>',
         caseSensitive: false);
     for (final match in tagged.allMatches(content)) {
       snippets.add(match.group(1) ?? '');
@@ -152,5 +152,19 @@ class ToolCallParser {
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .trim();
+  }
+
+  /// Strip all <function_calls>...</function_calls> blocks from text so
+  /// they don't appear as raw XML in the chat UI.
+  static String stripFunctionCallTags(String content) {
+    var cleaned = content.replaceAll(
+      RegExp(r'<function_calls>[\s\S]*?</function_calls>', caseSensitive: false),
+      '',
+    );
+    cleaned = cleaned.replaceAll(
+      RegExp(r'<invoke\s+name=["\x27][^"\x27]+["\x27]\s*>[\s\S]*?</invoke>', caseSensitive: false),
+      '',
+    );
+    return cleaned.trim();
   }
 }

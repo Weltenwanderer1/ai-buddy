@@ -435,10 +435,10 @@ class ChatService {
             'role': 'assistant',
             'content': response.content.isEmpty
                 ? 'Ich nutze das passende Tool.'
-                : response.content,
+                : ToolCallParser.stripFunctionCallTags(response.content),
           });
         } else {
-          final reply = response.content;
+          final reply = ToolCallParser.stripFunctionCallTags(response.content);
           if (reply.trim().isEmpty) {
             // LLM returned empty content with no tool calls — try once more
             if (round < maxToolRounds - 1) continue;

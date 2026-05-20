@@ -431,7 +431,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    persona.name.isNotEmpty ? persona.name : 'AI-Agent',
+                    persona.name.isNotEmpty ? persona.name : 'AI-Buddy',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,

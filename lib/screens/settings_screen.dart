@@ -495,7 +495,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary, letterSpacing: -0.5)),
                 SizedBox(height: 6),
-                Text('Konfiguriere deinen AI-Agent',
+                Text('Konfiguriere deinen AI-Buddy',
                   style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                 SizedBox(height: 16),
               ]),
@@ -886,10 +886,10 @@ class _SettingsScreenState extends State<SettingsScreen>
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.favorite_rounded,
-              title: 'AI-Agent',
-              subtitle: 'v0.7.0',
+              title: 'AI-Buddy',
+              subtitle: 'v0.89.1',
               color: AppColors.secondary,
-              trailing: _Badge('v0.7.0', color: AppColors.secondary),
+              trailing: _Badge('v0.89.1', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),

@@ -7,10 +7,15 @@ class ReadConfigTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'read_config',
     description:
-        'Liest die aktuelle AI-Buddy-Konfiguration (Persona-Name, Modell, TTS-Einstellungen, etc.). Nutze dies, um die aktuellen Einstellungen zu erfahren.',
+        'Liest die aktuelle AI-Buddy-Konfiguration. Ohne Parameter: liest alles. Mit "key": liest einen bestimmten Wert (z.B. persona_name, agent_name, tts_engine).',
     parametersSchema: {
       'type': 'object',
-      'properties': {},
+      'properties': {
+        'key': {
+          'type': 'string',
+          'description': 'Optionaler Schlüssel — gibt nur diesen Wert zurück (z.B. persona_name, tts_engine, ollama_model).',
+        },
+      },
       'required': [],
     },
   );
@@ -35,6 +40,26 @@ class ReadConfigTool implements ToolInterface {
 
     try {
       final config = readConfigCallback!();
+      final key = parameters['key'] as String?;
+
+      if (key != null && key.isNotEmpty) {
+        final value = config[key];
+        if (value == null) {
+          return ToolResult(
+            toolName: definition.name,
+            parameters: parameters,
+            result: 'Schlüssel "$key" nicht gefunden. Verfügbare Schlüssel: ${config.keys.join(", ")}',
+            displayText: '⚙️ Schlüssel "$key" nicht gefunden',
+          );
+        }
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result: '$key: $value',
+          displayText: '⚙️ $key = $value',
+        );
+      }
+
       final buffer = StringBuffer('Aktuelle Konfiguration:\n');
       for (final entry in config.entries) {
         buffer.writeln('  ${entry.key}: ${entry.value}');
