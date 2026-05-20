@@ -11,7 +11,6 @@ import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
-import '../services/buddy_notes_service.dart';
 import '../services/tile_download_service.dart';
 import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
@@ -152,67 +151,102 @@ class _SettingsScreenState extends State<SettingsScreen>
         _elevenLabsTestResult = result.success
             ? 'Verbindung OK'
             : 'Fehler: ${result.message}';
-        if (result.availableVoices.isNotEmpty)
+        if (result.availableVoices.isNotEmpty) {
           _elevenLabsAvailableVoices = result.availableVoices;
+        }
       });
     } catch (e) {
-      setState(() => _elevenLabsTestResult = '${e.toString()}');
+      setState(() => _elevenLabsTestResult = e.toString());
     } finally {
       if (mounted) setState(() => _isTestingElevenLabs = false);
     }
   }
 
   Future<void> _clearChatHistory() async {
-    if (await _confirm('Chat-Verlauf löschen?',
-        'Alle Nachrichten werden unwiderruflich gelöscht.')) {
-      await context.read<ChatHistoryService>().clear();
-      _showSnack('Chat-Verlauf gelöscht', AppColors.error);
+    final chatHistory = context.read<ChatHistoryService>();
+    final confirmed = await _confirm('Chat-Verlauf löschen?',
+        'Alle Nachrichten werden unwiderruflich gelöscht.');
+    if (confirmed) {
+      await chatHistory.clear();
+      if (mounted) {
+        _showSnack('Chat-Verlauf gelöscht', AppColors.error);
+      }
     }
   }
 
   Future<void> _clearMemories() async {
-    if (await _confirm('Erinnerungen löschen?',
-        'Alle gespeicherten Erinnerungen werden gelöscht.')) {
-      await context.read<MemoryService>().clearAll();
-      _showSnack('Erinnerungen gelöscht', AppColors.error);
+    final memoryService = context.read<MemoryService>();
+    final confirmed = await _confirm('Erinnerungen löschen?',
+        'Alle gespeicherten Erinnerungen werden gelöscht.');
+    if (confirmed) {
+      await memoryService.clearAll();
+      if (mounted) {
+        _showSnack('Erinnerungen gelöscht', AppColors.error);
+      }
     }
   }
 
   Future<void> _createBackup() async {
+    final backupService = context.read<BackupService>();
     try {
-      await context.read<BackupService>().exportBackup();
-      _showSnack('Backup gesichert ✅', AppColors.success);
+      await backupService.exportBackup();
+      if (mounted) {
+        _showSnack('Backup gesichert ✅', AppColors.success);
+      }
     } catch (e) {
-      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      if (mounted) {
+        _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      }
     }
   }
 
   Future<void> _restoreBackup() async {
-    if (!await _confirm('Backup wiederherstellen?',
-        'Aktuelle Daten werden überschrieben.')) return;
+    final backupService = context.read<BackupService>();
+    final confirmed = await _confirm('Backup wiederherstellen?',
+        'Aktuelle Daten werden überschrieben.');
+    if (!confirmed) {
+      return;
+    }
     try {
-      final path = await context.read<BackupService>().importBackupWithPicker();
+      final path = await backupService.importBackupWithPicker();
       if (path != null) {
-        await context.read<BackupService>().importBackup(path);
-        _showSnack('Backup eingespielt ✅', AppColors.success);
+        await backupService.importBackup(path);
+        if (mounted) {
+          _showSnack('Backup eingespielt ✅', AppColors.success);
+        }
       }
     } catch (e) {
-      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      if (mounted) {
+        _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      }
     }
   }
 
   Future<void> _resetApp() async {
-    if (!await _confirm('App komplett zurücksetzen?',
-        'Alles wird gelöscht: Chat, Erinnerungen, Selbstbild, Persona, KI-Entwicklung. Das kann nicht rückgängig gemacht werden.')) return;
+    final chatHistory = context.read<ChatHistoryService>();
+    final memoryService = context.read<MemoryService>();
+    final selfIdentity = context.read<SelfIdentityService>();
+    final persona = context.read<PersonaService>();
+    final personaEvolution = context.read<PersonaEvolutionService>();
+
+    final confirmed = await _confirm('App komplett zurücksetzen?',
+        'Alles wird gelöscht: Chat, Erinnerungen, Selbstbild, Persona, KI-Entwicklung. Das kann nicht rückgängig gemacht werden.');
+    if (!confirmed) {
+      return;
+    }
     try {
-      await context.read<ChatHistoryService>().clear();
-      await context.read<MemoryService>().clearAll();
-      await context.read<SelfIdentityService>().clear();
-      await context.read<PersonaService>().clear();
-      await context.read<PersonaEvolutionService>().clear();
-      _showSnack('App zurückgesetzt — neu starten empfohlen', AppColors.error);
+      await chatHistory.clear();
+      await memoryService.clearAll();
+      await selfIdentity.clear();
+      await persona.clear();
+      await personaEvolution.clear();
+      if (mounted) {
+        _showSnack('App zurückgesetzt — neu starten empfohlen', AppColors.error);
+      }
     } catch (e) {
-      _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      if (mounted) {
+        _showSnack('Fehler: ${_trunc(e.toString(), 80)}', AppColors.error);
+      }
     }
   }
 
@@ -223,7 +257,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         const SizedBox(width: 10),
         Flexible(child: Text(msg, maxLines: 2)),
       ]),
-      backgroundColor: c.withOpacity(0.9),
+      backgroundColor: c.withValues(alpha: 0.9),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.all(16),
@@ -241,7 +275,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.error.withOpacity(0.15),
+                color: AppColors.error.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(Icons.warning_rounded, color: AppColors.error, size: 20),
@@ -260,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.error.withOpacity(0.2),
+                backgroundColor: AppColors.error.withValues(alpha: 0.2),
                 foregroundColor: AppColors.error,
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -284,9 +318,9 @@ class _SettingsScreenState extends State<SettingsScreen>
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: AppColors.bgElevated.withOpacity(0.95),
+          color: AppColors.bgElevated.withValues(alpha: 0.95),
           borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+          border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
         ),
         child: DraggableScrollableSheet(
           expand: false,
@@ -297,7 +331,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             Container(
               width: 40, height: 5,
               decoration: BoxDecoration(
-                color: AppColors.textTertiary.withOpacity(0.4),
+                color: AppColors.textTertiary.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(3),
               ),
             ),
@@ -325,7 +359,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               child: traits.isEmpty
                 ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Icon(Icons.psychology_alt_outlined,
-                      size: 48, color: AppColors.textTertiary.withOpacity(0.4)),
+                      size: 48, color: AppColors.textTertiary.withValues(alpha: 0.4)),
                     const SizedBox(height: 16),
                     Text('Noch keine Merkmale gelernt',
                       style: TextStyle(color: AppColors.textSecondary, fontSize: 16, fontWeight: FontWeight.w600)),
@@ -342,9 +376,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                       margin: const EdgeInsets.only(bottom: 8),
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
-                        color: AppColors.bgCard.withOpacity(0.6),
+                        color: AppColors.bgCard.withValues(alpha: 0.6),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                       ),
                       child: Row(children: [
                         Container(
@@ -357,7 +391,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                             style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800))),
                         ),
                         const SizedBox(width: 14),
-                        Expanded(child: Text('${traits[i]}',
+                        Expanded(child: Text(traits[i],
                           style: TextStyle(color: AppColors.textPrimary, fontSize: 15))),
                         Icon(Icons.check_rounded, size: 18, color: AppColors.success),
                       ]),
@@ -389,21 +423,21 @@ class _SettingsScreenState extends State<SettingsScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.primary.withOpacity(0.15),
-                    AppColors.primary.withOpacity(0.02),
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primary.withValues(alpha: 0.02),
                     Colors.transparent,
                   ],
                 ),
               ),
-              child: Column(children: [
-                const SizedBox(height: 60),
+              child: Column(children: const [
+                SizedBox(height: 60),
                 Text('Einstellungen',
                   style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
                     color: AppColors.textPrimary, letterSpacing: -0.5)),
-                const SizedBox(height: 6),
+                SizedBox(height: 6),
                 Text('Konfiguriere deinen AI-Agent',
                   style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-                const SizedBox(height: 16),
+                SizedBox(height: 16),
               ]),
             ),
           ),
@@ -491,9 +525,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: AppColors.bgCard.withOpacity(0.4),
+                  color: AppColors.bgCard.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -660,12 +694,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                           gradient: _elevenVoiceController.text == v
                             ? AppColors.secondaryGradient
                             : null,
-                          color: _elevenVoiceController.text == v ? null : AppColors.bgCard.withOpacity(0.5),
+                          color: _elevenVoiceController.text == v ? null : AppColors.bgCard.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: _elevenVoiceController.text == v
                               ? Colors.transparent
-                              : AppColors.glassBorder.withOpacity(0.3),
+                              : AppColors.glassBorder.withValues(alpha: 0.3),
                             width: 1,
                           ),
                         ),
@@ -750,12 +784,12 @@ class _GlassCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.6),
+        color: AppColors.bgCard.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -795,12 +829,12 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
       curve: Curves.easeOutCubic,
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.6),
+        color: AppColors.bgCard.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -815,7 +849,7 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: widget.color.withOpacity(0.15),
+                  color: widget.color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(widget.icon, color: widget.color, size: 20),
@@ -880,9 +914,9 @@ class _ListTile extends StatelessWidget {
             Container(
               width: 40, height: 40,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.06),
+                color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
               ),
               child: Icon(icon, size: 20, color: AppColors.textSecondary),
             ),
@@ -937,10 +971,10 @@ class _GlassTextFieldState extends State<_GlassTextField> {
           style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
           decoration: InputDecoration(
             hintText: widget.label,
-            hintStyle: TextStyle(color: AppColors.textTertiary.withOpacity(0.5), fontSize: 15),
+            hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5), fontSize: 15),
             prefixIcon: Icon(widget.icon, size: 20, color: _focused
               ? AppColors.primary
-              : AppColors.textTertiary.withOpacity(0.6)),
+              : AppColors.textTertiary.withValues(alpha: 0.6)),
             suffixIcon: widget.obscure
               ? IconButton(
                   icon: Icon(_obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
@@ -950,8 +984,8 @@ class _GlassTextFieldState extends State<_GlassTextField> {
               : null,
             filled: true,
             fillColor: _focused
-              ? AppColors.textPrimary.withOpacity(0.04)
-              : Colors.white.withOpacity(0.02),
+              ? AppColors.textPrimary.withValues(alpha: 0.04)
+              : Colors.white.withValues(alpha: 0.02),
             contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -959,11 +993,11 @@ class _GlassTextFieldState extends State<_GlassTextField> {
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppColors.glassBorder.withOpacity(0.25), width: 1),
+              borderSide: BorderSide(color: AppColors.glassBorder.withValues(alpha: 0.25), width: 1),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: AppColors.primary.withOpacity(0.6), width: 1.5),
+              borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.5),
             ),
           ),
         ),
@@ -990,7 +1024,7 @@ class _GradientButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: onTap != null ? [
             BoxShadow(
-              color: AppColors.primary.withOpacity(0.3),
+              color: AppColors.primary.withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 4),
             ),
@@ -1024,8 +1058,8 @@ class _OutlineButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: onTap == null
-              ? AppColors.glassBorder.withOpacity(0.2)
-              : AppColors.glassBorder.withOpacity(0.5)),
+              ? AppColors.glassBorder.withValues(alpha: 0.2)
+              : AppColors.glassBorder.withValues(alpha: 0.5)),
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
           Icon(icon, size: 18, color: onTap == null
@@ -1051,10 +1085,10 @@ class _ResultBox extends StatelessWidget {
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: (ok ? AppColors.success : AppColors.error).withOpacity(0.08),
+        color: (ok ? AppColors.success : AppColors.error).withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: (ok ? AppColors.success : AppColors.error).withOpacity(0.2)),
+          color: (ok ? AppColors.success : AppColors.error).withValues(alpha: 0.2)),
       ),
       child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
@@ -1077,7 +1111,7 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: (color ?? AppColors.primary).withOpacity(0.15),
+        color: (color ?? AppColors.primary).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Text(text, style: TextStyle(
@@ -1097,7 +1131,7 @@ class _Divider extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Divider(
-        color: AppColors.glassBorder.withOpacity(0.3),
+        color: AppColors.glassBorder.withValues(alpha: 0.3),
         height: 1,
       ),
     );

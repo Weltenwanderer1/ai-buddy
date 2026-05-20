@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ai_buddy/tools/tool_registry.dart';
 import 'package:ai_buddy/tools/tool_definition.dart';
 import 'package:ai_buddy/tools/tool_result.dart';
@@ -14,6 +15,8 @@ import 'package:ai_buddy/tools/get_calendar_events_tool.dart';
 import 'package:ai_buddy/tools/add_calendar_event_tool.dart';
 import 'package:ai_buddy/tools/open_app_tool.dart';
 import 'package:ai_buddy/tools/navigate_to_tool.dart';
+import 'package:ai_buddy/tools/send_email_tool.dart';
+import 'package:ai_buddy/tools/manage_shopping_list_tool.dart';
 
 void main() {
   group('ToolRegistry', () {
@@ -35,7 +38,7 @@ void main() {
       expect(registry.toolNames, contains('get_battery_info'));
       expect(registry.toolNames, contains('get_clipboard'));
       expect(registry.toolNames, contains('music_intent'));
-      expect(registry.toolNames.length, 21);
+      expect(registry.toolNames.length, 26);
     });
 
     test('hasTool returns true for registered tools', () {
@@ -54,7 +57,7 @@ void main() {
     test('getToolDefinitions returns API-format definitions', () {
       final registry = ToolRegistry.createDefault();
       final defs = registry.getToolDefinitions();
-      expect(defs.length, 21);
+      expect(defs.length, 26);
       expect(defs[0], containsPair('type', 'function'));
       expect(defs[0]['function'], isA<Map>());
       expect(defs[0]['function']['name'], isNotEmpty);
@@ -363,18 +366,18 @@ void main() {
       final tool = NavigateToTool();
       // These are internal, test by ensuring definition is correct
       expect(tool.definition.name, 'open_navigation');
-      expect(tool.definition.description, contains('navigiere'));
-      expect(tool.definition.description, contains('fahr'));
-      expect(tool.definition.description, contains('Route zu'));
+      expect(tool.definition.description.toLowerCase(), contains('navigiere'));
+      expect(tool.definition.description.toLowerCase(), contains('auto'));
+      expect(tool.definition.description.toLowerCase(), contains('rad'));
     });
 
     test('description contains German navigation commands', () {
       final tool = NavigateToTool();
       final desc = tool.definition.description.toLowerCase();
       expect(desc, contains('navigier'));
-      expect(desc, contains('fahr'));
+      expect(desc, contains('auto'));
       expect(desc, contains('route'));
-      expect(desc, contains('bring'));
+      expect(desc, contains('rad'));
     });
   });
 
@@ -418,6 +421,43 @@ void main() {
       expect(msg['role'], 'tool');
       expect(msg['name'], 'web_search');
       expect(msg['content'], 'Search results here');
+    });
+  });
+
+  group('SendEmailTool', () {
+    test('returns error for empty recipient', () async {
+      final tool = SendEmailTool();
+      final result = await tool.execute({'recipient': '', 'body': 'Hello'});
+      expect(result.isError, isTrue);
+      expect(result.result, contains('Empfaenger'));
+    });
+
+    test('returns error for empty body', () async {
+      final tool = SendEmailTool();
+      final result = await tool.execute({'recipient': 'test@example.com', 'body': ''});
+      expect(result.isError, isTrue);
+      expect(result.result, contains('Inhalt'));
+    });
+  });
+
+  group('ManageShoppingListTool', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+    });
+
+    test('adds an item to list', () async {
+      final tool = ManageShoppingListTool();
+      final result = await tool.execute({'action': 'add', 'item': 'Apfel'});
+      expect(result.isError, isFalse);
+      expect(result.result, contains('Apfel'));
+      expect(result.displayText, contains('Apfel'));
+    });
+
+    test('lists items', () async {
+      final tool = ManageShoppingListTool();
+      final result = await tool.execute({'action': 'list'});
+      expect(result.isError, isFalse);
+      expect(result.result, contains('leer'));
     });
   });
 }

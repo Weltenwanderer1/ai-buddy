@@ -193,7 +193,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
   Future<List<Map<String, dynamic>>> _getCalendarEvents(int daysAhead) async {
     try {
-      final status = await Permission.calendar.request();
+      final status = await Permission.calendarFullAccess.request();
       if (!status.isGranted && !status.isLimited) {
         debugPrint('Calendar permission denied: $status');
         return [];
@@ -237,7 +237,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
   Future<bool> _addCalendarEvent({required String title, required DateTime start, required DateTime end, String? description, String? location}) async {
     try {
-      final status = await Permission.calendar.request();
+      final status = await Permission.calendarFullAccess.request();
       if (!status.isGranted && !status.isLimited) {
         debugPrint('Calendar permission denied: $status');
         return false;

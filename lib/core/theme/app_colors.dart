@@ -10,8 +10,8 @@ class AppColors {
   static const Color bgElevated = Color(0xFF23232A);  // Dialoge / BottomSheet
 
   // ── Surfaces (Glass) ──
-  static Color glassBg     = Colors.white.withOpacity(0.04);
-  static Color glassBorder = Colors.white.withOpacity(0.08);
+  static Color glassBg     = Colors.white.withValues(alpha: 0.04);
+  static Color glassBorder = Colors.white.withValues(alpha: 0.08);
 
   // ── Text ──
   static const Color textPrimary   = Color(0xFFF0F0F5);
@@ -21,7 +21,7 @@ class AppColors {
   // ── Accent: Periwinkle Blau (wie Input-Bar Kreis-Buttons) ──
   static const Color primary      = Color(0xFF6B8DD6);  // Periwinkle
   static const Color primaryDark  = Color(0xFF5B7EC4);
-  static Color primaryGlow       = const Color(0xFF6B8DD6).withOpacity(0.25);
+  static Color primaryGlow       = const Color(0xFF6B8DD6).withValues(alpha: 0.25);
 
   // ── Secondary Accent ──
   static const Color secondary     = Color(0xFF64D2FF);  // Helles Cyan
@@ -72,7 +72,7 @@ class AppColors {
     end: Alignment.bottomRight,
     colors: [Color(0xFF1E1E24), Color(0xFF2A2A32)],  // Dunkles Anthrazit → Helles Anthrazit
   );
-  static Color assistantBubbleBorder = Colors.white.withOpacity(0.04);
+  static Color assistantBubbleBorder = Colors.white.withValues(alpha: 0.04);
 
   // ── Animation Durations ──
   static const Duration animFast   = Duration(milliseconds: 120);

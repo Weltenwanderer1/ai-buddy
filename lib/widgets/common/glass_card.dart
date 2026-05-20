@@ -185,7 +185,7 @@ class GradientFAB extends StatelessWidget {
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-              color: (gradient?.colors.first ?? AppColors.primary).withOpacity(0.35),
+              color: (gradient?.colors.first ?? AppColors.primary).withValues(alpha: 0.35),
               blurRadius: 20,
               offset: const Offset(0, 8),
               spreadRadius: -4,

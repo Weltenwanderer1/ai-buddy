@@ -34,6 +34,8 @@ import 'buddy_notes_tool.dart';
 import '../services/buddy_notes_service.dart';
 import 'get_location_tool.dart';
 import '../services/location_service.dart';
+import 'send_email_tool.dart';
+import 'manage_shopping_list_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -121,6 +123,8 @@ class ToolRegistry {
     r.register(SendWhatsAppTool());
     r.register(SearchContactsTool());
     r.register(SendMessageToContactTool());
+    r.register(SendEmailTool());
+    r.register(ManageShoppingListTool());
     return r;
   }
 }

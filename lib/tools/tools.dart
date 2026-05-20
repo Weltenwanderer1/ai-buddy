@@ -31,3 +31,5 @@ export 'get_weather_tool.dart';
 export 'search_memories_tool.dart';
 export 'buddy_notes_tool.dart';
 export 'get_location_tool.dart';
+export 'send_email_tool.dart';
+export 'manage_shopping_list_tool.dart';

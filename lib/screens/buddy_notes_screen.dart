@@ -34,7 +34,7 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('Notizen gespeichert ✓', style: TextStyle(fontWeight: FontWeight.w600)),
-        backgroundColor: AppColors.success.withOpacity(0.9),
+        backgroundColor: AppColors.success.withValues(alpha: 0.9),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.all(16),
@@ -58,8 +58,8 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.primary.withOpacity(0.15),
-                    AppColors.primary.withOpacity(0.02),
+                    AppColors.primary.withValues(alpha: 0.15),
+                    AppColors.primary.withValues(alpha: 0.02),
                     Colors.transparent,
                   ],
                 ),
@@ -74,9 +74,9 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppColors.glassBg.withOpacity(0.4),
+                          color: AppColors.glassBg.withValues(alpha: 0.4),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                          border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                         ),
                         child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
                       ),
@@ -112,9 +112,9 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.bgCard.withOpacity(0.5),
+                  color: AppColors.bgCard.withValues(alpha: 0.5),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                  border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                 ),
                 child: TextField(
                   controller: _ctl,
@@ -123,7 +123,7 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
                   style: TextStyle(color: AppColors.textPrimary, fontSize: 14, height: 1.6),
                   decoration: InputDecoration(
                     hintText: 'Notizen...',
-                    hintStyle: TextStyle(color: AppColors.textTertiary.withOpacity(0.4)),
+                    hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.4)),
                     border: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                   ),

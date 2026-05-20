@@ -93,7 +93,7 @@ class GetWeatherTool implements ToolInterface {
             final dayCode = codes[i] as int? ?? 0;
             final dayMax = (maxs[i] as num).toDouble().round();
             final dayMin = (mins[i] as num).toDouble().round();
-            result += '\n${day.day}.${day.month}.: ${_weatherIcon(dayCode, true)} ${dayMin}°–${dayMax}° ${_weatherDescription(dayCode)}';
+            result += '\n${day.day}.${day.month}.: ${_weatherIcon(dayCode, true)} $dayMin°–$dayMax° ${_weatherDescription(dayCode)}';
           }
         }
       }

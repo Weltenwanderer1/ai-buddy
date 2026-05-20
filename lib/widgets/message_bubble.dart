@@ -195,9 +195,9 @@ class MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.primary.withOpacity(0.08),
+          color: AppColors.primary.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.primary.withOpacity(0.15)),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -205,7 +205,7 @@ class MessageBubble extends StatelessWidget {
             Icon(
               isComplete ? Icons.check_circle_outline_rounded : Icons.pending_outlined,
               size: 14,
-              color: AppColors.primary.withOpacity(0.7),
+              color: AppColors.primary.withValues(alpha: 0.7),
             ),
             const SizedBox(width: 8),
             Text(
@@ -453,14 +453,14 @@ class MessageBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.error.withOpacity(0.08),
+          color: AppColors.error.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: AppColors.error.withOpacity(0.15)),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.15)),
         ),
         child: Text(
           message.text,
           style: TextStyle(
-            color: AppColors.error.withOpacity(0.8),
+            color: AppColors.error.withValues(alpha: 0.8),
             fontSize: 12,
           ),
         ),

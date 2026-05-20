@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ai_buddy/services/memory_service.dart';
 
@@ -9,13 +10,17 @@ void main() {
     });
 
     test('export/import roundtrip works', () async {
-      final s = MemoryService(dataDirOverride: null);
+      final tempDir = Directory.systemTemp.createTempSync();
+      final s = MemoryService(dataDirOverride: tempDir);
       await s.init();
       await s.addShortTerm('test', source: 'user');
       final exported = s.exportAll();
       expect(exported['short_term'], isNotEmpty);
       expect(exported['long_term'], isEmpty);
       expect(exported['core'], isEmpty);
+      try {
+        tempDir.deleteSync(recursive: true);
+      } catch (_) {}
     });
   });
 }

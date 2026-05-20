@@ -25,8 +25,8 @@ class MemoryBrowserScreen extends StatelessWidget {
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
                         colors: [
-                          AppColors.secondary.withOpacity(0.15),
-                          AppColors.secondary.withOpacity(0.02),
+                          AppColors.secondary.withValues(alpha: 0.15),
+                          AppColors.secondary.withValues(alpha: 0.02),
                           Colors.transparent,
                         ],
                       ),
@@ -41,9 +41,9 @@ class MemoryBrowserScreen extends StatelessWidget {
                             child: Container(
                               padding: const EdgeInsets.all(10),
                               decoration: BoxDecoration(
-                                color: AppColors.glassBg.withOpacity(0.4),
+                                color: AppColors.glassBg.withValues(alpha: 0.4),
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                                border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                               ),
                               child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
                             ),
@@ -62,9 +62,9 @@ class MemoryBrowserScreen extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
-                            color: AppColors.bgCard.withOpacity(0.4),
+                            color: AppColors.bgCard.withValues(alpha: 0.4),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+                            border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
                           ),
                           child: TabBar(
                             indicator: BoxDecoration(
@@ -108,7 +108,7 @@ class MemoryBrowserScreen extends StatelessWidget {
   Widget _buildTier(List<MemoryItem> items, Color color, String emptyText) {
     if (items.isEmpty) {
       return Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.memory_outlined, size: 48, color: AppColors.textTertiary.withOpacity(0.3)),
+        Icon(Icons.memory_outlined, size: 48, color: AppColors.textTertiary.withValues(alpha: 0.3)),
         const SizedBox(height: 16),
         Text(emptyText, style: TextStyle(color: AppColors.textSecondary, fontSize: 15, fontWeight: FontWeight.w600)),
       ]));
@@ -121,9 +121,9 @@ class MemoryBrowserScreen extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppColors.bgCard.withOpacity(0.5),
+          color: AppColors.bgCard.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.glassBorder.withOpacity(0.2)),
+          border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.2)),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
@@ -139,7 +139,7 @@ class MemoryBrowserScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.15),
+                color: color.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(6),
               ),
               child: Text(items[i].source,

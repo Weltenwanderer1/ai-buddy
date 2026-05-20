@@ -45,8 +45,18 @@ class NavigateToTool implements ToolInterface {
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
-    final destination = parameters['destination'] as String;
+    final destination = (parameters['destination'] as String? ?? '').trim();
     final profile = (parameters['profile'] as String?) ?? 'walking';
+
+    if (destination.isEmpty) {
+      return ToolResult(
+        toolName: definition.name,
+        parameters: parameters,
+        result: 'Kein Ziel angegeben.',
+        isError: true,
+        displayText: 'Kein Ziel angegeben',
+      );
+    }
 
     // ── Auto-Modus: Google Maps Intent (Turn-by-turn, real-time traffic) ──
     if (profile == 'driving') {

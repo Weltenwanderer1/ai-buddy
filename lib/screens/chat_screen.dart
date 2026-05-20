@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -121,6 +120,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final personaEvolution = context.read<PersonaEvolutionService>();
     final selfIdentity = context.read<SelfIdentityService>();
     final persona = context.read<PersonaService>();
+    final locationService = context.read<LocationService>();
 
     setState(() => _isThinking = true);
 
@@ -130,13 +130,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final locationService = context.read<LocationService>();
       final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService);
       await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
     } catch (e) {
       debugPrint('Streaming failed: $e');
       try {
-        final locationService = context.read<LocationService>();
         final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService);
         final reply = await chatService.sendMessage(
           userMessage: text,
@@ -291,7 +289,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(lv.errorMessage!, maxLines: 2),
         duration: const Duration(seconds: 3),
-        backgroundColor: AppColors.error.withOpacity(0.9),
+        backgroundColor: AppColors.error.withValues(alpha: 0.9),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         margin: const EdgeInsets.all(16),
@@ -400,9 +398,9 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primary.withOpacity(0.25),
+                color: AppColors.primary.withValues(alpha: 0.25),
                 shape: BoxShape.circle,
-                border: Border.all(color: AppColors.primary.withOpacity(0.4)),
+                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
               ),
               child: Center(
                 child: Text(
@@ -433,7 +431,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                     style: TextStyle(
                       fontSize: 9,
                       fontWeight: FontWeight.w500,
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       height: 1.0,
                     ),
                   ),
@@ -459,7 +457,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                   padding: const EdgeInsets.all(10),
                   child: Icon(
                     Icons.tune_rounded,
-                    color: AppColors.textTertiary.withOpacity(0.7),
+                    color: AppColors.textTertiary.withValues(alpha: 0.7),
                     size: 20,
                   ),
                 ),
@@ -483,9 +481,9 @@ class _ThinkingBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.6),
+        color: AppColors.bgCard.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -510,15 +508,15 @@ class _ThinkingBar extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
-              children: [
+              children: const [
                 Text('Denkt nach…',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                const _AnimatedDots(),
+                SizedBox(height: 4),
+                _AnimatedDots(),
               ],
             ),
           ),
-          Icon(Icons.psychology_alt_rounded, size: 20, color: AppColors.primary.withOpacity(0.6)),
+          Icon(Icons.psychology_alt_rounded, size: 20, color: AppColors.primary.withValues(alpha: 0.6)),
         ],
       ),
     );
@@ -552,7 +550,9 @@ class _AnimatedDotsState extends State<_AnimatedDots>
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -574,7 +574,7 @@ class _AnimatedDotsState extends State<_AnimatedDots>
                 height: 6,
                 margin: const EdgeInsets.symmetric(horizontal: 2),
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(opacity),
+                  color: AppColors.primary.withValues(alpha: opacity),
                   shape: BoxShape.circle,
                 ),
               ),
@@ -603,10 +603,10 @@ class _StreamingBubble extends StatelessWidget {
         margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
         decoration: BoxDecoration(
-          color: AppColors.bgCard.withOpacity(0.5),
+          color: AppColors.bgCard.withValues(alpha: 0.5),
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
-            color: AppColors.primary.withOpacity(0.3),
+            color: AppColors.primary.withValues(alpha: 0.3),
             width: 1,
           ),
         ),
@@ -630,7 +630,7 @@ class _StreamingBubble extends StatelessWidget {
                   width: 6,
                   height: 6,
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withOpacity(0.8),
+                    color: AppColors.primary.withValues(alpha: 0.8),
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -638,7 +638,7 @@ class _StreamingBubble extends StatelessWidget {
                 Text(
                   'Schreibt',
                   style: TextStyle(
-                    color: AppColors.primary.withOpacity(0.7),
+                    color: AppColors.primary.withValues(alpha: 0.7),
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
@@ -682,16 +682,16 @@ class _LiveStatusBar extends StatelessWidget {
         };
         final gradient = switch (state) {
           LiveVoiceState.listening => LinearGradient(
-            colors: [AppColors.success.withOpacity(0.2), AppColors.success.withOpacity(0.05)],
+            colors: [AppColors.success.withValues(alpha: 0.2), AppColors.success.withValues(alpha: 0.05)],
           ),
           LiveVoiceState.thinking => LinearGradient(
-            colors: [AppColors.secondary.withOpacity(0.2), AppColors.secondary.withOpacity(0.05)],
+            colors: [AppColors.secondary.withValues(alpha: 0.2), AppColors.secondary.withValues(alpha: 0.05)],
           ),
           LiveVoiceState.speaking => LinearGradient(
-            colors: [AppColors.primary.withOpacity(0.2), AppColors.primary.withOpacity(0.05)],
+            colors: [AppColors.primary.withValues(alpha: 0.2), AppColors.primary.withValues(alpha: 0.05)],
           ),
           LiveVoiceState.error => LinearGradient(
-            colors: [AppColors.error.withOpacity(0.2), AppColors.error.withOpacity(0.05)],
+            colors: [AppColors.error.withValues(alpha: 0.2), AppColors.error.withValues(alpha: 0.05)],
           ),
           _ => null,
         };
@@ -702,9 +702,9 @@ class _LiveStatusBar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
           decoration: BoxDecoration(
             gradient: gradient,
-            color: gradient == null ? AppColors.bgElevated.withOpacity(0.5) : null,
+            color: gradient == null ? AppColors.bgElevated.withValues(alpha: 0.5) : null,
             border: Border(
-              top: BorderSide(color: stateColor.withOpacity(0.3)),
+              top: BorderSide(color: stateColor.withValues(alpha: 0.3)),
             ),
           ),
           child: Row(
@@ -715,7 +715,7 @@ class _LiveStatusBar extends StatelessWidget {
                 Container(
                   width: 36, height: 36,
                   decoration: BoxDecoration(
-                    color: stateColor.withOpacity(0.15),
+                    color: stateColor.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
@@ -742,7 +742,7 @@ class _LiveStatusBar extends StatelessWidget {
                         '"${_trunc(liveVoice.lastTranscript!, 60)}"',
                         style: TextStyle(
                           fontSize: 12, fontStyle: FontStyle.italic,
-                          color: AppColors.textSecondary.withOpacity(0.8)),
+                          color: AppColors.textSecondary.withValues(alpha: 0.8)),
                         maxLines: 1, overflow: TextOverflow.ellipsis,
                       ),
                   ],
@@ -754,13 +754,13 @@ class _LiveStatusBar extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [AppColors.error.withOpacity(0.3), AppColors.error.withOpacity(0.15)],
+                      colors: [AppColors.error.withValues(alpha: 0.3), AppColors.error.withValues(alpha: 0.15)],
                     ),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  child: Row(mainAxisSize: MainAxisSize.min, children: const [
                     Icon(Icons.stop_rounded, size: 16, color: AppColors.error),
-                    const SizedBox(width: 6),
+                    SizedBox(width: 6),
                     Text('Stop', style: TextStyle(
                       color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 13)),
                   ]),
@@ -813,7 +813,7 @@ class _PulsingIconState extends State<_PulsingIcon> with SingleTickerProviderSta
       child: Container(
         width: 36, height: 36,
         decoration: BoxDecoration(
-          color: widget.color.withOpacity(0.15),
+          color: widget.color.withValues(alpha: 0.15),
           shape: BoxShape.circle,
         ),
         child: Icon(widget.icon, size: widget.size, color: widget.color),
@@ -907,12 +907,12 @@ class _StatusLineState extends State<_StatusLine> with SingleTickerProviderState
           width: 6,
           height: 6,
           decoration: BoxDecoration(
-            color: animate ? color.withOpacity(0.5 + _dotController.value * 0.5) : (widget.isLiveActive ? color : color.withOpacity(0.4)),
+            color: animate ? color.withValues(alpha: 0.5 + _dotController.value * 0.5) : (widget.isLiveActive ? color : color.withValues(alpha: 0.4)),
             shape: BoxShape.circle,
             boxShadow: animate || widget.isLiveActive
                 ? [
                     BoxShadow(
-                      color: color.withOpacity(0.5),
+                      color: color.withValues(alpha: 0.5),
                       blurRadius: 6,
                     ),
                   ]

@@ -21,7 +21,6 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
 
   List<String> _rules = [];
   List<String> _goals = [];
-  List<String> _experiences = [];
 
   bool _isEditing = false;
 
@@ -40,7 +39,6 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
     _purposeCtl.text = self.purpose;
     _rules = List.from(self.behaviorRules);
     _goals = List.from(self.ongoingGoals);
-    _experiences = List.from(self.keyExperiences);
   }
 
   Future<void> _save() async {
@@ -59,7 +57,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
   void _showSnack(String msg, Color c) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
-      backgroundColor: c.withOpacity(0.9),
+      backgroundColor: c.withValues(alpha: 0.9),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.all(16),
@@ -85,8 +83,8 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        AppColors.secondary.withOpacity(0.2),
-                        AppColors.secondary.withOpacity(0.05),
+                        AppColors.secondary.withValues(alpha: 0.2),
+                        AppColors.secondary.withValues(alpha: 0.05),
                         Colors.transparent,
                       ],
                     ),
@@ -103,10 +101,10 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: AppColors.glassBg.withOpacity(0.4),
+                                  color: AppColors.glassBg.withValues(alpha: 0.4),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.glassBorder.withOpacity(0.3),
+                                    color: AppColors.glassBorder.withValues(alpha: 0.3),
                                   ),
                                 ),
                                 child: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary, size: 20),
@@ -160,7 +158,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: AppColors.secondary.withOpacity(0.3),
+                              color: AppColors.secondary.withValues(alpha: 0.3),
                               blurRadius: 24,
                               offset: const Offset(0, 6),
                             ),
@@ -296,10 +294,10 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
                               child: Container(
                                 padding: const EdgeInsets.all(12),
                                 decoration: BoxDecoration(
-                                  color: AppColors.bgCard.withOpacity(0.4),
+                                  color: AppColors.bgCard.withValues(alpha: 0.4),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.glassBorder.withOpacity(0.2),
+                                    color: AppColors.glassBorder.withValues(alpha: 0.2),
                                   ),
                                 ),
                                 child: Text(e, style: _bodyStyle()),
@@ -337,9 +335,9 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.7),
+        color: AppColors.bgCard.withValues(alpha: 0.7),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder.withOpacity(0.3)),
+        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -372,16 +370,16 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
       maxLines: maxLines,
       style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
-        hintStyle: TextStyle(color: AppColors.textTertiary.withOpacity(0.5)),
+        hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5)),
         filled: true,
-        fillColor: AppColors.bgCard.withOpacity(0.4),
+        fillColor: AppColors.bgCard.withValues(alpha: 0.4),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.glassBorder.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.glassBorder.withValues(alpha: 0.3)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.glassBorder.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.glassBorder.withValues(alpha: 0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -405,7 +403,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
                   style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
                   decoration: InputDecoration(
                     filled: true,
-                    fillColor: AppColors.bgCard.withOpacity(0.4),
+                    fillColor: AppColors.bgCard.withValues(alpha: 0.4),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   ),
@@ -427,7 +425,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
             ],
           ),
         );
-      }).toList(),
+      }),
       const SizedBox(height: 4),
       GestureDetector(
         onTap: () {
@@ -436,9 +434,9 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
           setState(() {});
         },
         child: Row(
-          children: [
+          children: const [
             Icon(Icons.add_circle, color: AppColors.secondary, size: 20),
-            const SizedBox(width: 8),
+            SizedBox(width: 8),
             Text('Hinzufügen', style: TextStyle(color: AppColors.secondary, fontSize: 13, fontWeight: FontWeight.w600)),
           ],
         ),

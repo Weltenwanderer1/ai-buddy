@@ -1,14 +1,15 @@
 import 'dart:async';
-import 'dart:io' show File;
-import 'dart:math' show max, min, sqrt, pi, sin, cos, atan2;
+import 'dart:math' show max, min, sqrt, sin, cos, atan2;
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../services/navigation_service.dart';
 import '../services/location_service.dart';
 import '../services/tile_download_service.dart';
+import '../services/tts_playback_service.dart';
 
 /// Fullscreen pedestrian navigation with live tracking, follow-me, compass,
 /// step-by-step guidance and auto re-routing.
@@ -41,6 +42,12 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
   String? _offlineTilesDir;
   RouteResult? _route;
 
+  // ── TTS Voice Guidance ──
+  TtsPlaybackService? _ttsService;
+  int _lastAnnouncedStepIndex = -1;
+  bool _announcedNow = false;
+  bool _announcedArrived = false;
+
   // ── Live GPS ──
   StreamSubscription<Position>? _positionStream;
   DateTime? _lastReroute;
@@ -72,9 +79,15 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
     // Start live GPS tracking
     _startLocationTracking();
 
-    // Fit bounds after first frame
+    // Fit bounds and initialize TTS after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _fitBounds();
+      if (mounted) {
+        _fitBounds();
+        try {
+          _ttsService = Provider.of<TtsPlaybackService>(context, listen: false);
+          _announceStart();
+        } catch (_) {}
+      }
     });
   }
 
@@ -85,7 +98,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
       permission = await Geolocator.requestPermission();
     }
     if (permission == LocationPermission.denied ||
-        permission == LocationPermission.deniedForever) return;
+        permission == LocationPermission.deniedForever) {
+      return;
+    }
 
     final settings = LocationSettings(
       accuracy: LocationAccuracy.high,
@@ -116,6 +131,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
     // Update current step index based on proximity
     _updateCurrentStep(newLoc);
 
+    // Speak voice prompts
+    _speakGuidance();
+
     // Auto re-route if too far off
     _checkReroute(newLoc);
   }
@@ -143,7 +161,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
   void _checkReroute(LatLng userLoc) async {
     if (_route == null || widget.target == null) return;
     if (_lastReroute != null &&
-        DateTime.now().difference(_lastReroute!) < _rerouteCooldown) return;
+        DateTime.now().difference(_lastReroute!) < _rerouteCooldown) {
+      return;
+    }
 
     // Check if user is far from the route polyline
     final dist = _distanceToPolyline(userLoc, _route!.points);
@@ -224,9 +244,63 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
     return min(ap, min(bp, mp));
   }
 
+  void _announceStart() {
+    final route = _route;
+    if (_ttsService == null || route == null) return;
+    _ttsService!.speak(
+      'Navigation gestartet nach ${widget.destinationName}. Distanz ${route.distanceText}.'
+    );
+  }
+
+  void _speakGuidance() {
+    final tts = _ttsService;
+    final route = _route;
+    final userLoc = _userLocation;
+    if (tts == null || route == null || userLoc == null) return;
+
+    final steps = route.steps;
+    if (steps.isEmpty) return;
+
+    // Check arrival first
+    final target = widget.target;
+    if (target != null && !_announcedArrived) {
+      final distToTarget = _distanceMeters(userLoc, target);
+      if (distToTarget < 15.0) {
+        _announcedArrived = true;
+        tts.speak('Sie haben Ihr Ziel ${widget.destinationName} erreicht.');
+        return;
+      }
+    }
+
+    // Step guidance
+    if (_currentStepIndex < steps.length) {
+      if (_lastAnnouncedStepIndex != _currentStepIndex) {
+        _lastAnnouncedStepIndex = _currentStepIndex;
+        _announcedNow = false;
+        
+        final currentStep = steps[_currentStepIndex];
+        if (_currentStepIndex == steps.length - 1) {
+          tts.speak('Dem Weg folgen für ${currentStep.distance.round()} Meter bis zum Ziel.');
+        } else {
+          tts.speak('Dem Weg folgen für ${currentStep.distance.round()} Meter, dann ${currentStep.instruction}.');
+        }
+      } else {
+        if (_currentStepIndex + 1 < steps.length && !_announcedNow) {
+          final nextStep = steps[_currentStepIndex + 1];
+          final distToNext = _distanceMeters(userLoc, nextStep.location);
+          if (distToNext < 25.0) {
+            _announcedNow = true;
+            tts.speak('Jetzt: ${nextStep.instruction}.');
+          }
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _positionStream?.cancel();
+    _ttsService?.stop();
     super.dispose();
   }
 
@@ -424,9 +498,9 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [
+                        children: const [
                           Icon(Icons.wifi_off, color: AppColors.success, size: 14),
-                          const SizedBox(width: 4),
+                          SizedBox(width: 4),
                           Text('Offline',
                               style: TextStyle(color: AppColors.success, fontSize: 11,
                                   fontWeight: FontWeight.w600)),
@@ -472,7 +546,7 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
           // ── Steps Sheet ──
           if (route != null && _showSteps && route.steps.isNotEmpty)
             Positioned(
-              bottom: route != null ? 80 : 0, left: 0, right: 0,
+              bottom: 80, left: 0, right: 0,
               child: DraggableScrollableSheet(
                 initialChildSize: 0.35, minChildSize: 0.15, maxChildSize: 0.6,
                 snap: true,

@@ -166,7 +166,6 @@ class OllamaCloudService extends ChangeNotifier {
       ...messages,
     ];
 
-    final base = _normalizedBase;
     final isNative = _isOllamaNative;
 
     final url = isNative

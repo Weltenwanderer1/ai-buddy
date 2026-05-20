@@ -105,14 +105,15 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
     if (mounted) {
       setState(() => _isSaving = false);
       _showSnack('Persona gespeichert', AppColors.success);
-      Future.delayed(const Duration(milliseconds: 800), () => Navigator.pop(context));
+      final navigator = Navigator.of(context);
+      Future.delayed(const Duration(milliseconds: 800), () => navigator.pop());
     }
   }
 
   void _showSnack(String msg, Color color) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(fontWeight: FontWeight.w600)),
-      backgroundColor: color.withOpacity(0.9),
+      backgroundColor: color.withValues(alpha: 0.9),
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       margin: const EdgeInsets.all(16),
@@ -139,8 +140,8 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    AppColors.primary.withOpacity(0.2),
-                    AppColors.primary.withOpacity(0.05),
+                    AppColors.primary.withValues(alpha: 0.2),
+                    AppColors.primary.withValues(alpha: 0.05),
                     Colors.transparent,
                   ],
                 ),
@@ -158,10 +159,10 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                           child: Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: AppColors.glassBg.withOpacity(0.4),
+                              color: AppColors.glassBg.withValues(alpha: 0.4),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: AppColors.glassBorder.withOpacity(0.3),
+                                color: AppColors.glassBorder.withValues(alpha: 0.3),
                               ),
                             ),
                             child: Icon(
@@ -190,14 +191,14 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                             decoration: BoxDecoration(
                               gradient: _isSaving
                                   ? LinearGradient(colors: [
-                                      AppColors.success.withOpacity(0.6),
-                                      AppColors.primary.withOpacity(0.6),
+                                      AppColors.success.withValues(alpha: 0.6),
+                                      AppColors.primary.withValues(alpha: 0.6),
                                     ])
                                   : AppColors.primaryGradient,
                               borderRadius: BorderRadius.circular(14),
                               boxShadow: [
                                 BoxShadow(
-                                  color: AppColors.primary.withOpacity(0.3),
+                                  color: AppColors.primary.withValues(alpha: 0.3),
                                   blurRadius: 12,
                                   offset: const Offset(0, 4),
                                 ),
@@ -243,7 +244,7 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
-                          color: AppColors.primary.withOpacity(0.3),
+                          color: AppColors.primary.withValues(alpha: 0.3),
                           blurRadius: 30,
                           offset: const Offset(0, 8),
                         ),
@@ -336,12 +337,12 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                           decoration: BoxDecoration(
                             gradient: isSelected ? AppColors.primaryGradient : null,
-                            color: isSelected ? null : AppColors.bgCard.withOpacity(0.6),
+                            color: isSelected ? null : AppColors.bgCard.withValues(alpha: 0.6),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
                               color: isSelected
                                   ? Colors.transparent
-                                  : AppColors.glassBorder.withOpacity(0.3),
+                                  : AppColors.glassBorder.withValues(alpha: 0.3),
                               width: 1,
                             ),
                           ),
@@ -385,10 +386,10 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                   Container(
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      color: AppColors.bgElevated.withOpacity(0.5),
+                      color: AppColors.bgElevated.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(24),
                       border: Border.all(
-                        color: AppColors.glassBorder.withOpacity(0.3),
+                        color: AppColors.glassBorder.withValues(alpha: 0.3),
                         width: 1,
                       ),
                     ),
@@ -400,7 +401,7 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                             Container(
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withOpacity(0.15),
+                                color: AppColors.primary.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Icon(
@@ -424,10 +425,10 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                         Container(
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.black.withValues(alpha: 0.2),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(
-                              color: AppColors.glassBorder.withOpacity(0.2),
+                              color: AppColors.glassBorder.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Text(
@@ -456,7 +457,7 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
                         borderRadius: BorderRadius.circular(18),
                         boxShadow: [
                           BoxShadow(
-                            color: AppColors.primary.withOpacity(0.3),
+                            color: AppColors.primary.withValues(alpha: 0.3),
                             blurRadius: 20,
                             offset: const Offset(0, 6),
                           ),
@@ -528,15 +529,15 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.bgCard.withOpacity(0.6),
+        color: AppColors.bgCard.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: AppColors.glassBorder.withOpacity(0.3),
+          color: AppColors.glassBorder.withValues(alpha: 0.3),
           width: 1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 2),
           ),
@@ -553,11 +554,11 @@ class _PersonaEditorScreenState extends State<PersonaEditorScreen>
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(
-            color: AppColors.textTertiary.withOpacity(0.6),
+            color: AppColors.textTertiary.withValues(alpha: 0.6),
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
-          prefixIcon: Icon(icon, size: 20, color: AppColors.primary.withOpacity(0.7)),
+          prefixIcon: Icon(icon, size: 20, color: AppColors.primary.withValues(alpha: 0.7)),
           filled: false,
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),

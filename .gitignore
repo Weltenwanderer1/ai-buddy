@@ -18,6 +18,8 @@ config/secrets.json
 # OS
 .DS_Store
 Thumbs.db
+desktop.ini
+**/desktop.ini
 
 # Generated
 *.lock

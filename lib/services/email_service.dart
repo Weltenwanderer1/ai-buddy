@@ -6,7 +6,6 @@ import 'package:flutter/foundation.dart';
 /// Service that fetches and prioritizes emails from Gmail via the gog CLI.
 /// Filters out newsletters/promotions and surfaces truly important emails.
 class EmailService {
-  static const int _maxEmails = 15;
 
   /// Fetches unread inbox emails and classifies them by importance.
   Future<EmailDigest> fetchUnreadEmails({int maxResults = 15}) async {

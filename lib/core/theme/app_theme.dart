@@ -10,7 +10,7 @@ class AppTheme {
       seedColor: AppColors.primary,
       brightness: Brightness.dark,
       surface: AppColors.bgCard,
-      surfaceTint: AppColors.primary.withOpacity(0.1),
+      surfaceTint: AppColors.primary.withValues(alpha: 0.1),
       primary: AppColors.primary,
       secondary: AppColors.secondary,
       error: AppColors.error,
@@ -94,7 +94,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          side: BorderSide(color: Colors.white.withOpacity(0.12)),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
           foregroundColor: AppColors.textPrimary,
         ),
       ),
@@ -162,7 +162,7 @@ class AppTheme {
 
       // ── Divider ──
       dividerTheme: DividerThemeData(
-        color: Colors.white.withOpacity(0.06),
+        color: Colors.white.withValues(alpha: 0.06),
         thickness: 1,
         space: 24,
       ),
@@ -171,7 +171,7 @@ class AppTheme {
       switchTheme: SwitchThemeData(
         trackColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) return AppColors.primary;
-          return Colors.white.withOpacity(0.15);
+          return Colors.white.withValues(alpha: 0.15);
         }),
         thumbColor: WidgetStateProperty.all(Colors.white),
       ),

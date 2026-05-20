@@ -150,7 +150,7 @@ class _MessageInputState extends State<MessageInput> {
                 decoration: InputDecoration(
                   hintText: 'Nachricht',
                   hintStyle: TextStyle(
-                    color: AppColors.textTertiary.withOpacity(0.6),
+                    color: AppColors.textTertiary.withValues(alpha: 0.6),
                     fontSize: 15,
                   ),
                   border: InputBorder.none,
@@ -243,7 +243,7 @@ class _BlueCircleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: const Color(0xFF6B8DD6).withOpacity(0.9), // Periwinkle blau
+      color: const Color(0xFF6B8DD6).withValues(alpha: 0.9), // Periwinkle blau
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
@@ -263,33 +263,3 @@ class _BlueCircleButton extends StatelessWidget {
   }
 }
 
-/// Ghost-Icon: kein Hintergrund, nur Umriss-Icon in Grau.
-/// Für Smiley und Paperclip.
-class _GhostIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback? onTap;
-
-  const _GhostIcon({required this.icon, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      shape: const CircleBorder(),
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 36,
-          height: 36,
-          alignment: Alignment.center,
-          child: Icon(
-            icon,
-            color: AppColors.textTertiary.withOpacity(0.7),
-            size: 22,
-          ),
-        ),
-      ),
-    );
-  }
-}
