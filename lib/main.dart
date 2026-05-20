@@ -12,6 +12,7 @@ import 'services/secure_config_service.dart';
 import 'services/ollama_cloud_service.dart';
 import 'services/elevenlabs_service.dart';
 import 'services/tts_playback_service.dart';
+import 'services/openrouter_tts_service.dart';
 import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
@@ -114,7 +115,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         apiKey: _secureConfig.elevenLabsApiKey, voiceId: _secureConfig.elevenLabsVoiceId,
         modelId: _secureConfig.elevenLabsModelId,
       );
-      _ttsPlaybackService = TtsPlaybackService(_elevenLabsService);
+      final openRouterTts = OpenRouterTtsService(
+        apiKey: _secureConfig.openRouterApiKey,
+        model: _secureConfig.openRouterTtsModel,
+        voice: _secureConfig.openRouterTtsVoice,
+      );
+      _ttsPlaybackService = TtsPlaybackService(_elevenLabsService, openRouterTts);
       await _ttsPlaybackService.loadEnginePreference(_secureConfig);
       _personaEvolution = PersonaEvolutionService(_ollamaService);
       try { await _personaEvolution.init(); } catch (e) { debugPrint('Evolution init: $e'); }

@@ -4,18 +4,29 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import 'elevenlabs_service.dart';
+import 'openrouter_tts_service.dart';
 import 'device_tts_service.dart';
 import 'secure_config_service.dart';
 
 /// TTS engine selection.
 enum TtsEngine {
   elevenLabs,
+  openRouter,
   device;
+  
+  String get label {
+    switch (this) {
+      case TtsEngine.elevenLabs: return 'ElevenLabs';
+      case TtsEngine.openRouter: return 'OpenRouter TTS';
+      case TtsEngine.device: return 'Gerät';
+    }
+  }
 }
 
-/// TTS playback service — supports ElevenLabs API and Device-native TTS.
+/// TTS playback service — supports ElevenLabs, OpenRouter TTS, and Device-native TTS.
 class TtsPlaybackService extends ChangeNotifier {
   final ElevenLabsService _elevenLabs;
+  final OpenRouterTtsService _openRouterTts;
   final DeviceTtsService _deviceTts = DeviceTtsService();
   final AudioPlayer _player = AudioPlayer();
   String? currentlyPlayingId;
@@ -23,18 +34,21 @@ class TtsPlaybackService extends ChangeNotifier {
   Completer<void>? _playbackCompleter;
 
   /// Current TTS engine.
-  TtsEngine _engine = TtsEngine.elevenLabs;
+  TtsEngine _engine = TtsEngine.openRouter;
   TtsEngine get engine => _engine;
 
   /// Last error message for debugging.
   String? lastError;
 
-  TtsPlaybackService(this._elevenLabs);
+  TtsPlaybackService(this._elevenLabs, this._openRouterTts);
 
   bool get isPlaying => _player.playing;
   bool get isAvailable {
-    if (_engine == TtsEngine.elevenLabs) return _elevenLabs.isAvailable;
-    return _deviceTts.isAvailable;
+    switch (_engine) {
+      case TtsEngine.elevenLabs: return _elevenLabs.isAvailable;
+      case TtsEngine.openRouter: return _openRouterTts.isAvailable;
+      case TtsEngine.device: return _deviceTts.isAvailable;
+    }
   }
 
   /// Switch TTS engine.
@@ -59,12 +73,20 @@ class TtsPlaybackService extends ChangeNotifier {
   /// Load engine preference from secure config.
   Future<void> loadEnginePreference(SecureConfigService config) async {
     final pref = config.ttsEngine;
-    _engine = pref == 'device' ? TtsEngine.device : TtsEngine.elevenLabs;
+    _engine = switch (pref) {
+      'device' => TtsEngine.device,
+      'elevenlabs' => TtsEngine.elevenLabs,
+      'openrouter' => TtsEngine.openRouter,
+      _ => TtsEngine.openRouter,
+    };
     if (_engine == TtsEngine.device) {
       await _deviceTts.init();
     }
     notifyListeners();
   }
+
+  /// Get the OpenRouter TTS service (for settings).
+  OpenRouterTtsService get openRouterTts => _openRouterTts;
 
   /// Synthesize text and play the resulting audio.
   /// Returns true if successful, false if TTS is not available or failed.
@@ -75,16 +97,24 @@ class TtsPlaybackService extends ChangeNotifier {
     final cleanText = _sanitizeForTts(text);
     if (cleanText.isEmpty) return true; // nothing to speak after sanitizing
 
-    if (_engine == TtsEngine.device) {
-      return _speakDevice(cleanText, messageId: messageId);
+    switch (_engine) {
+      case TtsEngine.device:
+        return _speakDevice(cleanText, messageId: messageId);
+      case TtsEngine.elevenLabs:
+        final ok = await _speakElevenLabs(cleanText, messageId: messageId);
+        if (!ok) {
+          debugPrint('TTS: ElevenLabs failed ($lastError). Falling back to OpenRouter TTS.');
+          return _speakOpenRouter(cleanText, messageId: messageId);
+        }
+        return true;
+      case TtsEngine.openRouter:
+        final ok = await _speakOpenRouter(cleanText, messageId: messageId);
+        if (!ok) {
+          debugPrint('TTS: OpenRouter TTS failed ($lastError). Falling back to local device TTS.');
+          return _speakDevice(cleanText, messageId: messageId);
+        }
+        return true;
     }
-
-    final ok = await _speakElevenLabs(cleanText, messageId: messageId);
-    if (!ok) {
-      debugPrint('TTS: ElevenLabs synthesis failed ($lastError). Falling back to local device TTS.');
-      return _speakDevice(cleanText, messageId: messageId);
-    }
-    return true;
   }
 
   Future<bool> _speakDevice(String text, {String? messageId}) async {
@@ -190,8 +220,80 @@ class TtsPlaybackService extends ChangeNotifier {
     }
   }
 
+  Future<bool> _speakOpenRouter(String text, {String? messageId}) async {
+    if (!_openRouterTts.isAvailable) {
+      lastError = 'OpenRouter TTS nicht konfiguriert (API Key fehlt)';
+      debugPrint('TTS: $lastError');
+      return false;
+    }
+    if (text.trim().isEmpty) {
+      lastError = 'Leerer Text — nichts zu sagen';
+      debugPrint('TTS: $lastError');
+      return false;
+    }
+
+    try {
+      // Cache check
+      final cacheDir = await _getCacheDir();
+      final cacheFile = File('${cacheDir.path}/${_hashText(text)}_or.mp3');
+
+      List<int> audioBytes;
+      if (await cacheFile.exists()) {
+        debugPrint('TTS: using cached OpenRouter audio for "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
+        audioBytes = await cacheFile.readAsBytes();
+      } else {
+        debugPrint('TTS: OpenRouter synthesizing "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
+        audioBytes = await _openRouterTts.synthesize(text);
+        if (audioBytes.isEmpty) {
+          lastError = 'OpenRouter TTS gab leere Audio-Daten zurück';
+          debugPrint('TTS: $lastError');
+          return false;
+        }
+        debugPrint('TTS: got ${audioBytes.length} bytes from OpenRouter, caching…');
+        await cacheFile.writeAsBytes(audioBytes);
+      }
+
+      currentlyPlayingId = messageId;
+      notifyListeners();
+
+      await _player.setFilePath(cacheFile.path);
+
+      final completer = Completer<void>();
+      _playbackCompleter = completer;
+
+      final subscription = _player.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      }, onError: (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      });
+
+      try {
+        await _player.play();
+        await completer.future;
+      } finally {
+        await subscription.cancel();
+        _playbackCompleter = null;
+        currentlyPlayingId = null;
+        notifyListeners();
+      }
+
+      return true;
+    } catch (e) {
+      currentlyPlayingId = null;
+      lastError = 'OpenRouter TTS Fehler: $e';
+      debugPrint('TTS OpenRouter speak error: $e');
+      notifyListeners();
+      return false;
+    }
+  }
+
   /// Test the ElevenLabs connection. Returns the test result.
   Future<ElevenLabsTestResult> testConnection() => _elevenLabs.testConnection();
+
+  /// Test the OpenRouter TTS connection.
+  Future<OpenRouterTtsTestResult> testOpenRouterConnection() => _openRouterTts.testConnection();
 
   /// Stop current playback.
   Future<void> stop() async {

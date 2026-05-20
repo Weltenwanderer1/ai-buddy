@@ -38,15 +38,21 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _openRouterModelController = TextEditingController();
   final _openRouterFallbackController = TextEditingController();
 
+  // OpenRouter TTS controllers
+  final _orTtsVoiceController = TextEditingController();
+
   bool _isTestingOllama = false;
   String? _ollamaTestResult;
   bool _isTestingElevenLabs = false;
   String? _elevenLabsTestResult;
   List<String>? _elevenLabsAvailableVoices;
+  bool _isTestingOrTts = false;
+  String? _orTtsTestResult;
 
   bool _ollamaExpanded = true;
   bool _elevenExpanded = true;
   String _llmProvider = 'ollama'; // 'ollama' or 'openrouter'
+  TtsEngine _ttsEngine = TtsEngine.openRouter;
 
   @override
   void initState() {
@@ -67,6 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     _elevenKeyController.text = config.elevenLabsApiKey;
     _elevenVoiceController.text = config.elevenLabsVoiceId;
     _elevenModelController.text = config.elevenLabsModelId;
+    _orTtsVoiceController.text = config.openRouterTtsVoice;
+    _ttsEngine = switch (config.ttsEngine) {
+      'device' => TtsEngine.device,
+      'elevenlabs' => TtsEngine.elevenLabs,
+      _ => TtsEngine.openRouter,
+    };
   }
 
   @override
@@ -81,6 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterKeyController.dispose();
     _openRouterModelController.dispose();
     _openRouterFallbackController.dispose();
+    _orTtsVoiceController.dispose();
     super.dispose();
   }
 
@@ -159,6 +172,53 @@ class _SettingsScreenState extends State<SettingsScreen>
       setState(() => _elevenLabsTestResult = e.toString());
     } finally {
       if (mounted) setState(() => _isTestingElevenLabs = false);
+    }
+  }
+
+  Future<void> _saveTtsConfig() async {
+    final config = context.read<SecureConfigService>();
+    final tts = context.read<TtsPlaybackService>();
+    await config.setTtsEngine(_ttsEngine.name);
+    await config.setElevenLabsApiKey(_elevenKeyController.text);
+    await config.setElevenLabsVoiceId(_elevenVoiceController.text);
+    await config.setElevenLabsModelId(_elevenModelController.text);
+    await config.setOpenRouterTtsVoice(_orTtsVoiceController.text);
+    // Update ElevenLabs service
+    final eleven = context.read<ElevenLabsService>();
+    eleven.updateConfig(
+      apiKey: _elevenKeyController.text,
+      voiceId: _elevenVoiceController.text,
+      modelId: _elevenModelController.text,
+    );
+    // Update OpenRouter TTS service
+    final orTts = tts.openRouterTts;
+    orTts.updateConfig(
+      apiKey: config.openRouterApiKey,
+      voice: _orTtsVoiceController.text,
+      model: config.openRouterTtsModel,
+    );
+    tts.engine = _ttsEngine;
+    if (_ttsEngine == TtsEngine.device) {
+      await tts.initDeviceTts();
+    }
+    if (mounted) _showSnack('Sprachausgabe gespeichert ✅', AppColors.success);
+  }
+
+  Future<void> _testOrTts() async {
+    setState(() {
+      _isTestingOrTts = true;
+      _orTtsTestResult = null;
+    });
+    try {
+      final tts = context.read<TtsPlaybackService>();
+      final result = await tts.testOpenRouterConnection();
+      setState(() => _orTtsTestResult = result.success
+          ? 'Verbindung OK — ${result.message}'
+          : 'Fehler: ${result.message}');
+    } catch (e) {
+      setState(() => _orTtsTestResult = 'Fehler: $e');
+    } finally {
+      if (mounted) setState(() => _isTestingOrTts = false);
     }
   }
 
@@ -639,54 +699,114 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Sprache ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'Sprache',
+            title: 'Sprachausgabe',
             icon: Icons.record_voice_over_rounded,
             color: AppColors.secondary,
             expanded: _elevenExpanded,
             onToggle: () => setState(() => _elevenExpanded = !_elevenExpanded),
             children: [
-              _GlassTextField(
-                label: 'ElevenLabs Key',
-                icon: Icons.key_rounded,
-                controller: _elevenKeyController,
-                obscure: true,
+              // TTS Engine Selector
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Text('TTS Engine', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                    const SizedBox(width: 12),
+                    ...TtsEngine.values.map((e) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _ttsEngine = e),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                          decoration: BoxDecoration(
+                            gradient: _ttsEngine == e ? AppColors.secondaryGradient : null,
+                            color: _ttsEngine == e ? null : AppColors.bgCard.withValues(alpha: 0.5),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: _ttsEngine == e ? Colors.transparent : AppColors.glassBorder.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Text(e.label, style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: _ttsEngine == e ? FontWeight.w700 : FontWeight.w500,
+                            color: _ttsEngine == e ? Colors.white : AppColors.textSecondary,
+                          )),
+                        ),
+                      ),
+                    )),
+                  ],
+                ),
               ),
-              _GlassTextField(
-                label: 'Voice ID',
-                icon: Icons.record_voice_over_rounded,
-                controller: _elevenVoiceController,
-              ),
-              _GlassTextField(
-                label: 'Model',
-                icon: Icons.settings_voice_rounded,
-                controller: _elevenModelController,
-              ),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: _GradientButton(
-                  icon: Icons.save_rounded,
-                  label: 'Speichern',
-                  onTap: _saveElevenLabsConfig,
-                )),
-                const SizedBox(width: 8),
-                Expanded(child: _OutlineButton(
-                  icon: _isTestingElevenLabs ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                  label: _isTestingElevenLabs ? 'Teste...' : 'Verbindung testen',
-                  onTap: _isTestingElevenLabs ? null : _testElevenLabs,
-                )),
-              ]),
-              if (_elevenLabsTestResult != null)
-                _ResultBox(text: _elevenLabsTestResult!),
-              if (_elevenLabsAvailableVoices != null && _elevenLabsAvailableVoices!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _elevenLabsAvailableVoices!.map((v) {
-                      final match = RegExp(r'^(.+)\s\(([^)]+)\)$').firstMatch(v);
-                      final name = match != null ? match.group(1)!.trim() : v;
-                      final id = match != null ? match.group(2)!.trim() : v;
+              _Divider(),
+              // OpenRouter TTS config (shown when OpenRouter selected)
+              if (_ttsEngine == TtsEngine.openRouter) ...[
+                _GlassTextField(
+                  label: 'Voice (alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse)',
+                  icon: Icons.record_voice_over_rounded,
+                  controller: _orTtsVoiceController,
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _GradientButton(
+                    icon: Icons.save_rounded,
+                    label: 'Speichern',
+                    onTap: _saveTtsConfig,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _OutlineButton(
+                    icon: _isTestingOrTts ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
+                    label: _isTestingOrTts ? 'Teste...' : 'Verbindung testen',
+                    onTap: _isTestingOrTts ? null : _testOrTts,
+                  )),
+                ]),
+                if (_orTtsTestResult != null)
+                  _ResultBox(text: _orTtsTestResult!),
+              ],
+              // ElevenLabs config (shown when ElevenLabs selected)
+              if (_ttsEngine == TtsEngine.elevenLabs) ...[
+                _GlassTextField(
+                  label: 'ElevenLabs Key',
+                  icon: Icons.key_rounded,
+                  controller: _elevenKeyController,
+                  obscure: true,
+                ),
+                _GlassTextField(
+                  label: 'Voice ID',
+                  icon: Icons.record_voice_over_rounded,
+                  controller: _elevenVoiceController,
+                ),
+                _GlassTextField(
+                  label: 'Model',
+                  icon: Icons.settings_voice_rounded,
+                  controller: _elevenModelController,
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _GradientButton(
+                    icon: Icons.save_rounded,
+                    label: 'Speichern',
+                    onTap: _saveTtsConfig,
+                  )),
+                  const SizedBox(width: 8),
+                  Expanded(child: _OutlineButton(
+                    icon: _isTestingElevenLabs ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
+                    label: _isTestingElevenLabs ? 'Teste...' : 'Verbindung testen',
+                    onTap: _isTestingElevenLabs ? null : _testElevenLabs,
+                  )),
+                ]),
+                if (_elevenLabsTestResult != null)
+                  _ResultBox(text: _elevenLabsTestResult!),
+                if (_elevenLabsAvailableVoices != null && _elevenLabsAvailableVoices!.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _elevenLabsAvailableVoices!.map((v) {
+                        final match = RegExp(r'^(.+)\s\(([^)]+)\)$').firstMatch(v);
+                        final name = match != null ? match.group(1)!.trim() : v;
+                        final id = match != null ? match.group(2)!.trim() : v;
                       final isSelected = _elevenVoiceController.text.trim() == id;
 
                       return GestureDetector(
@@ -719,6 +839,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     }).toList(),
                   ),
                 ),
+              ],
             ],
           )),
 

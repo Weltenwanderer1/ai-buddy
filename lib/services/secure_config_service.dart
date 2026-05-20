@@ -40,6 +40,8 @@ class SecureConfigService {
       keyElevenLabsVoiceId,
       keyElevenLabsModelId,
       keyTtsEngine,
+      keyOpenRouterTtsModel,
+      keyOpenRouterTtsVoice,
       keyTavilyApiKey,
     ];
 
@@ -180,10 +182,28 @@ class SecureConfigService {
 
   // TTS engine preference
   static const keyTtsEngine = 'TTS_ENGINE';
-  String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'elevenlabs';
+  static const keyOpenRouterTtsModel = 'OPENROUTER_TTS_MODEL';
+  static const keyOpenRouterTtsVoice = 'OPENROUTER_TTS_VOICE';
+
+  String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'openrouter';
+
+  String get openRouterTtsModel =>
+      _cache[keyOpenRouterTtsModel] ?? _env(keyOpenRouterTtsModel) ?? 'openai/gpt-4o-mini-tts-2025-12-15';
+  String get openRouterTtsVoice =>
+      _cache[keyOpenRouterTtsVoice] ?? _env(keyOpenRouterTtsVoice) ?? 'nova';
 
   Future<void> setTtsEngine(String value) async {
     await _storage.write(key: keyTtsEngine, value: value);
     _cache[keyTtsEngine] = value;
+  }
+
+  Future<void> setOpenRouterTtsModel(String value) async {
+    await _storage.write(key: keyOpenRouterTtsModel, value: value);
+    _cache[keyOpenRouterTtsModel] = value;
+  }
+
+  Future<void> setOpenRouterTtsVoice(String value) async {
+    await _storage.write(key: keyOpenRouterTtsVoice, value: value);
+    _cache[keyOpenRouterTtsVoice] = value;
   }
 }
