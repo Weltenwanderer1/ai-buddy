@@ -56,6 +56,20 @@ class SecureConfigService {
         }
       }
     }
+
+    // Default ElevenLabs config (Free Plan)
+    if ((_cache[keyElevenLabsApiKey]?.isEmpty ?? true) &&
+        (_env(keyElevenLabsApiKey)?.isEmpty ?? true)) {
+      const defaultKey = 'sk_8a79b0838d5c6a1740dc325178bda09f9553e5979b0866d7';
+      await _storage.write(key: keyElevenLabsApiKey, value: defaultKey);
+      _cache[keyElevenLabsApiKey] = defaultKey;
+    }
+    if ((_cache[keyElevenLabsVoiceId]?.isEmpty ?? true) &&
+        (_env(keyElevenLabsVoiceId)?.isEmpty ?? true)) {
+      const defaultVoice = 'XB0fDUnXU5powFXDhCwa'; // ElevenLabs "Bella" (warm, natürlich)
+      await _storage.write(key: keyElevenLabsVoiceId, value: defaultVoice);
+      _cache[keyElevenLabsVoiceId] = defaultVoice;
+    }
   }
 
   // --- Helpers ---

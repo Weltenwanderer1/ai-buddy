@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -91,60 +90,64 @@ class MessageBubble extends StatelessWidget {
     ));
   }
 
-  // ── User Bubble (rechts, dynamischer Orange-Lila-Rot Gradient) ──
+  // ── User Bubble (rechts, screen-space Farbverlauf Orange→Lila→Blau) ──
+  static const _palette = [
+    Color(0xFFFF8C42), // warmes Orange
+    Color(0xFFE76F51), // Koralle
+    Color(0xFFF4A261), // sandiges Orange
+    Color(0xFFE0B1CB), // Pastell-Rosa
+    Color(0xFFA56CC1), // Lila
+    Color(0xFF7B68D4), // blau-violett
+    Color(0xFF6B8DD6), // Periwinkle Blau
+    Color(0xFFFF8C42), // wieder Orange (seamless)
+  ];
+
   Widget _userBubble(BuildContext context) {
     if (scrollOffsetNotifier != null && index != null) {
       return ValueListenableBuilder<double>(
         valueListenable: scrollOffsetNotifier!,
         builder: (context, offset, child) {
-          final gradient = _dynamicUserGradient(offset, index!);
+          final gradient = _screenSpaceGradient(offset, index!);
           return _userBubbleWithGradient(context, gradient);
         },
       );
     }
-    // Fallback: statischer Gradient
     return _userBubbleWithGradient(context, AppColors.userBubble);
   }
 
-  /// Eigene lerp (kein extra Import nötig)
-  double _lerp(double a, double b, double t) => a + (b - a) * t.clamp(0.0, 1.0);
+  /// Screen-space Palette: Oben Orange → unten Lila/Blau.
+  /// Jede Bubble hat einen Grundton = (index + scroll*0.015) auf der Palette.
+  /// Innerhalb der Bubble ein kleiner Farbverlauf (Mini-Slice der Palette).
+  LinearGradient _screenSpaceGradient(double scrollOffset, int idx) {
+    // Virtuelle Position auf der Palette (float = erlaubt Zwischenfarben)
+    final pos = (idx + scrollOffset * 0.015) % (_palette.length - 1);
+    final p0 = pos.floor();
+    final p1 = p0 + 1;
+    final t = pos - p0; // 0.0 .. 1.0 zwischen zwei Palettenfarben
 
-  /// Dynamischer Farbverlauf: Orange → Lila → Blau → Orange …
-  /// Sehr subtil — verschiebt sich langsam beim Scrollen.
-  LinearGradient _dynamicUserGradient(double scrollOffset, int idx) {
-    // Viel langsamerer Scroll-Einfluss (10x weniger empfindlich)
-    final phase = (scrollOffset * 0.0003 + idx * 0.1) % (pi * 2);
-    
-    final t = (sin(phase) + 1) / 2; // 0..1 sanft oszillierend
-    
-    // Pastell-Orange → Pastell-Lila → Pastell-Blau (helle, wenig gesättigte Töne)
-    final c1 = _hsvToColor(_lerp(30, 45, t), 0.65, 0.85);   // Warmes Pastell-Orange
-    final c2 = _hsvToColor(_lerp(255, 275, t), 0.55, 0.80); // Pastell-Lila
-    final c3 = _hsvToColor(_lerp(195, 215, t), 0.55, 0.85); // Pastell-Blau
-    
+    final c0 = _palette[p0];
+    final c1 = _palette[p1];
+    final c2 = _palette[(p1 + 1) % _palette.length];
+
+    // Top = etwas wärmer, Bottom = etwas kühler (Mini-Slice-Verlauf)
+    final top    = _lerpColor(c0, c1, t);
+    final bottom = _lerpColor(c1, c2, t);
+
     return LinearGradient(
       begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-      colors: [c1, c2, c3, c1],
-      stops: const [0.0, 0.35, 0.7, 1.0],
+      end:   Alignment.bottomRight,
+      colors: [top, bottom],
     );
   }
 
-  Color _hsvToColor(double hue, double saturation, double value) {
-    final h = ((hue % 360) + 360) % 360;
-    final c = value * saturation;
-    final x = c * (1 - ((h / 60) % 2 - 1).abs());
-    final m = value - c;
-    
-    late final double r, g, b;
-    if (h < 60)       { r = c; g = x; b = 0; }
-    else if (h < 120) { r = x; g = c; b = 0; }
-    else if (h < 180) { r = 0; g = c; b = x; }
-    else if (h < 240) { r = 0; g = x; b = c; }
-    else if (h < 300) { r = x; g = 0; b = c; }
-    else               { r = c; g = 0; b = x; }
-    
-    return Color.fromARGB(255, ((r + m) * 255).round(), ((g + m) * 255).round(), ((b + m) * 255).round());
+  Color _lerpColor(Color a, Color b, double t) {
+    final tt = t.clamp(0.0, 1.0);
+    return Color.fromARGB(
+      255,
+      (a.r * 255 + (b.r * 255 - a.r * 255) * tt).round(),
+      (a.g * 255 + (b.g * 255 - a.g * 255) * tt).round(),
+      (a.b * 255 + (b.b * 255 - a.b * 255) * tt).round(),
+    );
   }
 
   Widget _userBubbleWithGradient(BuildContext context, Gradient gradient) {
