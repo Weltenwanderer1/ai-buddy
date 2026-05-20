@@ -116,7 +116,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         modelId: _secureConfig.elevenLabsModelId,
       );
       final openRouterTts = OpenRouterTtsService(
-        apiKey: _secureConfig.openRouterApiKey,
+        apiKey: _secureConfig.openRouterApiKey.isNotEmpty
+            ? _secureConfig.openRouterApiKey
+            : _secureConfig.ollamaApiKey, // Fallback: Ollama Cloud key works on OpenRouter too
         model: _secureConfig.openRouterTtsModel,
         voice: _secureConfig.openRouterTtsVoice,
       );
