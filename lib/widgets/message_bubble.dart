@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
@@ -17,8 +18,16 @@ import 'package:provider/provider.dart';
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final Animation<double>? animation;
+  final int? index;
+  final ValueNotifier<double>? scrollOffsetNotifier;
 
-  const MessageBubble({super.key, required this.message, this.animation});
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.animation,
+    this.index,
+    this.scrollOffsetNotifier,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -82,8 +91,62 @@ class MessageBubble extends StatelessWidget {
     ));
   }
 
-  // ── User Bubble (rechts, wie Telegram eigene Nachricht) ──
+  // ── User Bubble (rechts, dynamischer Orange-Lila-Rot Gradient) ──
   Widget _userBubble(BuildContext context) {
+    if (scrollOffsetNotifier != null && index != null) {
+      return ValueListenableBuilder<double>(
+        valueListenable: scrollOffsetNotifier!,
+        builder: (context, offset, child) {
+          final gradient = _dynamicUserGradient(offset, index!);
+          return _userBubbleWithGradient(context, gradient);
+        },
+      );
+    }
+    // Fallback: statischer Gradient
+    return _userBubbleWithGradient(context, AppColors.userBubble);
+  }
+
+  /// Eigene lerp (kein extra Import nötig)
+  double _lerp(double a, double b, double t) => a + (b - a) * t.clamp(0.0, 1.0);
+
+  /// Dynamischer Farbverlauf: Orange → Lila → Rot → Orange …
+  /// Ändert sich subtil beim Scrollen basierend auf Offset + Bubble-Index.
+  LinearGradient _dynamicUserGradient(double scrollOffset, int idx) {
+    final phase = (scrollOffset * 0.005 + idx * 0.3) % (pi * 2);
+    
+    // Farben im HSL-Raum drehen: Orange(20°) → Lila(270°) → Rot(0°)
+    final t = (sin(phase) + 1) / 2; // 0..1 oszillierend
+    
+    final c1 = _hsvToColor(_lerp(20, 35, t), 0.95, 0.65);   // Orange-Range
+    final c2 = _hsvToColor(_lerp(270, 300, t), 0.85, 0.55); // Lila-Range
+    final c3 = _hsvToColor(_lerp(340, 10, t), 0.90, 0.60);   // Rot-Range
+    
+    return LinearGradient(
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+      colors: [c1, c2, c3, c1],
+      stops: const [0.0, 0.35, 0.7, 1.0],
+    );
+  }
+
+  Color _hsvToColor(double hue, double saturation, double value) {
+    final h = ((hue % 360) + 360) % 360;
+    final c = value * saturation;
+    final x = c * (1 - ((h / 60) % 2 - 1).abs());
+    final m = value - c;
+    
+    late final double r, g, b;
+    if (h < 60)       { r = c; g = x; b = 0; }
+    else if (h < 120) { r = x; g = c; b = 0; }
+    else if (h < 180) { r = 0; g = c; b = x; }
+    else if (h < 240) { r = 0; g = x; b = c; }
+    else if (h < 300) { r = x; g = 0; b = c; }
+    else               { r = c; g = 0; b = x; }
+    
+    return Color.fromARGB(255, ((r + m) * 255).round(), ((g + m) * 255).round(), ((b + m) * 255).round());
+  }
+
+  Widget _userBubbleWithGradient(BuildContext context, Gradient gradient) {
     return GestureDetector(
       onLongPressStart: (details) => _showCopyMenu(context, details.globalPosition),
       child: Row(
@@ -95,12 +158,12 @@ class MessageBubble extends StatelessWidget {
               margin: const EdgeInsets.only(left: 64),
               padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
               decoration: BoxDecoration(
-                gradient: AppColors.userBubble,
+                gradient: gradient,
                 borderRadius: const BorderRadius.only(
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
                   bottomLeft: Radius.circular(18),
-                  bottomRight: Radius.circular(4), // Harte untere linke Ecke
+                  bottomRight: Radius.circular(4),
                 ),
               ),
               child: SelectableText(

@@ -36,6 +36,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin {
   final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   bool _isStreaming = false;
   bool _isThinking = false;
   bool _isSending = false;
@@ -51,14 +52,21 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_onScroll);
     _initToolRegistry();
     _loadWelcome();
     _initProactiveEngine();
   }
 
+  void _onScroll() {
+    _scrollOffsetNotifier.value = _scrollController.offset;
+  }
+
   @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
+    _scrollOffsetNotifier.dispose();
     _liveVoice?.removeListener(_onLiveVoiceUpdate);
     _liveVoice?.stop();
     _proactive?.stop();
@@ -334,7 +342,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 itemCount: chatHistory.messages.length,
                 itemBuilder: (context, index) {
                   final message = chatHistory.messages[index];
-                  return MessageBubble(message: message);
+                  return MessageBubble(
+                    message: message,
+                    index: index,
+                    scrollOffsetNotifier: _scrollOffsetNotifier,
+                  );
                 },
               ),
             ),
