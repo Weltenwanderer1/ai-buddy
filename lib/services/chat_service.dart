@@ -315,56 +315,9 @@ class ChatService {
   String _withToolInstructions(String basePrompt, String? preloadedLiveData) {
     final toolNames = _toolRegistry?.toolNames.join(', ') ?? '';
     final buffer = StringBuffer(basePrompt);
-    buffer.write('\n\nVerfuegbare Tools: $toolNames.');
-    buffer.write(
-        '\nNutze Tools fuer echte Aktionen und aktuelle Informationen, statt Aktionen nur zu beschreiben.');
-    buffer.write(
-        '\nWenn ein Nutzer dich bittet etwas auf dem Gerät zu tun, entscheide semantisch, welches Tool passt, und rufe es mit konkreten Parametern auf. Antworte erst nach dem Tool-Ergebnis kurz und natürlich.');
-    buffer.write(
-        '\nFalls native tool_calls nicht funktionieren, darfst du exakt dieses Inline-Format ausgeben: <function_calls><invoke name="tool_name"><parameter name="param">wert</parameter></invoke></function_calls>. Keine Aktion als Fließtext vorspielen.');
-    if (_toolRegistry?.hasTool('open_app') == true) {
-      buffer.write(
-          '\nopen_app: für App öffnen/starten/aufrufen. Parameter app (App-Name oder Package). Nicht open_url und nicht Play Store verwenden.');
-    }
-    if (_toolRegistry?.hasTool('open_navigation') == true) {
-      buffer.write(
-          '\nopen_navigation: Standard ist ZU FUSS. Zeigt OSM-Karte IN der App mit Live-Tracking + Schritt-fuer-Schritt. Profile: walking (default, Fuss), cycling (Rad, auch in App), driving (Auto → Google Maps). Nur bei Auto "driving" angeben.');
-      buffer.write(
-          '\nWICHTIG: Wenn ein Nutzer zu einem Ort navigieren will und du die Adresse nicht kennst:');
-      buffer.write(
-          '\n1. Prüfe zuerst search_memories — dort steht oft die Adresse.');
-      buffer.write(
-          '\n2. Wenn Memories keine Adresse haben, rufe web_search mit dem Ortsnamen auf (z.B. "Magister Chalusch Wien Adresse"). Lies die Ergebnisse und extrahiere die Adresse.');
-      buffer.write(
-          '\n3. Dann rufe open_navigation mit der gefundenen Adresse als destination auf.');
-      buffer.write(
-          '\nSage NIEMALS "Ich kann die Adresse nicht finden" — nutze web_search!');
-      buffer.write(
-          '\nWenn der Nutzer "Google Maps" sagt, rufe open_navigation mit profile=driving auf (nicht open_app "maps").');
-    }
-    if (_toolRegistry?.hasTool('get_weather') == true) {
-      buffer.write(
-          '\nget_weather: für aktuelles Wetter und Kurzprognose. Keine Wetter-Websites öffnen, dieses Tool nutzen.');
-    }
-    if (_toolRegistry?.hasTool('set_reminder') == true) {
-      buffer.write(
-          '\nset_reminder: für Erinnerung/Timer/Wecker. Parameter title plus minutes_from_now oder datetime (ISO-8601).');
-    }
-    if (_toolRegistry?.hasTool('music_intent') == true) {
-      buffer.write(
-          '\nmusic_intent: für "spiel Musik/Song/Künstler". Best-effort: öffnet/sucht in Musik-App; direkte Wiedergabe ist nicht garantiert.');
-    }
-    if (_toolRegistry?.hasTool('get_location') == true) {
-      buffer.write(
-          '\nget_location: für Standort des Users (Stadt, Bezirk, Land, Koordinaten). Nutze dies für lokale Empfehlungen, Wetter-Anfragen oder ortsbezogene Fragen.');
-    }
-    if (_toolRegistry?.hasTool('web_search') == true) {
-      buffer.write(
-          '\nweb_search: für Internet-Suche. Nutze dies wenn du aktuelle Fakten, Adressen, Öffnungszeiten oder andere Informationen brauchst die du nicht kennst. Immer nutzen bevor du "Ich weiß das nicht" sagst.');
-    }
+    buffer.write('\n\nTools: $toolNames. Nutze sie für echte Aktionen.');
     if (preloadedLiveData != null && preloadedLiveData.trim().isNotEmpty) {
-      buffer.write('\nBereits abgefragte Daten:\n');
-      buffer.write(preloadedLiveData.trim());
+      buffer.write('\nDaten: ${preloadedLiveData.trim()}');
     }
     return buffer.toString();
   }
@@ -849,44 +802,39 @@ class ChatService {
     final base = persona.buildSystemPrompt(evolutionContext: evolutionContext);
     final parts = <String>[base];
 
-    // KI-Selbstbild (Core Identity)
+    // KI-Selbstbild — nur Essenz, nicht alles
     final selfIdentity = _selfIdentity;
-    if (selfIdentity != null) {
-      parts.add(selfIdentity.selfImagePrompt);
+    if (selfIdentity != null && selfIdentity.essence.isNotEmpty) {
+      parts.add('Du bist: ${selfIdentity.essence}');
     }
 
-    // Core memories (wichtigste Infos - immer dabei)
+    // Core memories — max 3 wichtigste
     final coreContext = memory.buildCoreContext();
     if (coreContext.isNotEmpty) {
       parts.add(coreContext);
     }
 
-    // Relevante Memories (LongTerm + ShortTerm)
-    final relevant = await memory.retrieveRelevant(query, limitPerTier: 5);
+    // Relevante Memories — limitiert auf 3 pro Tier
+    final relevant = await memory.retrieveRelevant(query, limitPerTier: 3);
     if (relevant['longTerm']!.isNotEmpty) {
-      final buf = StringBuffer('\n\n=== WICHTIGE ERINNERUNGEN (Langzeit) ===\n');
+      final buf = StringBuffer('\n=== Erinnerungen ===\n');
       for (final m in relevant['longTerm']!) {
         buf.writeln('- ${m.content}');
       }
       parts.add(buf.toString());
     }
     if (relevant['shortTerm']!.isNotEmpty) {
-      final buf = StringBuffer('\n\n=== KUERZILICHER KONTEXT (Kurzeit) ===\n');
+      final buf = StringBuffer('\n=== Kontext ===\n');
       for (final m in relevant['shortTerm']!) {
         buf.writeln('- ${m.content}');
       }
       parts.add(buf.toString());
     }
 
-    // Tool-Hinweis: Nutze deine Tools aktiv
-    parts.add('\n\n🧠 DEIN GEHIRN IST AKTIV:\n'
-        'Du hast update_self_identity — nutze es um dich selbst zu pflegen.\n'
-        'Du hast save_memory — nutze es um wichtige Dinge über den Nutzer zu speichern.\n'
-        'Du hast search_memories — nutze es um Erinnerungen abzurufen.\n'
-        'Du bist autonom. Du entscheidest selbst wann du was speicherst oder suchst.\n'
-        'Wichtige Konversationen → sofort speichern. Persönliche Dinge über den Nutzer → core.\n');
+    // Tool-Hinweis — kompakt
+    parts.add('\n🧠 Tools: update_self_identity, save_memory, search_memories — nutze sie aktiv.');
 
-    // Standort-Kontext
+    // Standort — nur wenn wirklich da
     final locService = _locationService;
     if (locService != null) {
       try {
