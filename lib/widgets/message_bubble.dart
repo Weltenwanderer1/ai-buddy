@@ -90,16 +90,16 @@ class MessageBubble extends StatelessWidget {
     ));
   }
 
-  // ── User Bubble (rechts, screen-space Farbverlauf Orange→Lila→Blau) ──
+  // ── User-Bubble: Screen-Space Farbverlauf (kräftiges Orange → Violett → Blau) ──
   static const _palette = [
+    Color(0xFFFF6A1A), // kräftiges Orange
     Color(0xFFFF8C42), // warmes Orange
     Color(0xFFE76F51), // Koralle
-    Color(0xFFF4A261), // sandiges Orange
-    Color(0xFFE0B1CB), // Pastell-Rosa
-    Color(0xFFA56CC1), // Lila
+    Color(0xFFD4556B), // Himbeer
+    Color(0xFFA855F7), // Violett
     Color(0xFF7B68D4), // blau-violett
     Color(0xFF6B8DD6), // Periwinkle Blau
-    Color(0xFFFF8C42), // wieder Orange (seamless)
+    Color(0xFFFF6A1A), // wieder Orange (seamless loop)
   ];
 
   Widget _userBubble(BuildContext context) {

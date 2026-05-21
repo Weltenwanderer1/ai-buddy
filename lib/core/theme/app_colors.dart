@@ -34,7 +34,7 @@ class AppColors {
   static const Color info    = Color(0xFF5B9BD5);
 
   // ── Meta-Akzent (Selbstbild etc.) ──
-  static const Color accent = Color(0xFFFF9F0A);  // Warmes Orange statt Pink
+  static const Color accent = Color(0xFFFF6A1A);  // Kräftiges Orange
 
   // ── Hintergrund-Gradient (anthracite, kein lila) ──
   static const LinearGradient bgGradient = LinearGradient(
@@ -64,7 +64,7 @@ class AppColors {
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
     stops: [0.0, 0.7],
-    colors: [Color(0xFFFF8833), Color(0xFFA855F7)],  // Pastell-Orange → Pastell-Lila
+    colors: [Color(0xFFFF6A1A), Color(0xFFA855F7)],  // Kräftiges Orange → Violett
   );
 
   static const LinearGradient assistantBubbleBg = LinearGradient(
