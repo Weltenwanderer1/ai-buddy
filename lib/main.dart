@@ -15,6 +15,7 @@ import 'services/piper_tts_service.dart';
 import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
+import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
@@ -60,6 +61,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late TtsPlaybackService _ttsPlaybackService;
   late PersonaEvolutionService _personaEvolution;
   late BuddyNotesService _buddyNotes;
+  late BuddyCapabilitiesService _buddyCapabilities;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
   late BackupService _backupService;
@@ -75,7 +77,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _ttsPlaybackService.dispose(); _ollamaService.dispose();
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
-      _selfIdentity.dispose(); _buddyNotes.dispose();
+      _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
       _notificationService.dispose();
     }
     super.dispose();
@@ -101,6 +103,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _persona = PersonaService(); await _persona.init();
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _buddyNotes = BuddyNotesService(); await _buddyNotes.init();
+      _buddyCapabilities = BuddyCapabilitiesService(); await _buddyCapabilities.init();
       _chatHistory = ChatHistoryService(); await _chatHistory.init();
       _ollamaService = OllamaCloudService(
         baseUrl: _secureConfig.activeBaseUrl,
@@ -128,6 +131,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         rootPathProvider: () => rootPath,
       );
       _toolRegistry.registerLocation(_locationService);
+
+      // Register capabilities tool
+      _toolRegistry.registerBuddyCapabilities(_buddyCapabilities);
 
       SetReminderTool.scheduleCallback = ({required title, required body, required scheduledTime}) {
         return _notificationService.scheduleNotification(title: title, body: body, scheduledTime: scheduledTime);
@@ -282,6 +288,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _ollamaService), ChangeNotifierProvider.value(value: _personaEvolution),
         ChangeNotifierProvider.value(value: _selfIdentity),
         ChangeNotifierProvider.value(value: _buddyNotes),
+        ChangeNotifierProvider.value(value: _buddyCapabilities),
         ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),

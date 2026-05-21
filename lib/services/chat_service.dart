@@ -8,6 +8,7 @@ import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/location_service.dart';
+import '../services/buddy_capabilities_service.dart';
 import '../tools/tool_registry.dart';
 import '../tools/tool_result.dart';
 import 'tool_call_parser.dart';
@@ -20,14 +21,16 @@ class ChatService {
   final ToolRegistry? _toolRegistry;
   final SelfIdentityService? _selfIdentity;
   final LocationService? _locationService;
+  final BuddyCapabilitiesService? _buddyCapabilities;
   final int maxToolRounds;
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, this.maxToolRounds = 5})
+  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities, this.maxToolRounds = 5})
       : _toolRegistry = toolRegistry,
         _selfIdentity = selfIdentity,
-        _locationService = locationService;
+        _locationService = locationService,
+        _buddyCapabilities = buddyCapabilities;
 
   /// Cached RegExps for _pickModel (avoid recompiling on every call).
   static final RegExp _cmdPrefixRegex = RegExp(
@@ -812,6 +815,12 @@ class ChatService {
     final coreContext = memory.buildCoreContext();
     if (coreContext.isNotEmpty) {
       parts.add(coreContext);
+    }
+
+    // Buddy Capabilities — Was die KI alles kann
+    final caps = _buddyCapabilities?.capabilities;
+    if (caps != null && caps.isNotEmpty) {
+      parts.add(caps);
     }
 
     // Relevante Memories — limitiert auf 3 pro Tier

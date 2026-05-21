@@ -8,6 +8,7 @@ import '../services/chat_service.dart';
 import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
 import '../services/buddy_notes_service.dart';
+import '../services/buddy_capabilities_service.dart';
 import '../services/persona_service.dart';
 import '../services/ollama_cloud_service.dart';
 import '../services/persona_evolution_service.dart';
@@ -106,12 +107,14 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       final memory = context.read<MemoryService>();
       final selfIdentity = context.read<SelfIdentityService>();
       final buddyNotes = context.read<BuddyNotesService>();
+      final buddyCapabilities = context.read<BuddyCapabilitiesService>();
       final tavilyKey = secureConfig.tavilyApiKey;
       _toolRegistry = ToolRegistry.createDefault(tavilyApiKey: tavilyKey.isNotEmpty ? tavilyKey : null);
       _toolRegistry!.registerSearchMemories(memory);
       _toolRegistry!.registerSelfIdentity(selfIdentity);
       _toolRegistry!.registerSaveMemory(memory);
       _toolRegistry!.registerBuddyNotes(buddyNotes);
+      _toolRegistry!.registerBuddyCapabilities(buddyCapabilities);
     } catch (e) {
       _toolRegistry = ToolRegistry.createDefault();
     }
@@ -182,12 +185,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService);
+      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
       await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
     } catch (e) {
       debugPrint('Streaming failed: $e');
       try {
-        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService);
+        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
         final reply = await chatService.sendMessage(
           userMessage: text,
           persona: persona,

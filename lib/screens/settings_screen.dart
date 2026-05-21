@@ -16,6 +16,7 @@ import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
 import 'buddy_notes_screen.dart';
+import 'buddy_capabilities_screen.dart';
 import 'memory_browser_screen.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 
@@ -482,6 +483,16 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
               ),
             ),
+            _ListTile(
+              icon: Icons.psychology_rounded,
+              title: 'Meine Fähigkeiten',
+              subtitle: 'Was die KI alles kann — editierbar',
+              color: AppColors.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const BuddyCapabilitiesScreen()),
+              ),
+            ),
           ])),
 
           // ── KI-Modell ──
@@ -761,9 +772,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.4',
+              subtitle: 'v0.93.5',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.4', color: AppColors.secondary),
+              trailing: _Badge('v0.93.5', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),

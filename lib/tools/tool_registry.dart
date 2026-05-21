@@ -32,6 +32,8 @@ import 'save_memory_tool.dart';
 
 import 'buddy_notes_tool.dart';
 import '../services/buddy_notes_service.dart';
+import 'update_capabilities_tool.dart';
+import '../services/buddy_capabilities_service.dart';
 import 'get_location_tool.dart';
 import '../services/location_service.dart';
 import 'send_email_tool.dart';
@@ -84,6 +86,11 @@ class ToolRegistry {
   /// Register the buddy_notes tool (requires BuddyNotesService).
   void registerBuddyNotes(BuddyNotesService notes) {
     register(BuddyNotesTool(notes));
+  }
+
+  /// Register the update_capabilities tool (requires BuddyCapabilitiesService).
+  void registerBuddyCapabilities(BuddyCapabilitiesService capabilities) {
+    register(UpdateCapabilitiesTool(capabilities));
   }
 
   /// Register the save_memory tool (requires MemoryService).
