@@ -19,6 +19,8 @@ class MessageBubble extends StatelessWidget {
   final Animation<double>? animation;
   final int? index;
   final ValueNotifier<double>? scrollOffsetNotifier;
+  final bool isSelected;
+  final VoidCallback? onToggleSelection;
 
   const MessageBubble({
     super.key,
@@ -26,6 +28,8 @@ class MessageBubble extends StatelessWidget {
     this.animation,
     this.index,
     this.scrollOffsetNotifier,
+    this.isSelected = false,
+    this.onToggleSelection,
   });
 
   @override
@@ -69,7 +73,7 @@ class MessageBubble extends StatelessWidget {
           entry.remove();
           Clipboard.setData(ClipboardData(text: message.text));
           HapticFeedback.mediumImpact();
-          _showCopiedSnackBar(context);
+          _showCopiedSnackBar(context, 'Kopiert');
         },
         onDismiss: () => entry.remove(),
       ),
@@ -78,10 +82,10 @@ class MessageBubble extends StatelessWidget {
     overlay.insert(entry);
   }
 
-  void _showCopiedSnackBar(BuildContext context) {
+  void _showCopiedSnackBar(BuildContext context, String text) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('Kopiert', style: TextStyle(fontSize: 13)),
+      content: Text(text, style: TextStyle(fontSize: 13)),
       duration: const Duration(seconds: 1),
       backgroundColor: AppColors.bgElevated,
       behavior: SnackBarBehavior.floating,
@@ -150,12 +154,26 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _userBubbleWithGradient(BuildContext context, Gradient gradient) {
+    final isMultiSelect = onToggleSelection != null;
     return GestureDetector(
-      onLongPressStart: (details) => _showCopyMenu(context, details.globalPosition),
+      onLongPress: isMultiSelect
+        ? () {
+            onToggleSelection!();
+            HapticFeedback.mediumImpact();
+          }
+        : () {
+            Clipboard.setData(ClipboardData(text: message.text));
+            HapticFeedback.mediumImpact();
+            _showCopiedSnackBar(context, 'Nachricht kopiert');
+          },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          if (isSelected) ...[
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+          ],
           Flexible(
             child: Container(
               margin: const EdgeInsets.only(left: 64),
@@ -168,8 +186,11 @@ class MessageBubble extends StatelessWidget {
                   bottomLeft: Radius.circular(18),
                   bottomRight: Radius.circular(4),
                 ),
+                border: isSelected
+                  ? Border.all(color: AppColors.success.withValues(alpha: 0.6), width: 2)
+                  : null,
               ),
-              child: SelectableText(
+              child: Text(
                 message.text,
                 style: const TextStyle(
                   color: Colors.white,
@@ -187,12 +208,26 @@ class MessageBubble extends StatelessWidget {
 
   // ── AI Bubble (links, wie Telegram Fremdnachricht) ──
   Widget _aiBubble(BuildContext context) {
+    final isMultiSelect = onToggleSelection != null;
     return GestureDetector(
-      onLongPressStart: (details) => _showCopyMenu(context, details.globalPosition),
+      onLongPress: isMultiSelect
+        ? () {
+            onToggleSelection!();
+            HapticFeedback.mediumImpact();
+          }
+        : () {
+            Clipboard.setData(ClipboardData(text: message.text));
+            HapticFeedback.mediumImpact();
+            _showCopiedSnackBar(context, 'Nachricht kopiert');
+          },
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          if (isSelected) ...[
+            Icon(Icons.check_circle_rounded, color: AppColors.success, size: 20),
+            const SizedBox(width: 8),
+          ],
           Flexible(
             child: Container(
               margin: const EdgeInsets.only(right: 64),
@@ -203,13 +238,16 @@ class MessageBubble extends StatelessWidget {
                   topLeft: Radius.circular(18),
                   topRight: Radius.circular(18),
                   bottomRight: Radius.circular(18),
-                  bottomLeft: Radius.circular(4), // Harte untere rechte Ecke
+                  bottomLeft: Radius.circular(4),
                 ),
+                border: isSelected
+                  ? Border.all(color: AppColors.success.withValues(alpha: 0.6), width: 2)
+                  : null,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SelectableText(
+                  Text(
                     message.text,
                     style: TextStyle(
                       color: AppColors.textPrimary,

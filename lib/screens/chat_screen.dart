@@ -46,6 +46,10 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   ProactiveEngine? _proactive;
   ProactiveSuggestion? _proactiveSuggestion;
 
+  // Multi-select for message copying
+  final Set<int> _selectedIndices = <int>{};
+  bool get _isMultiSelectMode => _selectedIndices.isNotEmpty;
+
   @override
   bool get wantKeepAlive => true;
 
@@ -116,6 +120,46 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   Future<void> _loadWelcome() async {
     // Chat startet leer — keine automatische Begrüßung.
     // User kann direkt schreiben.
+  }
+
+  // ── Multi-Select ──
+  void _toggleSelection(int index) {
+    setState(() {
+      if (_selectedIndices.contains(index)) {
+        _selectedIndices.remove(index);
+      } else {
+        _selectedIndices.add(index);
+      }
+    });
+  }
+
+  void _exitMultiSelect() {
+    setState(() => _selectedIndices.clear());
+  }
+
+  void _copySelectedMessages() {
+    final chatHistory = context.read<ChatHistoryService>();
+    final selected = _selectedIndices.toList()..sort();
+    final buffer = StringBuffer();
+    for (final i in selected) {
+      if (i < chatHistory.messages.length) {
+        final msg = chatHistory.messages[i];
+        final prefix = msg.isUser ? 'Du' : 'Kiro';
+        buffer.writeln('[$prefix] ${msg.text}');
+      }
+    }
+    Clipboard.setData(ClipboardData(text: buffer.toString().trim()));
+    HapticFeedback.mediumImpact();
+    _exitMultiSelect();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('${selected.length} Nachricht${selected.length == 1 ? '' : 'en'} kopiert',
+        style: TextStyle(fontSize: 13)),
+      duration: const Duration(seconds: 1),
+      backgroundColor: AppColors.bgElevated,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      margin: const EdgeInsets.all(16),
+    ));
   }
 
   Future<void> _sendMessage(String text) async {
@@ -332,7 +376,9 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         child: Column(
           children: [
             // ─── Custom Header (Telegram style) ───
-            _buildHeader(persona, isLiveActive),
+            _isMultiSelectMode
+              ? _buildMultiSelectHeader()
+              : _buildHeader(persona, isLiveActive),
             // ─── Messages ───
             Expanded(
               child: ListView.builder(
@@ -342,10 +388,20 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 itemCount: chatHistory.messages.length,
                 itemBuilder: (context, index) {
                   final message = chatHistory.messages[index];
-                  return MessageBubble(
-                    message: message,
-                    index: index,
-                    scrollOffsetNotifier: _scrollOffsetNotifier,
+                  final isSelected = _selectedIndices.contains(index);
+                  return GestureDetector(
+                    onTap: _isMultiSelectMode
+                      ? () => _toggleSelection(index)
+                      : null,
+                    child: MessageBubble(
+                      message: message,
+                      index: index,
+                      scrollOffsetNotifier: _scrollOffsetNotifier,
+                      isSelected: isSelected,
+                      onToggleSelection: _isMultiSelectMode || _selectedIndices.isEmpty
+                        ? () => _toggleSelection(index)
+                        : null,
+                    ),
                   );
                 },
               ),
@@ -475,6 +531,62 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 ),
               ),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMultiSelectHeader() {
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+        decoration: BoxDecoration(
+          color: AppColors.bgElevated,
+          border: Border(
+            bottom: BorderSide(color: AppColors.glassBorder),
+          ),
+        ),
+        child: Row(
+          children: [
+            Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: _exitMultiSelect,
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(Icons.close_rounded, color: AppColors.textSecondary, size: 22),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                '${_selectedIndices.length} ausgewählt',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+            // Copy button
+            if (_selectedIndices.isNotEmpty)
+              Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(12),
+                child: InkWell(
+                  onTap: _copySelectedMessages,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(Icons.copy_rounded, color: AppColors.secondary, size: 22),
+                  ),
+                ),
+              ),
           ],
         ),
       ),
