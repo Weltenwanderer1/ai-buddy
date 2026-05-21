@@ -3,30 +3,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
-import 'elevenlabs_service.dart';
-import 'openrouter_tts_service.dart';
+import 'piper_tts_service.dart';
 import 'device_tts_service.dart';
 import 'secure_config_service.dart';
 
 /// TTS engine selection.
 enum TtsEngine {
-  elevenLabs,
-  openRouter,
+  piper,
   device;
   
   String get label {
     switch (this) {
-      case TtsEngine.elevenLabs: return 'ElevenLabs';
-      case TtsEngine.openRouter: return 'OpenRouter TTS';
+      case TtsEngine.piper: return 'Piper (Offline)';
       case TtsEngine.device: return 'Gerät';
     }
   }
 }
 
-/// TTS playback service — supports ElevenLabs, OpenRouter TTS, and Device-native TTS.
+/// TTS playback service — supports Piper (offline neural TTS) and Device-native TTS.
+/// Piper is the primary engine, Device TTS is the fallback.
 class TtsPlaybackService extends ChangeNotifier {
-  final ElevenLabsService _elevenLabs;
-  final OpenRouterTtsService _openRouterTts;
+  final PiperTtsService _piper;
   final DeviceTtsService _deviceTts = DeviceTtsService();
   final AudioPlayer _player = AudioPlayer();
   String? currentlyPlayingId;
@@ -34,19 +31,18 @@ class TtsPlaybackService extends ChangeNotifier {
   Completer<void>? _playbackCompleter;
 
   /// Current TTS engine.
-  TtsEngine _engine = TtsEngine.openRouter;
+  TtsEngine _engine = TtsEngine.piper;
   TtsEngine get engine => _engine;
 
   /// Last error message for debugging.
   String? lastError;
 
-  TtsPlaybackService(this._elevenLabs, this._openRouterTts);
+  TtsPlaybackService(this._piper);
 
   bool get isPlaying => _player.playing;
   bool get isAvailable {
     switch (_engine) {
-      case TtsEngine.elevenLabs: return _elevenLabs.isAvailable;
-      case TtsEngine.openRouter: return _openRouterTts.isAvailable;
+      case TtsEngine.piper: return _piper.isLoaded;
       case TtsEngine.device: return _deviceTts.isAvailable;
     }
   }
@@ -63,6 +59,9 @@ class TtsPlaybackService extends ChangeNotifier {
   /// Get DeviceTtsService (for voice selection in settings).
   DeviceTtsService get deviceTts => _deviceTts;
 
+  /// Get PiperTtsService (for voice download/management in settings).
+  PiperTtsService get piper => _piper;
+
   /// Initialize device TTS if using device engine.
   Future<void> initDeviceTts() async {
     if (_engine == TtsEngine.device && !_deviceTts.isAvailable) {
@@ -75,18 +74,31 @@ class TtsPlaybackService extends ChangeNotifier {
     final pref = config.ttsEngine;
     _engine = switch (pref) {
       'device' => TtsEngine.device,
-      'elevenlabs' => TtsEngine.elevenLabs,
-      'openrouter' => TtsEngine.openRouter,
-      _ => TtsEngine.openRouter,
+      'piper' => TtsEngine.piper,
+      _ => TtsEngine.piper,
     };
-    if (_engine == TtsEngine.device) {
+
+    // Try to auto-load Piper voice if configured
+    if (_engine == TtsEngine.piper) {
+      final voiceId = config.piperVoice;
+      final voice = PiperVoice.fromId(voiceId);
+      if (voice != null && await _piper.isVoiceDownloaded(voice)) {
+        await _piper.loadVoice(voice);
+        if (!_piper.isLoaded) {
+          debugPrint('TTS: Piper voice $voiceId failed to load, falling back to device');
+          _engine = TtsEngine.device;
+          await _deviceTts.init();
+        }
+      } else {
+        debugPrint('TTS: Piper voice not downloaded, falling back to device TTS');
+        _engine = TtsEngine.device;
+        await _deviceTts.init();
+      }
+    } else if (_engine == TtsEngine.device) {
       await _deviceTts.init();
     }
     notifyListeners();
   }
-
-  /// Get the OpenRouter TTS service (for settings).
-  OpenRouterTtsService get openRouterTts => _openRouterTts;
 
   /// Synthesize text and play the resulting audio.
   /// Returns true if successful, false if TTS is not available or failed.
@@ -100,17 +112,10 @@ class TtsPlaybackService extends ChangeNotifier {
     switch (_engine) {
       case TtsEngine.device:
         return _speakDevice(cleanText, messageId: messageId);
-      case TtsEngine.elevenLabs:
-        final ok = await _speakElevenLabs(cleanText, messageId: messageId);
+      case TtsEngine.piper:
+        final ok = await _speakPiper(cleanText, messageId: messageId);
         if (!ok) {
-          debugPrint('TTS: ElevenLabs failed ($lastError). Falling back to OpenRouter TTS.');
-          return _speakOpenRouter(cleanText, messageId: messageId);
-        }
-        return true;
-      case TtsEngine.openRouter:
-        final ok = await _speakOpenRouter(cleanText, messageId: messageId);
-        if (!ok) {
-          debugPrint('TTS: OpenRouter TTS failed ($lastError). Falling back to local device TTS.');
+          debugPrint('TTS: Piper failed ($lastError). Falling back to device TTS.');
           return _speakDevice(cleanText, messageId: messageId);
         }
         return true;
@@ -134,7 +139,6 @@ class TtsPlaybackService extends ChangeNotifier {
     try {
       currentlyPlayingId = messageId;
       notifyListeners();
-      // speak() now blocks until audio finishes (uses Completer)
       final ok = await _deviceTts.speak(text);
       if (!ok) {
         lastError = _deviceTts.lastError ?? 'Geräte-TTS Fehler';
@@ -151,43 +155,44 @@ class TtsPlaybackService extends ChangeNotifier {
     }
   }
 
-  Future<bool> _speakElevenLabs(String text, {String? messageId}) async {
-    if (!_elevenLabs.isAvailable) {
-      lastError = 'ElevenLabs nicht konfiguriert (API Key oder Voice ID fehlt)';
+  Future<bool> _speakPiper(String text, {String? messageId}) async {
+    if (!_piper.isLoaded) {
+      lastError = 'Piper TTS nicht geladen — Stimme heruntergeladen?';
       debugPrint('TTS: $lastError');
       return false;
     }
     if (text.trim().isEmpty) {
       lastError = 'Leerer Text — nichts zu sagen';
-      debugPrint('TTS: $lastError');
       return false;
     }
 
     try {
       // Cache check
       final cacheDir = await _getCacheDir();
-      final cacheFile = File('${cacheDir.path}/${_hashText(text)}.mp3');
+      final cacheFile = File('${cacheDir.path}/${_hashText(text)}.wav');
 
-      List<int> audioBytes;
+      String audioPath;
       if (await cacheFile.exists()) {
-        debugPrint('TTS: using cached audio for "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
-        audioBytes = await cacheFile.readAsBytes();
+        debugPrint('TTS: using cached Piper audio for "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
+        audioPath = cacheFile.path;
       } else {
-        debugPrint('TTS: synthesizing "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
-        audioBytes = await _elevenLabs.synthesize(text);
-        if (audioBytes.isEmpty) {
-          lastError = 'ElevenLabs gab leere Audio-Daten zurück';
+        debugPrint('TTS: Piper synthesizing "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
+        final synthesized = await _piper.synthesize(text);
+        if (synthesized == null) {
+          lastError = _piper.lastError ?? 'Piper Synthese fehlgeschlagen';
           debugPrint('TTS: $lastError');
           return false;
         }
-        debugPrint('TTS: got ${audioBytes.length} bytes, caching…');
-        await cacheFile.writeAsBytes(audioBytes);
+        // Piper writes to its own temp file — copy to cache
+        final srcFile = File(synthesized);
+        await srcFile.copy(cacheFile.path);
+        audioPath = cacheFile.path;
       }
 
       currentlyPlayingId = messageId;
       notifyListeners();
 
-      await _player.setFilePath(cacheFile.path);
+      await _player.setFilePath(audioPath);
 
       final completer = Completer<void>();
       _playbackCompleter = completer;
@@ -213,87 +218,12 @@ class TtsPlaybackService extends ChangeNotifier {
       return true;
     } catch (e) {
       currentlyPlayingId = null;
-      lastError = 'TTS Fehler: $e';
-      debugPrint('TTS speak error: $e');
+      lastError = 'Piper TTS Fehler: $e';
+      debugPrint('TTS Piper speak error: $e');
       notifyListeners();
       return false;
     }
   }
-
-  Future<bool> _speakOpenRouter(String text, {String? messageId}) async {
-    if (!_openRouterTts.isAvailable) {
-      lastError = 'OpenRouter TTS nicht konfiguriert (API Key fehlt)';
-      debugPrint('TTS: $lastError');
-      return false;
-    }
-    if (text.trim().isEmpty) {
-      lastError = 'Leerer Text — nichts zu sagen';
-      debugPrint('TTS: $lastError');
-      return false;
-    }
-
-    try {
-      // Cache check
-      final cacheDir = await _getCacheDir();
-      final cacheFile = File('${cacheDir.path}/${_hashText(text)}_or.mp3');
-
-      List<int> audioBytes;
-      if (await cacheFile.exists()) {
-        debugPrint('TTS: using cached OpenRouter audio for "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
-        audioBytes = await cacheFile.readAsBytes();
-      } else {
-        debugPrint('TTS: OpenRouter synthesizing "${text.substring(0, text.length > 40 ? 40 : text.length)}…"');
-        audioBytes = await _openRouterTts.synthesize(text);
-        if (audioBytes.isEmpty) {
-          lastError = 'OpenRouter TTS gab leere Audio-Daten zurück';
-          debugPrint('TTS: $lastError');
-          return false;
-        }
-        debugPrint('TTS: got ${audioBytes.length} bytes from OpenRouter, caching…');
-        await cacheFile.writeAsBytes(audioBytes);
-      }
-
-      currentlyPlayingId = messageId;
-      notifyListeners();
-
-      await _player.setFilePath(cacheFile.path);
-
-      final completer = Completer<void>();
-      _playbackCompleter = completer;
-
-      final subscription = _player.playerStateStream.listen((state) {
-        if (state.processingState == ProcessingState.completed) {
-          if (!completer.isCompleted) completer.complete();
-        }
-      }, onError: (e) {
-        if (!completer.isCompleted) completer.completeError(e);
-      });
-
-      try {
-        await _player.play();
-        await completer.future;
-      } finally {
-        await subscription.cancel();
-        _playbackCompleter = null;
-        currentlyPlayingId = null;
-        notifyListeners();
-      }
-
-      return true;
-    } catch (e) {
-      currentlyPlayingId = null;
-      lastError = 'OpenRouter TTS Fehler: $e';
-      debugPrint('TTS OpenRouter speak error: $e');
-      notifyListeners();
-      return false;
-    }
-  }
-
-  /// Test the ElevenLabs connection. Returns the test result.
-  Future<ElevenLabsTestResult> testConnection() => _elevenLabs.testConnection();
-
-  /// Test the OpenRouter TTS connection.
-  Future<OpenRouterTtsTestResult> testOpenRouterConnection() => _openRouterTts.testConnection();
 
   /// Stop current playback.
   Future<void> stop() async {

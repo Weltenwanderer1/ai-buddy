@@ -13,10 +13,10 @@ packages:
     dependency: "direct main"
     description:
       name: archive
-      sha256: cb6a278ef2dbb298455e1a713bda08524a175630ec643a242c399c932a0a1f7d
+      sha256: a96e8b390886ee8abb49b7bd3ac8df6f451c621619f52a26e815fdcf568959ff
       url: "https://pub.dev"
     source: hosted
-    version: "3.6.1"
+    version: "4.0.9"
   args:
     dependency: transitive
     description:
@@ -576,6 +576,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "9.3.0"
+  onnxruntime:
+    dependency: transitive
+    description:
+      name: onnxruntime
+      sha256: e77ec05acafc135cc5fe7bcdf11b101b39f06513c9d5e9fa02cb1929f6bac72a
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.1"
   package_config:
     dependency: transitive
     description:
@@ -704,6 +712,33 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.0.2"
+  piper_phonemizer_plugin:
+    dependency: transitive
+    description:
+      path: "."
+      ref: "dev-6768-v0.0.2"
+      resolved-ref: "3c94e2b8e10c094c1f21caf28f3733165845d445"
+      url: "https://github.com/dev-6768/piper_phonemizer_plugin.git"
+    source: git
+    version: "0.0.1"
+  piper_phonemizer_windows_plugin:
+    dependency: transitive
+    description:
+      path: "."
+      ref: main
+      resolved-ref: caddae22a67e12ed74bcc79b9be9a086a8361616
+      url: "https://github.com/dev-6768/piper_phonemizer_windows_plugin.git"
+    source: git
+    version: "0.0.1"
+  piper_tts_plugin:
+    dependency: "direct main"
+    description:
+      path: "."
+      ref: "dev-6768-v0.0.2"
+      resolved-ref: a3fa028caa7544a3f5498de5ad9cfd6aece79a55
+      url: "https://github.com/dev-6768/piper_tts_plugin.git"
+    source: git
+    version: "0.0.1"
   platform:
     dependency: transitive
     description:
@@ -720,6 +755,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.8"
+  posix:
+    dependency: transitive
+    description:
+      name: posix
+      sha256: "185ef7606574f789b40f289c233efa52e96dead518aed988e040a10737febb07"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.5.0"
   proj4dart:
     dependency: transitive
     description:

@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../services/secure_config_service.dart';
 import '../services/ollama_cloud_service.dart';
-import '../services/elevenlabs_service.dart';
 import '../services/tts_playback_service.dart';
+import '../services/piper_tts_service.dart';
 import '../services/backup_service.dart';
 import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
@@ -29,30 +29,18 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _ollamaBaseUrlController = TextEditingController();
   final _ollamaModelController = TextEditingController();
   final _ollamaFallbackController = TextEditingController();
-  final _elevenKeyController = TextEditingController();
-  final _elevenVoiceController = TextEditingController();
-  final _elevenModelController = TextEditingController();
-
   // OpenRouter controllers
   final _openRouterKeyController = TextEditingController();
   final _openRouterModelController = TextEditingController();
   final _openRouterFallbackController = TextEditingController();
 
-  // OpenRouter TTS controllers
-  final _orTtsVoiceController = TextEditingController();
-
   bool _isTestingOllama = false;
   String? _ollamaTestResult;
-  bool _isTestingElevenLabs = false;
-  String? _elevenLabsTestResult;
-  List<String>? _elevenLabsAvailableVoices;
-  bool _isTestingOrTts = false;
-  String? _orTtsTestResult;
 
   bool _ollamaExpanded = true;
   bool _elevenExpanded = true;
   String _llmProvider = 'ollama'; // 'ollama' or 'openrouter'
-  TtsEngine _ttsEngine = TtsEngine.openRouter;
+  TtsEngine _ttsEngine = TtsEngine.piper;
 
   @override
   void initState() {
@@ -70,14 +58,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterModelController.text = config.openRouterModel;
     _openRouterFallbackController.text = config.openRouterFallbackModel;
     _llmProvider = config.llmProvider;
-    _elevenKeyController.text = config.elevenLabsApiKey;
-    _elevenVoiceController.text = config.elevenLabsVoiceId;
-    _elevenModelController.text = config.elevenLabsModelId;
-    _orTtsVoiceController.text = config.openRouterTtsVoice;
     _ttsEngine = switch (config.ttsEngine) {
       'device' => TtsEngine.device,
-      'elevenlabs' => TtsEngine.elevenLabs,
-      _ => TtsEngine.openRouter,
+      _ => TtsEngine.piper,
     };
   }
 
@@ -87,13 +70,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     _ollamaBaseUrlController.dispose();
     _ollamaModelController.dispose();
     _ollamaFallbackController.dispose();
-    _elevenKeyController.dispose();
-    _elevenVoiceController.dispose();
-    _elevenModelController.dispose();
     _openRouterKeyController.dispose();
     _openRouterModelController.dispose();
     _openRouterFallbackController.dispose();
-    _orTtsVoiceController.dispose();
     super.dispose();
   }
 
@@ -117,18 +96,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     if (mounted) _showSnack('KI-Modell gespeichert ✅', AppColors.success);
   }
 
-  Future<void> _saveElevenLabsConfig() async {
+  Future<void> _saveTtsConfig() async {
     final config = context.read<SecureConfigService>();
-    final eleven = context.read<ElevenLabsService>();
-    await config.setElevenLabsApiKey(_elevenKeyController.text);
-    await config.setElevenLabsVoiceId(_elevenVoiceController.text);
-    await config.setElevenLabsModelId(_elevenModelController.text);
-    eleven.updateConfig(
-      apiKey: config.elevenLabsApiKey,
-      voiceId: config.elevenLabsVoiceId,
-      modelId: config.elevenLabsModelId,
-    );
-    if (mounted) _showSnack('Spracheinstellungen gespeichert ✅', AppColors.success);
+    final tts = context.read<TtsPlaybackService>();
+    await config.setTtsEngine(_ttsEngine.name);
+    tts.engine = _ttsEngine;
+    if (_ttsEngine == TtsEngine.device) {
+      await tts.initDeviceTts();
+    }
+    if (mounted) _showSnack('Sprachausgabe gespeichert ✅', AppColors.success);
   }
 
   Future<void> _testOllama() async {
@@ -148,77 +124,6 @@ class _SettingsScreenState extends State<SettingsScreen>
       setState(() => _ollamaTestResult = 'Fehler: ${_trunc(e.toString(), 120)}');
     } finally {
       if (mounted) setState(() => _isTestingOllama = false);
-    }
-  }
-
-  Future<void> _testElevenLabs() async {
-    setState(() {
-      _isTestingElevenLabs = true;
-      _elevenLabsTestResult = null;
-      _elevenLabsAvailableVoices = null;
-    });
-    try {
-      final tts = context.read<TtsPlaybackService>();
-      final result = await tts.testConnection();
-      setState(() {
-        _elevenLabsTestResult = result.success
-            ? 'Verbindung OK'
-            : 'Fehler: ${result.message}';
-        if (result.availableVoices.isNotEmpty) {
-          _elevenLabsAvailableVoices = result.availableVoices;
-        }
-      });
-    } catch (e) {
-      setState(() => _elevenLabsTestResult = e.toString());
-    } finally {
-      if (mounted) setState(() => _isTestingElevenLabs = false);
-    }
-  }
-
-  Future<void> _saveTtsConfig() async {
-    final config = context.read<SecureConfigService>();
-    final tts = context.read<TtsPlaybackService>();
-    await config.setTtsEngine(_ttsEngine.name);
-    await config.setElevenLabsApiKey(_elevenKeyController.text);
-    await config.setElevenLabsVoiceId(_elevenVoiceController.text);
-    await config.setElevenLabsModelId(_elevenModelController.text);
-    await config.setOpenRouterTtsVoice(_orTtsVoiceController.text);
-    // Update ElevenLabs service
-    final eleven = context.read<ElevenLabsService>();
-    eleven.updateConfig(
-      apiKey: _elevenKeyController.text,
-      voiceId: _elevenVoiceController.text,
-      modelId: _elevenModelController.text,
-    );
-    // Update OpenRouter TTS service
-    final orTts = tts.openRouterTts;
-    orTts.updateConfig(
-      apiKey: config.openRouterApiKey,
-      voice: _orTtsVoiceController.text,
-      model: config.openRouterTtsModel,
-    );
-    tts.engine = _ttsEngine;
-    if (_ttsEngine == TtsEngine.device) {
-      await tts.initDeviceTts();
-    }
-    if (mounted) _showSnack('Sprachausgabe gespeichert ✅', AppColors.success);
-  }
-
-  Future<void> _testOrTts() async {
-    setState(() {
-      _isTestingOrTts = true;
-      _orTtsTestResult = null;
-    });
-    try {
-      final tts = context.read<TtsPlaybackService>();
-      final result = await tts.testOpenRouterConnection();
-      setState(() => _orTtsTestResult = result.success
-          ? 'Verbindung OK — ${result.message}'
-          : 'Fehler: ${result.message}');
-    } catch (e) {
-      setState(() => _orTtsTestResult = 'Fehler: $e');
-    } finally {
-      if (mounted) setState(() => _isTestingOrTts = false);
     }
   }
 
@@ -739,106 +644,68 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
               ),
               _Divider(),
-              // OpenRouter TTS config (shown when OpenRouter selected)
-              if (_ttsEngine == TtsEngine.openRouter) ...[
-                _GlassTextField(
-                  label: 'Voice (alloy, ash, ballad, coral, echo, fable, nova, onyx, sage, shimmer, verse)',
-                  icon: Icons.record_voice_over_rounded,
-                  controller: _orTtsVoiceController,
-                ),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _GradientButton(
-                    icon: Icons.save_rounded,
-                    label: 'Speichern',
-                    onTap: _saveTtsConfig,
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: _OutlineButton(
-                    icon: _isTestingOrTts ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                    label: _isTestingOrTts ? 'Teste...' : 'Verbindung testen',
-                    onTap: _isTestingOrTts ? null : _testOrTts,
-                  )),
-                ]),
-                if (_orTtsTestResult != null)
-                  _ResultBox(text: _orTtsTestResult!),
-              ],
-              // ElevenLabs config (shown when ElevenLabs selected)
-              if (_ttsEngine == TtsEngine.elevenLabs) ...[
-                _GlassTextField(
-                  label: 'ElevenLabs Key',
-                  icon: Icons.key_rounded,
-                  controller: _elevenKeyController,
-                  obscure: true,
-                ),
-                _GlassTextField(
-                  label: 'Voice ID',
-                  icon: Icons.record_voice_over_rounded,
-                  controller: _elevenVoiceController,
-                ),
-                _GlassTextField(
-                  label: 'Model',
-                  icon: Icons.settings_voice_rounded,
-                  controller: _elevenModelController,
-                ),
-                const SizedBox(height: 8),
-                Row(children: [
-                  Expanded(child: _GradientButton(
-                    icon: Icons.save_rounded,
-                    label: 'Speichern',
-                    onTap: _saveTtsConfig,
-                  )),
-                  const SizedBox(width: 8),
-                  Expanded(child: _OutlineButton(
-                    icon: _isTestingElevenLabs ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                    label: _isTestingElevenLabs ? 'Teste...' : 'Verbindung testen',
-                    onTap: _isTestingElevenLabs ? null : _testElevenLabs,
-                  )),
-                ]),
-                if (_elevenLabsTestResult != null)
-                  _ResultBox(text: _elevenLabsTestResult!),
-                if (_elevenLabsAvailableVoices != null && _elevenLabsAvailableVoices!.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: _elevenLabsAvailableVoices!.map((v) {
-                        final match = RegExp(r'^(.+)\s\(([^)]+)\)$').firstMatch(v);
-                        final name = match != null ? match.group(1)!.trim() : v;
-                        final id = match != null ? match.group(2)!.trim() : v;
-                      final isSelected = _elevenVoiceController.text.trim() == id;
 
-                      return GestureDetector(
-                        onTap: () {
-                          setState(() => _elevenVoiceController.text = id);
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          decoration: BoxDecoration(
-                            gradient: isSelected
-                              ? AppColors.secondaryGradient
-                              : null,
-                            color: isSelected ? null : AppColors.bgCard.withValues(alpha: 0.5),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isSelected
-                                ? Colors.transparent
-                                : AppColors.glassBorder.withValues(alpha: 0.3),
-                              width: 1,
-                            ),
-                          ),
-                          child: Text(name, style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                            color: isSelected ? Colors.white : AppColors.textSecondary,
-                          )),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+              // Piper voice management (shown when Piper selected)
+              if (_ttsEngine == TtsEngine.piper) ...[
+                Builder(builder: (context) {
+                  final piper = context.watch<PiperTtsService>();
+                  return Column(children: [
+                    // Voice download selection
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Align(alignment: Alignment.centerLeft,
+                        child: Text('Piper Stimmen (offline)', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ...PiperVoice.values.map((voice) => _PiperVoiceTile(
+                      voice: voice,
+                      piper: piper,
+                      isCurrent: piper.currentVoice == voice,
+                      onLoad: () async {
+                        await piper.loadVoice(voice);
+                        final config = context.read<SecureConfigService>();
+                        await config.setPiperVoice(voice.id);
+                        final tts = context.read<TtsPlaybackService>();
+                        tts.engine = TtsEngine.piper;
+                        setState(() {});
+                      },
+                      onDelete: () async {
+                        await piper.deleteVoice(voice);
+                        setState(() {});
+                      },
+                      onDownload: () async {
+                        await piper.downloadVoice(voice, onProgress: (p) => setState(() {}));
+                        setState(() {});
+                      },
+                    )),
+                    const SizedBox(height: 8),
+                    Row(children: [
+                      Expanded(child: _GradientButton(
+                        icon: Icons.save_rounded,
+                        label: 'Speichern',
+                        onTap: _saveTtsConfig,
+                      )),
+                    ]),
+                  ]);
+                }),
+              ],
+
+              // Device TTS (shown when device selected)
+              if (_ttsEngine == TtsEngine.device) ...[
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Text('Verwendet die System-Sprachausgabe des Geräts. Kein Download nötig, aber Qualität variiert je nach Gerät.',
+                    style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.5)),
                 ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: _GradientButton(
+                    icon: Icons.save_rounded,
+                    label: 'Speichern',
+                    onTap: _saveTtsConfig,
+                  )),
+                ]),
               ],
             ],
           )),
@@ -887,9 +754,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.92.0',
+              subtitle: 'v0.93.0',
               color: AppColors.secondary,
-              trailing: _Badge('v0.92.0', color: AppColors.secondary),
+              trailing: _Badge('v0.93.0', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -1261,6 +1128,131 @@ class _Divider extends StatelessWidget {
       child: Divider(
         color: AppColors.glassBorder.withValues(alpha: 0.3),
         height: 1,
+      ),
+    );
+  }
+}
+
+class _PiperVoiceTile extends StatelessWidget {
+  final PiperVoice voice;
+  final PiperTtsService piper;
+  final bool isCurrent;
+  final VoidCallback onLoad;
+  final VoidCallback onDelete;
+  final VoidCallback onDownload;
+
+  const _PiperVoiceTile({
+    required this.voice,
+    required this.piper,
+    required this.isCurrent,
+    required this.onLoad,
+    required this.onDelete,
+    required this.onDownload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<bool>(
+      future: piper.isVoiceDownloaded(voice),
+      builder: (context, snapshot) {
+        final isDownloaded = snapshot.data ?? false;
+        final isDownloading = piper.isDownloading;
+        final isLoaded = piper.isLoaded && piper.currentVoice == voice;
+
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isCurrent
+              ? AppColors.secondary.withValues(alpha: 0.15)
+              : AppColors.bgCard.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isCurrent
+                ? AppColors.secondary.withValues(alpha: 0.5)
+                : AppColors.glassBorder.withValues(alpha: 0.3),
+            ),
+          ),
+          child: Row(children: [
+            Icon(
+              isLoaded ? Icons.record_voice_over_rounded
+                : isDownloaded ? Icons.download_done_rounded
+                : Icons.download_rounded,
+              size: 22,
+              color: isCurrent ? AppColors.secondary : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(voice.displayName,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
+                    color: isCurrent ? AppColors.secondary : AppColors.textPrimary,
+                  )),
+                Text(isDownloaded ? 'Heruntergeladen' : 'Nicht heruntergeladen',
+                  style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                if (isCurrent) Text('✓ Aktiv',
+                  style: TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600)),
+              ],
+            )),
+            if (isDownloading && piper.currentVoice == voice)
+              SizedBox(width: 18, height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary)),
+            if (!isDownloading) ...[
+              if (!isDownloaded)
+                _SmallButton(
+                  icon: Icons.download_rounded,
+                  label: 'Download',
+                  onTap: onDownload,
+                  color: AppColors.primary,
+                ),
+              if (isDownloaded && !isCurrent)
+                _SmallButton(
+                  icon: Icons.play_arrow_rounded,
+                  label: 'Laden',
+                  onTap: onLoad,
+                  color: AppColors.success,
+                ),
+              if (isDownloaded && !isCurrent)
+                _SmallButton(
+                  icon: Icons.delete_outline_rounded,
+                  label: 'Löschen',
+                  onTap: onDelete,
+                  color: AppColors.error,
+                ),
+            ],
+          ]),
+        );
+      },
+    );
+  }
+}
+
+class _SmallButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _SmallButton({required this.icon, required this.label, required this.onTap, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 14, color: color),
+          const SizedBox(width: 3),
+          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+        ]),
       ),
     );
   }

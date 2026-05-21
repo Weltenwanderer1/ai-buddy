@@ -16,10 +16,11 @@ class SecureConfigService {
   static const keyOpenRouterModel = 'OPENROUTER_MODEL';
   static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
   static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama' or 'openrouter'
-  static const keyElevenLabsApiKey = 'ELEVENLABS_API_KEY';
-  static const keyElevenLabsVoiceId = 'ELEVENLABS_VOICE_ID';
-  static const keyElevenLabsModelId = 'ELEVENLABS_MODEL_ID';
   static const keyTavilyApiKey = 'TAVILY_API_KEY';
+
+  // TTS config
+  static const keyTtsEngine = 'TTS_ENGINE';
+  static const keyPiperVoice = 'PIPER_VOICE';
 
   // Cache
   final Map<String, String> _cache = {};
@@ -36,13 +37,9 @@ class SecureConfigService {
       keyOpenRouterModel,
       keyOpenRouterFallbackModel,
       keyLlmProvider,
-      keyElevenLabsApiKey,
-      keyElevenLabsVoiceId,
-      keyElevenLabsModelId,
-      keyTtsEngine,
-      keyOpenRouterTtsModel,
-      keyOpenRouterTtsVoice,
       keyTavilyApiKey,
+      keyTtsEngine,
+      keyPiperVoice,
     ];
 
     for (final key in allKeys) {
@@ -57,20 +54,6 @@ class SecureConfigService {
           _cache[key] = envVal;
         }
       }
-    }
-
-    // Default ElevenLabs config (Free Plan)
-    if ((_cache[keyElevenLabsApiKey]?.isEmpty ?? true) &&
-        (_env(keyElevenLabsApiKey)?.isEmpty ?? true)) {
-      const defaultKey = 'sk_8a79b0838d5c6a1740dc325178bda09f9553e5979b0866d7';
-      await _storage.write(key: keyElevenLabsApiKey, value: defaultKey);
-      _cache[keyElevenLabsApiKey] = defaultKey;
-    }
-    if ((_cache[keyElevenLabsVoiceId]?.isEmpty ?? true) &&
-        (_env(keyElevenLabsVoiceId)?.isEmpty ?? true)) {
-      const defaultVoice = 'XB0fDUnXU5powFXDhCwa'; // ElevenLabs "Bella" (warm, natürlich)
-      await _storage.write(key: keyElevenLabsVoiceId, value: defaultVoice);
-      _cache[keyElevenLabsVoiceId] = defaultVoice;
     }
   }
 
@@ -89,16 +72,10 @@ class SecureConfigService {
       _cache[keyOllamaModel] ?? _env(keyOllamaModel) ?? 'kimi-k2.6:cloud';
   String get ollamaFallbackModel =>
       _cache[keyOllamaFallbackModel] ?? _env(keyOllamaFallbackModel) ?? 'deepseek-v4-flash:cloud';
-  String get elevenLabsApiKey =>
-      _cache[keyElevenLabsApiKey] ?? _env(keyElevenLabsApiKey) ?? '';
-  String get elevenLabsVoiceId =>
-      _cache[keyElevenLabsVoiceId] ?? _env(keyElevenLabsVoiceId) ?? '';
-  String get elevenLabsModelId =>
-      _cache[keyElevenLabsModelId] ?? _env(keyElevenLabsModelId) ?? 'eleven_multilingual_v2';
   String get openRouterBaseUrl =>
       _cache[keyOpenRouterBaseUrl] ?? _env(keyOpenRouterBaseUrl) ?? 'https://openrouter.ai/api';
   String get openRouterApiKey =>
-      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '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';
+      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? 'sk-or-...1477';
   String get openRouterModel =>
       _cache[keyOpenRouterModel] ?? _env(keyOpenRouterModel) ?? 'anthropic/claude-3.5-sonnet';
   String get openRouterFallbackModel =>
@@ -113,6 +90,10 @@ class SecureConfigService {
   String get activeFallbackModel => useOpenRouter ? openRouterFallbackModel : ollamaFallbackModel;
   String get tavilyApiKey =>
       _cache[keyTavilyApiKey] ?? _env(keyTavilyApiKey) ?? '';
+
+  // TTS config
+  String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'piper';
+  String get piperVoice => _cache[keyPiperVoice] ?? _env(keyPiperVoice) ?? 'de_DE-thorsten-high';
 
   // --- Setters ---
 
@@ -136,26 +117,6 @@ class SecureConfigService {
     _cache[keyOllamaFallbackModel] = value;
   }
 
-  Future<void> setElevenLabsApiKey(String value) async {
-    await _storage.write(key: keyElevenLabsApiKey, value: value);
-    _cache[keyElevenLabsApiKey] = value;
-  }
-
-  Future<void> setElevenLabsVoiceId(String value) async {
-    await _storage.write(key: keyElevenLabsVoiceId, value: value);
-    _cache[keyElevenLabsVoiceId] = value;
-  }
-
-  Future<void> setElevenLabsModelId(String value) async {
-    await _storage.write(key: keyElevenLabsModelId, value: value);
-    _cache[keyElevenLabsModelId] = value;
-  }
-
-  Future<void> setTavilyApiKey(String value) async {
-    await _storage.write(key: keyTavilyApiKey, value: value);
-    _cache[keyTavilyApiKey] = value;
-  }
-
   Future<void> setOpenRouterApiKey(String value) async {
     await _storage.write(key: keyOpenRouterApiKey, value: value);
     _cache[keyOpenRouterApiKey] = value;
@@ -176,34 +137,21 @@ class SecureConfigService {
     _cache[keyLlmProvider] = value;
   }
 
-  bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;
-  bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
-  bool get isElevenLabsConfigured => elevenLabsApiKey.isNotEmpty && elevenLabsVoiceId.isNotEmpty;
-
-  // TTS engine preference
-  static const keyTtsEngine = 'TTS_ENGINE';
-  static const keyOpenRouterTtsModel = 'OPENROUTER_TTS_MODEL';
-  static const keyOpenRouterTtsVoice = 'OPENROUTER_TTS_VOICE';
-
-  String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'openrouter';
-
-  String get openRouterTtsModel =>
-      _cache[keyOpenRouterTtsModel] ?? _env(keyOpenRouterTtsModel) ?? 'openai/gpt-4o-mini-tts-2025-12-15';
-  String get openRouterTtsVoice =>
-      _cache[keyOpenRouterTtsVoice] ?? _env(keyOpenRouterTtsVoice) ?? 'nova';
+  Future<void> setTavilyApiKey(String value) async {
+    await _storage.write(key: keyTavilyApiKey, value: value);
+    _cache[keyTavilyApiKey] = value;
+  }
 
   Future<void> setTtsEngine(String value) async {
     await _storage.write(key: keyTtsEngine, value: value);
     _cache[keyTtsEngine] = value;
   }
 
-  Future<void> setOpenRouterTtsModel(String value) async {
-    await _storage.write(key: keyOpenRouterTtsModel, value: value);
-    _cache[keyOpenRouterTtsModel] = value;
+  Future<void> setPiperVoice(String value) async {
+    await _storage.write(key: keyPiperVoice, value: value);
+    _cache[keyPiperVoice] = value;
   }
 
-  Future<void> setOpenRouterTtsVoice(String value) async {
-    await _storage.write(key: keyOpenRouterTtsVoice, value: value);
-    _cache[keyOpenRouterTtsVoice] = value;
-  }
+  bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;
+  bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
 }

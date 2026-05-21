@@ -10,9 +10,8 @@ import 'services/settings_service.dart';
 import 'services/chat_history_service.dart';
 import 'services/secure_config_service.dart';
 import 'services/ollama_cloud_service.dart';
-import 'services/elevenlabs_service.dart';
 import 'services/tts_playback_service.dart';
-import 'services/openrouter_tts_service.dart';
+import 'services/piper_tts_service.dart';
 import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
@@ -57,7 +56,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late ChatHistoryService _chatHistory;
   late SecureConfigService _secureConfig;
   late OllamaCloudService _ollamaService;
-  late ElevenLabsService _elevenLabsService;
+  late PiperTtsService _piperTtsService;
   late TtsPlaybackService _ttsPlaybackService;
   late PersonaEvolutionService _personaEvolution;
   late BuddyNotesService _buddyNotes;
@@ -111,18 +110,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       );
       // Warm up TCP/TLS connection before first user message
       _ollamaService.preconnect();
-      _elevenLabsService = ElevenLabsService(
-        apiKey: _secureConfig.elevenLabsApiKey, voiceId: _secureConfig.elevenLabsVoiceId,
-        modelId: _secureConfig.elevenLabsModelId,
-      );
-      final openRouterTts = OpenRouterTtsService(
-        apiKey: _secureConfig.openRouterApiKey.isNotEmpty
-            ? _secureConfig.openRouterApiKey
-            : '',  // No fallback — OpenRouter TTS needs its own key
-        model: _secureConfig.openRouterTtsModel,
-        voice: _secureConfig.openRouterTtsVoice,
-      );
-      _ttsPlaybackService = TtsPlaybackService(_elevenLabsService, openRouterTts);
+      _piperTtsService = PiperTtsService();
+      _ttsPlaybackService = TtsPlaybackService(_piperTtsService);
       await _ttsPlaybackService.loadEnginePreference(_secureConfig);
       _personaEvolution = PersonaEvolutionService(_ollamaService);
       try { await _personaEvolution.init(); } catch (e) { debugPrint('Evolution init: $e'); }
@@ -293,7 +282,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _ollamaService), ChangeNotifierProvider.value(value: _personaEvolution),
         ChangeNotifierProvider.value(value: _selfIdentity),
         ChangeNotifierProvider.value(value: _buddyNotes),
-        Provider.value(value: _elevenLabsService), Provider.value(value: _secureConfig),
+        ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _locationService),
