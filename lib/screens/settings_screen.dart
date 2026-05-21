@@ -17,6 +17,7 @@ import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
 import 'buddy_notes_screen.dart';
 import 'memory_browser_screen.dart';
+import 'package:share_plus/share_plus.dart' as share_plus;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -154,9 +155,15 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _createBackup() async {
     final backupService = context.read<BackupService>();
     try {
-      await backupService.exportBackup();
+      final path = await backupService.exportBackup();
+      // Share the backup file so user can save it externally
+      await share_plus.Share.shareXFiles(
+        [share_plus.XFile(path)],
+        text: 'AI-Buddy Backup',
+        subject: 'AI-Buddy Backup',
+      );
       if (mounted) {
-        _showSnack('Backup gesichert ✅', AppColors.success);
+        _showSnack('Backup erstellt — speicher es sicher ab ✅', AppColors.success);
       }
     } catch (e) {
       if (mounted) {
@@ -754,9 +761,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.2',
+              subtitle: 'v0.93.3',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.2', color: AppColors.secondary),
+              trailing: _Badge('v0.93.3', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
