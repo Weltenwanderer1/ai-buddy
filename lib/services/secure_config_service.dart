@@ -98,7 +98,7 @@ class SecureConfigService {
   String get openRouterBaseUrl =>
       _cache[keyOpenRouterBaseUrl] ?? _env(keyOpenRouterBaseUrl) ?? 'https://openrouter.ai/api';
   String get openRouterApiKey =>
-      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '';
+      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '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';
   String get openRouterModel =>
       _cache[keyOpenRouterModel] ?? _env(keyOpenRouterModel) ?? 'anthropic/claude-3.5-sonnet';
   String get openRouterFallbackModel =>
