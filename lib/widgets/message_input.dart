@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
-import '../services/stt_service.dart';
 import '../services/live_voice_service.dart';
-import '../models/chat_message.dart';
 import '../core/theme/app_colors.dart';
 
-/// Messaging Input Bar — Referenz-Screenshot Design.
-/// Eine einzelne dunkle Pille mit:
-/// - Links: blauer Kreis mit Hamburger-Menü
-/// - Dann: Smiley-Icon (outline)
-/// - Mitte: Textfeld mit "Nachricht" Placeholder
-/// - Dann: Paperclip (outline)
-/// - Rechts: blauer Kreis mit Mic (oder weißer Send-Pfeil wenn Text da)
+/// Messaging Input Bar — Live-Voice-first Design.
+/// - Links: Menü-Button
+/// - Mitte: Textfeld
+/// - Rechts: Live-Voice-Button (Mic = Live starten/stoppen)
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
-  final void Function(String text, {MessageType type})? onSendWithType;
   final bool isLiveModeActive;
   final VoidCallback? onToggleLiveMode;
   final LiveVoiceState liveVoiceState;
@@ -22,7 +16,6 @@ class MessageInput extends StatefulWidget {
   const MessageInput({
     super.key,
     required this.onSend,
-    this.onSendWithType,
     this.isLiveModeActive = false,
     this.onToggleLiveMode,
     this.liveVoiceState = LiveVoiceState.idle,
@@ -35,47 +28,15 @@ class MessageInput extends StatefulWidget {
 
 class _MessageInputState extends State<MessageInput> {
   final _controller = TextEditingController();
-  bool _isListening = false;
-  final SttService _stt = SttService();
-  bool _sttInitialized = false;
   bool _hasText = false;
 
   @override
   void initState() {
     super.initState();
-    _initStt();
     _controller.addListener(() {
       final has = _controller.text.isNotEmpty;
       if (has != _hasText) setState(() => _hasText = has);
     });
-  }
-
-  Future<void> _initStt() async {
-    _sttInitialized = await _stt.init();
-  }
-
-  Future<void> _startListening() async {
-    if (!_sttInitialized) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spracherkennung nicht verfügbar')),
-      );
-      return;
-    }
-    setState(() => _isListening = true);
-    try {
-      final result = await _stt.listenonce();
-      if (result != null && result.trim().isNotEmpty) {
-        _controller.text = result;
-      }
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Spracherkennung fehlgeschlagen')),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isListening = false);
-    }
   }
 
   void _submit() {
@@ -109,6 +70,40 @@ class _MessageInputState extends State<MessageInput> {
     super.dispose();
   }
 
+  /// Live-Voice button color based on state.
+  Color _liveButtonColor() {
+    switch (widget.liveVoiceState) {
+      case LiveVoiceState.listening:
+        return AppColors.success;
+      case LiveVoiceState.thinking:
+        return AppColors.secondary;
+      case LiveVoiceState.speaking:
+        return AppColors.primary;
+      case LiveVoiceState.error:
+        return AppColors.error;
+      case LiveVoiceState.idle:
+        return const Color(0xFF6B8DD6); // Periwinkle
+    }
+  }
+
+  IconData _liveButtonIcon() {
+    if (!widget.isLiveModeActive) {
+      return Icons.mic_rounded;
+    }
+    switch (widget.liveVoiceState) {
+      case LiveVoiceState.listening:
+        return Icons.hearing_rounded;
+      case LiveVoiceState.thinking:
+        return Icons.psychology_rounded;
+      case LiveVoiceState.speaking:
+        return Icons.volume_up_rounded;
+      case LiveVoiceState.error:
+        return Icons.error_outline_rounded;
+      case LiveVoiceState.idle:
+        return Icons.mic_rounded;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
@@ -120,28 +115,28 @@ class _MessageInputState extends State<MessageInput> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF24242A), // Leicht heller als vorher
+        color: const Color(0xFF24242A),
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Links: blauer Kreis mit Hamburger-Menü
-          _BlueCircleButton(
+          // Links: Menü
+          _CircleButton(
             icon: Icons.menu_rounded,
             onTap: () => ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Menü kommt bald')),
             ),
           ),
           const SizedBox(width: 8),
-          // Textfeld — breiter, mehr Padding links/rechts
+          // Textfeld
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: TextField(
                 controller: _controller,
-                enabled: !widget.isSending,
+                enabled: !widget.isSending && !widget.isLiveModeActive,
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 15,
@@ -162,65 +157,80 @@ class _MessageInputState extends State<MessageInput> {
                 maxLines: 6,
                 minLines: 1,
                 textCapitalization: TextCapitalization.sentences,
+                onSubmitted: (_) => _submit(),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          // Rechts: blauer Kreis mit Mic oder Send-Pfeil
+          // Rechts: Senden oder Live-Voice starten
           _hasText
-              ? _BlueCircleButton(
+              ? _CircleButton(
                   icon: Icons.arrow_upward_rounded,
                   onTap: _submit,
                 )
-              : _BlueCircleButton(
-                  icon: _isListening ? Icons.mic : Icons.mic_none,
-                  onTap: _isListening ? null : _startListening,
-                  color: _isListening ? AppColors.error : null,
+              : _CircleButton(
+                  icon: _liveButtonIcon(),
+                  onTap: widget.onToggleLiveMode ?? () {},
+                  color: _liveButtonColor(),
+                  size: _isPulsing() ? 44 : 40,
+                  glow: !widget.isLiveModeActive, // subtle glow hint
                 ),
         ],
       ),
     );
   }
 
+  bool _isPulsing() => false; // Could animate later
+
   Widget _buildLiveModeInput() {
+    final state = widget.liveVoiceState;
+    final stateLabel = switch (state) {
+      LiveVoiceState.idle => 'Bereit',
+      LiveVoiceState.listening => 'Ich höre zu…',
+      LiveVoiceState.thinking => 'Denkt nach…',
+      LiveVoiceState.speaking => 'Spricht…',
+      LiveVoiceState.error => 'Fehler',
+    };
+    final stateColor = switch (state) {
+      LiveVoiceState.idle => AppColors.textTertiary,
+      LiveVoiceState.listening => AppColors.success,
+      LiveVoiceState.thinking => AppColors.secondary,
+      LiveVoiceState.speaking => AppColors.primary,
+      LiveVoiceState.error => AppColors.error,
+    };
+
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF24242A), // Leicht heller als vorher
+        color: const Color(0xFF24242A),
         borderRadius: BorderRadius.circular(28),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
         children: [
+          // Pulsierender Punkt
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(
-              color: AppColors.success,
+              color: stateColor,
               shape: BoxShape.circle,
+              boxShadow: state != LiveVoiceState.idle
+                  ? [BoxShadow(color: stateColor.withValues(alpha: 0.5), blurRadius: 6)]
+                  : null,
             ),
           ),
           const SizedBox(width: 8),
           Text(
-            'LIVE',
+            stateLabel,
             style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.bold,
-              color: AppColors.success,
-              letterSpacing: 1.2,
+              fontSize: 13,
+              color: stateColor,
+              fontWeight: state != LiveVoiceState.idle ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              'Sprachmodus aktiv — sprich einfach',
-              style: TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-                fontStyle: FontStyle.italic,
-              ),
-            ),
-          ),
-          _BlueCircleButton(
+          const Spacer(),
+          // Stop-Button
+          _CircleButton(
             icon: Icons.stop_circle_outlined,
             onTap: widget.onToggleLiveMode ?? () {},
             color: AppColors.error,
@@ -231,30 +241,49 @@ class _MessageInputState extends State<MessageInput> {
   }
 }
 
-/// Blauer Kreis-Button (wie im Screenshot: periwinkle/lavender).
-/// Für Menü (links) und Mic/Send (rechts).
-class _BlueCircleButton extends StatelessWidget {
+/// Kreis-Button (Periwinkle-Blau oder custom Farbe).
+class _CircleButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback? onTap;
   final Color? color;
+  final double size;
+  final bool glow;
 
-  const _BlueCircleButton({required this.icon, this.onTap, this.color});
+  const _CircleButton({
+    required this.icon,
+    this.onTap,
+    this.color,
+    this.size = 40,
+    this.glow = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = color ?? const Color(0xFF6B8DD6).withValues(alpha: 0.9);
+
     return Material(
-      color: const Color(0xFF6B8DD6).withValues(alpha: 0.9), // Periwinkle blau
+      color: bgColor,
       shape: const CircleBorder(),
       child: InkWell(
         onTap: onTap,
         customBorder: const CircleBorder(),
         child: Container(
-          width: 40,
-          height: 40,
+          width: size,
+          height: size,
           alignment: Alignment.center,
+          decoration: glow ? BoxDecoration(
+            shape: BoxShape.circle,
+            color: bgColor,
+            boxShadow: [
+              BoxShadow(
+                color: bgColor.withValues(alpha: 0.3),
+                blurRadius: 8,
+              ),
+            ],
+          ) : null,
           child: Icon(
             icon,
-            color: color ?? Colors.white,
+            color: Colors.white,
             size: 20,
           ),
         ),
@@ -262,4 +291,3 @@ class _BlueCircleButton extends StatelessWidget {
     );
   }
 }
-
