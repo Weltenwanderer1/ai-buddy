@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 enum PiperVoice {
   thorsten('de_DE-thorsten-high', 'Thorsten (Männlich, natürlich)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json'),
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorston/high/de_DE-thorsten-high.onnx.json'),
   eva('de_DE-eva-medium', 'Eva (Weiblich, klar)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx.json'),
@@ -38,17 +38,25 @@ enum PiperVoice {
 class PiperTtsService extends ChangeNotifier {
   final PiperTtsPlugin _piper = PiperTtsPlugin();
   bool _isLoaded = false;
-  bool _isDownloading = false;
+
+  /// Which voice is currently downloading (null = none downloading).
+  PiperVoice? _downloadingVoice;
   double _downloadProgress = 0.0;
   String? _lastError;
   PiperVoice? _currentVoice;
 
+  /// Cache of download status per voice.
+  final Map<String, bool> _downloadedCache = {};
+
   bool get isLoaded => _isLoaded;
-  bool get isDownloading => _isDownloading;
+  bool get isDownloading => _downloadingVoice != null;
   double get downloadProgress => _downloadProgress;
   String? get lastError => _lastError;
   PiperVoice? get currentVoice => _currentVoice;
   bool get isAvailable => _isLoaded;
+
+  /// Whether a specific voice is currently being downloaded.
+  bool isDownloadingVoice(PiperVoice voice) => _downloadingVoice == voice;
 
   /// Get the local directory where Piper voice models are stored.
   Future<Directory> _getModelsDir() async {
@@ -60,10 +68,21 @@ class PiperTtsService extends ChangeNotifier {
 
   /// Check if a voice model is already downloaded locally.
   Future<bool> isVoiceDownloaded(PiperVoice voice) async {
+    if (_downloadedCache.containsKey(voice.id)) return _downloadedCache[voice.id]!;
     final dir = await _getModelsDir();
     final modelFile = File('${dir.path}/${voice.id}.onnx');
     final configFile = File('${dir.path}/${voice.id}.onnx.json');
-    return await modelFile.exists() && await configFile.exists();
+    final exists = await modelFile.exists() && await configFile.exists();
+    _downloadedCache[voice.id] = exists;
+    return exists;
+  }
+
+  /// Refresh download status for a voice (call after download/delete).
+  Future<void> _refreshDownloadStatus(PiperVoice voice) async {
+    final dir = await _getModelsDir();
+    final modelFile = File('${dir.path}/${voice.id}.onnx');
+    final configFile = File('${dir.path}/${voice.id}.onnx.json');
+    _downloadedCache[voice.id] = await modelFile.exists() && await configFile.exists();
   }
 
   /// Get file sizes for a voice (model + config), returns total bytes or null if not downloaded.
@@ -80,8 +99,8 @@ class PiperTtsService extends ChangeNotifier {
   /// Download a Piper voice model + config to local storage.
   /// Reports progress via [onProgress] (0.0 - 1.0).
   Future<bool> downloadVoice(PiperVoice voice, {void Function(double progress)? onProgress}) async {
-    if (_isDownloading) return false;
-    _isDownloading = true;
+    if (_downloadingVoice != null) return false; // another download in progress
+    _downloadingVoice = voice;
     _downloadProgress = 0.0;
     _lastError = null;
     notifyListeners();
@@ -91,7 +110,7 @@ class PiperTtsService extends ChangeNotifier {
       final modelFile = File('${dir.path}/${voice.id}.onnx');
       final configFile = File('${dir.path}/${voice.id}.onnx.json');
 
-      // Download model
+      // Download model with progress
       debugPrint('PiperTts: Downloading model ${voice.id}...');
       final modelResponse = await http.Client().send(http.Request('GET', Uri.parse(voice.modelUrl)));
       final modelTotal = modelResponse.contentLength ?? 1;
@@ -100,12 +119,12 @@ class PiperTtsService extends ChangeNotifier {
       await for (final chunk in modelResponse.stream) {
         modelSink.add(chunk);
         modelDownloaded += chunk.length;
-        _downloadProgress = (modelDownloaded / modelTotal) * 0.9; // 90% for model
+        _downloadProgress = (modelDownloaded / modelTotal) * 0.9;
         notifyListeners();
         onProgress?.call(_downloadProgress);
       }
       await modelSink.close();
-      debugPrint('PiperTts: Model downloaded (${modelDownloaded} bytes)');
+      debugPrint('PiperTts: Model downloaded ($modelDownloaded bytes)');
 
       // Download config
       debugPrint('PiperTts: Downloading config...');
@@ -115,14 +134,15 @@ class PiperTtsService extends ChangeNotifier {
       notifyListeners();
       onProgress?.call(1.0);
 
+      await _refreshDownloadStatus(voice);
       debugPrint('PiperTts: Voice ${voice.id} downloaded successfully');
-      _isDownloading = false;
+      _downloadingVoice = null;
       notifyListeners();
       return true;
     } catch (e) {
       _lastError = 'Download fehlgeschlagen: $e';
       debugPrint('PiperTts: $_lastError');
-      _isDownloading = false;
+      _downloadingVoice = null;
       notifyListeners();
       return false;
     }
@@ -143,6 +163,7 @@ class PiperTtsService extends ChangeNotifier {
       final configFile = File('${dir.path}/${voice.id}.onnx.json');
       if (await modelFile.exists()) await modelFile.delete();
       if (await configFile.exists()) await configFile.delete();
+      await _refreshDownloadStatus(voice);
       debugPrint('PiperTts: Voice ${voice.id} deleted');
       return true;
     } catch (e) {

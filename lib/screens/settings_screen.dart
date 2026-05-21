@@ -754,9 +754,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.0',
+              subtitle: 'v0.93.1',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.0', color: AppColors.secondary),
+              trailing: _Badge('v0.93.1', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -1156,7 +1156,7 @@ class _PiperVoiceTile extends StatelessWidget {
       future: piper.isVoiceDownloaded(voice),
       builder: (context, snapshot) {
         final isDownloaded = snapshot.data ?? false;
-        final isDownloading = piper.isDownloading;
+        final isThisDownloading = piper.isDownloadingVoice(voice);
         final isLoaded = piper.isLoaded && piper.currentVoice == voice;
 
         return Container(
@@ -1191,16 +1191,23 @@ class _PiperVoiceTile extends StatelessWidget {
                     fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
                     color: isCurrent ? AppColors.secondary : AppColors.textPrimary,
                   )),
-                Text(isDownloaded ? 'Heruntergeladen' : 'Nicht heruntergeladen',
+                Text(isThisDownloading
+                    ? 'Wird heruntergeladen… ${(piper.downloadProgress * 100).toStringAsFixed(0)}%'
+                    : isDownloaded ? 'Heruntergeladen'
+                    : 'Nicht heruntergeladen',
                   style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
                 if (isCurrent) Text('✓ Aktiv',
                   style: TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.w600)),
               ],
             )),
-            if (isDownloading && piper.currentVoice == voice)
+            if (isThisDownloading)
               SizedBox(width: 18, height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.secondary)),
-            if (!isDownloading) ...[
+                child: CircularProgressIndicator(
+                  strokeWidth: 2.5,
+                  color: AppColors.secondary,
+                  backgroundColor: AppColors.secondary.withValues(alpha: 0.2),
+                )),
+            if (!isThisDownloading) ...[
               if (!isDownloaded)
                 _SmallButton(
                   icon: Icons.download_rounded,
@@ -1240,18 +1247,20 @@ class _SmallButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
           color: color.withValues(alpha: 0.15),
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 14, color: color),
-          const SizedBox(width: 3),
-          Text(label, style: TextStyle(fontSize: 11, color: color, fontWeight: FontWeight.w600)),
+          Icon(icon, size: 16, color: color),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700)),
         ]),
       ),
     );
