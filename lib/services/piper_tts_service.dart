@@ -8,7 +8,7 @@ import 'package:http/http.dart' as http;
 enum PiperVoice {
   thorsten('de_DE-thorsten-high', 'Thorsten (Männlich, natürlich)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorston/high/de_DE-thorsten-high.onnx.json'),
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json'),
   eva('de_DE-eva-medium', 'Eva (Weiblich, klar)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx.json'),
