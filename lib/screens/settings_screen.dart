@@ -811,9 +811,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.94.0',
+              subtitle: 'v0.94.1',
               color: AppColors.secondary,
-              trailing: _Badge('v0.94.0', color: AppColors.secondary),
+              trailing: _Badge('v0.94.1', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -1147,7 +1147,10 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
         ),
         AnimatedCrossFade(
           firstChild: Container(),
-          secondChild: Column(children: [...widget.children, const SizedBox(height: 8)]),
+          secondChild: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Column(children: [...widget.children, const SizedBox(height: 8)]),
+          ),
           crossFadeState: widget.expanded
             ? CrossFadeState.showSecond
             : CrossFadeState.showFirst,
