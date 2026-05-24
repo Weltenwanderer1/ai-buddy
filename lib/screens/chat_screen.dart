@@ -17,6 +17,7 @@ import '../services/stt_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/location_service.dart';
+import '../services/local_model_service.dart';
 
 import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
@@ -185,12 +186,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
+      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>(), localModel: context.read<LocalModelService>());
       await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
     } catch (e) {
       debugPrint('Streaming failed: $e');
       try {
-        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
+        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>(), localModel: context.read<LocalModelService>());
         final reply = await chatService.sendMessage(
           userMessage: text,
           persona: persona,

@@ -12,6 +12,7 @@ import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/tile_download_service.dart';
+import '../services/local_model_service.dart';
 import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
@@ -767,20 +768,201 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ])),
 
+          // ── Lokales KI-Modell ──
+          SliverToBoxAdapter(child: _buildLocalModelPanel()),
+
           // ── Über ──
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.6',
+              subtitle: 'v0.93.7',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.6', color: AppColors.secondary),
+              trailing: _Badge('v0.93.7', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
 
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════
+  // Lokales KI-Modell (Gemma 4 E2B)
+  // ═══════════════════════════════════════════════════
+  Widget _buildLocalModelPanel() {
+    return ChangeNotifierProvider.value(
+      value: context.read<LocalModelService>(),
+      child: Consumer<LocalModelService>(
+        builder: (context, localModel, _) {
+          final isDownloading = localModel.isDownloading;
+          final isDeleting = localModel.isDeleting;
+          final isAvailable = localModel.isModelAvailable;
+          final isEnabled = localModel.useLocalModel;
+          final progress = localModel.downloadProgress;
+          final error = localModel.error;
+
+          return _GlassCard(children: [
+            Row(children: [
+              Icon(Icons.memory_rounded, color: AppColors.secondary, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text('Lokales KI-Modell',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              ),
+              if (isAvailable)
+                _Badge('Bereit', color: AppColors.success)
+              else if (isDownloading)
+                _Badge('Download…', color: AppColors.warning)
+              else
+                _Badge('Nicht installiert', color: AppColors.textSecondary),
+            ]),
+            const SizedBox(height: 12),
+
+            // Model info
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.bgElevated.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(localModel.modelDisplayName,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                Text('${localModel.modelSizeDisplay} · Q4_K_M Quantization',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 2),
+                Text('Läuft vollständig offline auf dem Gerät. Keine Internetverbindung nötig.',
+                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.4)),
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            // Download / Toggle / Delete
+            if (!isAvailable && !isDownloading) ...[
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: Icons.download_rounded,
+                  label: 'Herunterladen (${localModel.modelSizeDisplay})',
+                  onTap: () => localModel.downloadModel(),
+                )),
+              ]),
+            ],
+
+            if (isDownloading) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: progress,
+                  backgroundColor: AppColors.bgElevated,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                  minHeight: 8,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Text('${(progress * 100).toStringAsFixed(0)}%',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                InkWell(
+                  onTap: () => localModel.cancelDownload(),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text('Abbrechen',
+                      style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ]),
+            ],
+
+            if (isDeleting) ...[
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error)),
+                const SizedBox(width: 8),
+                Text('Wird gelöscht…', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              ]),
+            ],
+
+            if (isAvailable && !isDeleting) ...[
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: isEnabled ? Icons.check_circle_rounded : Icons.circle_outlined,
+                  label: isEnabled ? 'Lokales Modell aktiv' : 'Lokales Modell aktivieren',
+                  onTap: () => localModel.setUseLocalModel(!isEnabled),
+                )),
+              ]),
+              const SizedBox(height: 12),
+              Row(children: [
+                Expanded(child: InkWell(
+                  onTap: () async {
+                    final confirmed = await showDialog<bool>(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: AppColors.bgDark,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        title: Text('Modell löschen?', style: TextStyle(color: AppColors.textPrimary)),
+                        content: Text('Das ${localModel.modelSizeDisplay} große Modell wird vom Gerät entfernt. Du kannst es jederzeit neu herunterladen.',
+                          style: TextStyle(color: AppColors.textSecondary)),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: Text('Abbrechen', style: TextStyle(color: AppColors.textSecondary)),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: Text('Löschen', style: TextStyle(color: AppColors.error)),
+                          ),
+                        ],
+                      ),
+                    );
+                    if (confirmed == true) {
+                      await localModel.deleteModel();
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                      Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 18),
+                      const SizedBox(width: 8),
+                      Text('Modell löschen',
+                        style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 14)),
+                    ]),
+                  ),
+                )),
+              ]),
+            ],
+
+            if (error != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: AppColors.error.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                ),
+                child: Row(children: [
+                  Icon(Icons.error_outline, color: AppColors.error, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(error, style: TextStyle(fontSize: 12, color: AppColors.error))),
+                ]),
+              ),
+            ],
+          ]);
+        },
       ),
     );
   }

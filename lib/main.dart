@@ -19,6 +19,7 @@ import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
+import 'services/local_model_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'tools/tool_registry.dart';
@@ -66,6 +67,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late NotificationService _notificationService;
   late BackupService _backupService;
   late LocationService _locationService;
+  late LocalModelService _localModel;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -78,7 +80,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
-      _notificationService.dispose();
+      _notificationService.dispose(); _localModel.dispose();
     }
     super.dispose();
   }
@@ -122,6 +124,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
 
       _locationService = LocationService();
+
+      _localModel = LocalModelService();
 
       final appDocDir = await getApplicationDocumentsDirectory();
       final rootPath = appDocDir.path;
@@ -290,7 +294,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _buddyNotes),
         ChangeNotifierProvider.value(value: _buddyCapabilities),
         ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
-        ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _toolRegistry),
+        ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _localModel),
+        Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _locationService),
       ],

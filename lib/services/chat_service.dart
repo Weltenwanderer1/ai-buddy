@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
 import '../services/ollama_cloud_service.dart';
+import '../services/local_model_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
@@ -23,14 +24,16 @@ class ChatService {
   final LocationService? _locationService;
   final BuddyCapabilitiesService? _buddyCapabilities;
   final int maxToolRounds;
+  final LocalModelService? _localModel;
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities, this.maxToolRounds = 5})
+  ChatService(this._llm, {ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities, LocalModelService? localModel, this.maxToolRounds = 5})
       : _toolRegistry = toolRegistry,
         _selfIdentity = selfIdentity,
         _locationService = locationService,
-        _buddyCapabilities = buddyCapabilities;
+        _buddyCapabilities = buddyCapabilities,
+        _localModel = localModel;
 
   /// Cached RegExps for _pickModel (avoid recompiling on every call).
   static final RegExp _cmdPrefixRegex = RegExp(
@@ -285,6 +288,32 @@ class ChatService {
         model: pickedModel,
       );
     } else {
+      // Check if local model is enabled and available
+      if (_localModel != null && _localModel!.useLocalModel && _localModel!.isModelAvailable) {
+        final reply = await _localModel!.chat(
+          messages.map((m) => {
+                'role': m['role'] as String,
+                'content': m['content'] as String,
+              }).toList(),
+          temperature: 0.3,
+        );
+        await Future.wait([
+          memory.addShortTerm(userMessage, source: 'user'),
+          memory.addShortTerm(reply, source: 'assistant'),
+        ]);
+        try {
+          await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+          await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+        } catch (e) {
+          debugPrint('Memory promotion error: $e');
+        }
+        _messageCount++;
+        if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
+          _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
+        }
+        return reply;
+      }
+
       final pickedModel = _pickModel(userMessage, false);
       final reply = await _llm.chat(
         systemPrompt: systemPrompt,
