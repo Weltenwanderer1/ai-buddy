@@ -811,9 +811,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.10',
+              subtitle: 'v0.94.0',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.10', color: AppColors.secondary),
+              trailing: _Badge('v0.94.0', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -842,7 +842,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           return Column(children: [
             // Modell-Auswahl Dropdown
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              margin: const EdgeInsets.symmetric(horizontal: 0),
+              padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 4),
               decoration: BoxDecoration(
                 color: AppColors.bgElevated.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(12),
@@ -854,7 +855,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                   value: activeModel,
                   dropdownColor: AppColors.bgDark,
                   borderRadius: BorderRadius.circular(12),
-                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
+                  icon: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary, size: 24),
+                  ),
                   style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
                   onChanged: isDownloading
                       ? null
@@ -866,30 +870,33 @@ class _SettingsScreenState extends State<SettingsScreen>
                   items: localModel.availableModels.map((model) {
                     return DropdownMenuItem<LocalModelConfig>(
                       value: model,
-                      child: Row(children: [
-                        Icon(
-                          model.id == activeModel.id
-                              ? Icons.radio_button_checked_rounded
-                              : Icons.radio_button_unchecked_rounded,
-                          color: model.id == activeModel.id
-                              ? AppColors.success
-                              : AppColors.textSecondary,
-                          size: 18,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(model.displayName,
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: model.id == activeModel.id ? FontWeight.w600 : FontWeight.w400,
-                              color: model.id == activeModel.id
-                                  ? AppColors.textPrimary
-                                  : AppColors.textSecondary,
-                            )),
-                        ),
-                        Text(model.sizeDisplay,
-                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                      ]),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Row(children: [
+                          Icon(
+                            model.id == activeModel.id
+                                ? Icons.radio_button_checked_rounded
+                                : Icons.radio_button_unchecked_rounded,
+                            color: model.id == activeModel.id
+                                ? AppColors.success
+                                : AppColors.textSecondary,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(model.displayName,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: model.id == activeModel.id ? FontWeight.w600 : FontWeight.w400,
+                                color: model.id == activeModel.id
+                                    ? AppColors.textPrimary
+                                    : AppColors.textSecondary,
+                              )),
+                          ),
+                          Text(model.sizeDisplay,
+                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                        ]),
+                      ),
                     );
                   }).toList(),
                 ),

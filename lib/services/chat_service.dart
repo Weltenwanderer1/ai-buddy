@@ -35,6 +35,10 @@ class ChatService {
         _buddyCapabilities = buddyCapabilities,
         _localModel = localModel;
 
+  bool _isLocalActive() {
+    return _localModel != null && _localModel!.useLocalModel && _localModel!.isModelAvailable;
+  }
+
   /// Cached RegExps for _pickModel (avoid recompiling on every call).
   static final RegExp _cmdPrefixRegex = RegExp(
     r'^(oeffne|starte|mach|zeig|geh|navigier|fahr|bring|stell|timer|wecker|erinner|send|schick|schreib)',
@@ -171,7 +175,7 @@ class ChatService {
       messages.add({'role': 'user', 'content': userMessage});
     }
 
-    if (hasTools) {
+    if (hasTools && !_isLocalActive()) {
       final pickedModel = _pickModel(userMessage, true);
       // Signal that tools are being executed (prevents UI from showing "thinking" forever)
       yield '🔧';
@@ -192,6 +196,36 @@ class ChatService {
         for (int i = 0; i < words.length; i++) {
           yield (i == 0 ? '' : ' ') + words[i];
         }
+      }
+      return;
+    }
+
+    if (_isLocalActive()) {
+      final reply = await _localModel!.chat(
+        messages.map((m) => {
+              'role': m['role'] as String,
+              'content': m['content'] as String,
+            }).toList(),
+        temperature: 0.3,
+      );
+      // Chunk the reply for streaming feel
+      final words = reply.split(' ');
+      for (int i = 0; i < words.length; i++) {
+        yield (i == 0 ? '' : ' ') + words[i];
+      }
+      await Future.wait([
+        memory.addShortTerm(userMessage, source: 'user'),
+        memory.addShortTerm(reply, source: 'assistant'),
+      ]);
+      try {
+        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+        await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+      } catch (e) {
+        debugPrint('Memory promotion error: $e');
+      }
+      _messageCount++;
+      if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
+        _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
       }
       return;
     }
@@ -270,11 +304,11 @@ class ChatService {
         _toolRegistry != null && _toolRegistry!.toolNames.isNotEmpty;
     final tools = hasTools ? _toolRegistry!.getToolDefinitions() : null;
 
-    if (hasTools) {
+    if (hasTools && !_isLocalActive()) {
       systemPrompt = _withToolInstructions(systemPrompt, null);
     }
 
-    if (hasTools) {
+    if (hasTools && !_isLocalActive()) {
       final pickedModel = _pickModel(userMessage, true);
       return await _chatWithToolLoop(
         systemPrompt: systemPrompt,
@@ -287,49 +321,20 @@ class ChatService {
         onToolActivity: onToolActivity,
         model: pickedModel,
       );
-    } else {
-      // Check if local model is enabled and available
-      if (_localModel != null && _localModel!.useLocalModel && _localModel!.isModelAvailable) {
-        final reply = await _localModel!.chat(
-          messages.map((m) => {
-                'role': m['role'] as String,
-                'content': m['content'] as String,
-              }).toList(),
-          temperature: 0.3,
-        );
-        await Future.wait([
-          memory.addShortTerm(userMessage, source: 'user'),
-          memory.addShortTerm(reply, source: 'assistant'),
-        ]);
-        try {
-          await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
-          await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
-        } catch (e) {
-          debugPrint('Memory promotion error: $e');
-        }
-        _messageCount++;
-        if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
-          _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
-        }
-        return reply;
-      }
+    }
 
-      final pickedModel = _pickModel(userMessage, false);
-      final reply = await _llm.chat(
-        systemPrompt: systemPrompt,
-        messages: messages
-            .map((m) => {
-                  'role': m['role'] as String,
-                  'content': m['content'] as String,
-                })
-            .toList(),
-        model: pickedModel,
+    if (_isLocalActive()) {
+      final reply = await _localModel!.chat(
+        messages.map((m) => {
+              'role': m['role'] as String,
+              'content': m['content'] as String,
+            }).toList(),
+        temperature: 0.3,
       );
       await Future.wait([
         memory.addShortTerm(userMessage, source: 'user'),
         memory.addShortTerm(reply, source: 'assistant'),
       ]);
-      // Auto-promote: check if conversation content is worth remembering long-term
       try {
         await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
         await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
@@ -342,6 +347,34 @@ class ChatService {
       }
       return reply;
     }
+
+    final pickedModel = _pickModel(userMessage, false);
+    final reply = await _llm.chat(
+      systemPrompt: systemPrompt,
+      messages: messages
+          .map((m) => {
+                'role': m['role'] as String,
+                'content': m['content'] as String,
+              })
+          .toList(),
+      model: pickedModel,
+    );
+    await Future.wait([
+      memory.addShortTerm(userMessage, source: 'user'),
+      memory.addShortTerm(reply, source: 'assistant'),
+    ]);
+    // Auto-promote: check if conversation content is worth remembering long-term
+    try {
+      await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+      await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+    } catch (e) {
+      debugPrint('Memory promotion error: $e');
+    }
+    _messageCount++;
+    if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
+      _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
+    }
+    return reply;
   }
 
   String _withToolInstructions(String basePrompt, String? preloadedLiveData) {
