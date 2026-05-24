@@ -336,11 +336,17 @@ class LocalModelService extends ChangeNotifier {
     try {
       _controller = LlamaController();
 
+      // Sichere Defaults: CPU-only, weniger Ressourcen
       int gpuLayers = 0;
+      int threads = 4;
+      int contextSize = 2048;
+
+      // GPU nur wenn explizit verfügbar und stabil
       try {
         final gpuInfo = await _controller!.detectGpu();
         if (gpuInfo.vulkanSupported && gpuInfo.recommendedGpuLayers > 0) {
-          gpuLayers = gpuInfo.recommendedGpuLayers;
+          // Samsung + Mali GPUs sind oft instabil — lieber CPU
+          gpuLayers = 0;
         }
       } catch (_) {
         gpuLayers = 0;
@@ -349,8 +355,8 @@ class LocalModelService extends ChangeNotifier {
       await _controller!.loadModel(
         modelPath: _modelPath!,
         gpuLayers: gpuLayers,
-        threads: 4,
-        contextSize: 2048,
+        threads: threads,
+        contextSize: contextSize,
       );
 
       _isModelLoaded = true;
@@ -360,6 +366,9 @@ class LocalModelService extends ChangeNotifier {
     } catch (e) {
       _error = 'Modell laden fehlgeschlagen: $e';
       _isModelLoaded = false;
+      try {
+        await _controller?.dispose();
+      } catch (_) {}
       _controller = null;
       notifyListeners();
       return false;

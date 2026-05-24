@@ -201,33 +201,39 @@ class ChatService {
     }
 
     if (_isLocalActive()) {
-      final reply = await _localModel!.chat(
-        messages.map((m) => {
-              'role': m['role'] as String,
-              'content': m['content'] as String,
-            }).toList(),
-        temperature: 0.3,
-      );
-      // Chunk the reply for streaming feel
-      final words = reply.split(' ');
-      for (int i = 0; i < words.length; i++) {
-        yield (i == 0 ? '' : ' ') + words[i];
-      }
-      await Future.wait([
-        memory.addShortTerm(userMessage, source: 'user'),
-        memory.addShortTerm(reply, source: 'assistant'),
-      ]);
       try {
-        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
-        await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+        final reply = await _localModel!.chat(
+          messages.map((m) => {
+                'role': m['role'] as String,
+                'content': m['content'] as String,
+              }).toList(),
+          temperature: 0.3,
+        );
+        // Chunk the reply for streaming feel
+        final words = reply.split(' ');
+        for (int i = 0; i < words.length; i++) {
+          yield (i == 0 ? '' : ' ') + words[i];
+        }
+        await Future.wait([
+          memory.addShortTerm(userMessage, source: 'user'),
+          memory.addShortTerm(reply, source: 'assistant'),
+        ]);
+        try {
+          await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+          await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+        } catch (e) {
+          debugPrint('Memory promotion error: $e');
+        }
+        _messageCount++;
+        if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
+          _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
+        }
+        return;
       } catch (e) {
-        debugPrint('Memory promotion error: $e');
+        debugPrint('Local model crashed, falling back to cloud: $e');
+        // Deactivate local temporarily to prevent further crashes
+        await _localModel?.unloadModel();
       }
-      _messageCount++;
-      if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
-        _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
-      }
-      return;
     }
 
     final pickedModel = _pickModel(userMessage, false);
@@ -324,28 +330,33 @@ class ChatService {
     }
 
     if (_isLocalActive()) {
-      final reply = await _localModel!.chat(
-        messages.map((m) => {
-              'role': m['role'] as String,
-              'content': m['content'] as String,
-            }).toList(),
-        temperature: 0.3,
-      );
-      await Future.wait([
-        memory.addShortTerm(userMessage, source: 'user'),
-        memory.addShortTerm(reply, source: 'assistant'),
-      ]);
       try {
-        await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
-        await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+        final reply = await _localModel!.chat(
+          messages.map((m) => {
+                'role': m['role'] as String,
+                'content': m['content'] as String,
+              }).toList(),
+          temperature: 0.3,
+        );
+        await Future.wait([
+          memory.addShortTerm(userMessage, source: 'user'),
+          memory.addShortTerm(reply, source: 'assistant'),
+        ]);
+        try {
+          await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
+          await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
+        } catch (e) {
+          debugPrint('Memory promotion error: $e');
+        }
+        _messageCount++;
+        if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
+          _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
+        }
+        return reply;
       } catch (e) {
-        debugPrint('Memory promotion error: $e');
+        debugPrint('Local model crashed in sendMessage, falling back: $e');
+        await _localModel?.unloadModel();
       }
-      _messageCount++;
-      if (personaEvolution != null && _messageCount % evolutionInterval == 0) {
-        _triggerEvolutionAndIntrospection(personaEvolution, history, userMessage, reply);
-      }
-      return reply;
     }
 
     final pickedModel = _pickModel(userMessage, false);
