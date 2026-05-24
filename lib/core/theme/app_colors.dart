@@ -59,6 +59,12 @@ class AppColors {
     colors: [Color(0xFF64D2FF), Color(0xFF5B9BD5)],
   );
 
+  static const LinearGradient successGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [Color(0xFF34D399), Color(0xFF059669)],
+  );
+
       // ── Message Bubble Colors ──
   static const LinearGradient userBubble = LinearGradient(
     begin: Alignment.topLeft,

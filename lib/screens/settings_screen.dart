@@ -96,6 +96,20 @@ class _SettingsScreenState extends State<SettingsScreen>
       defaultModel: config.activeModel,
       fallbackModel: config.activeFallbackModel,
     );
+
+    // Sync LocalModelService with provider choice
+    final localModel = context.read<LocalModelService>();
+    if (_llmProvider == 'local') {
+      if (localModel.isModelAvailable) {
+        await localModel.setUseLocalModel(true);
+      } else {
+        if (mounted) _showSnack('Modell nicht installiert. Bitte zuerst herunterladen.', AppColors.warning);
+        return;
+      }
+    } else {
+      await localModel.setUseLocalModel(false);
+    }
+
     if (mounted) _showSnack('KI-Modell gespeichert ✅', AppColors.success);
   }
 
@@ -557,6 +571,27 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                     ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => setState(() => _llmProvider = 'local'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            gradient: _llmProvider == 'local' ? AppColors.successGradient : null,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text(
+                            'Lokal',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: _llmProvider == 'local' ? Colors.white : AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -583,7 +618,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   icon: Icons.backup_rounded,
                   controller: _ollamaFallbackController,
                 ),
-              ] else ...[
+              ] else if (_llmProvider == 'openrouter') ...[
                 _GlassTextField(
                   label: 'OpenRouter API Key',
                   icon: Icons.key_rounded,
@@ -600,6 +635,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                   icon: Icons.backup_rounded,
                   controller: _openRouterFallbackController,
                 ),
+              ] else if (_llmProvider == 'local') ...[
+                // Lokal: Gemma 4 E2B Panel
+                _buildLocalModelContent(),
               ],
 
               const SizedBox(height: 8),
@@ -768,17 +806,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ])),
 
-          // ── Lokales KI-Modell ──
-          SliverToBoxAdapter(child: _buildLocalModelPanel()),
-
           // ── Über ──
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.7',
+              subtitle: 'v0.93.8',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.7', color: AppColors.secondary),
+              trailing: _Badge('v0.93.8', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -790,9 +825,9 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   // ═══════════════════════════════════════════════════
-  // Lokales KI-Modell (Gemma 4 E2B)
+  // Lokales KI-Modell Inhalt (für KI-Modell Tabs)
   // ═══════════════════════════════════════════════════
-  Widget _buildLocalModelPanel() {
+  Widget _buildLocalModelContent() {
     return ChangeNotifierProvider.value(
       value: context.read<LocalModelService>(),
       child: Consumer<LocalModelService>(
@@ -800,17 +835,17 @@ class _SettingsScreenState extends State<SettingsScreen>
           final isDownloading = localModel.isDownloading;
           final isDeleting = localModel.isDeleting;
           final isAvailable = localModel.isModelAvailable;
-          final isEnabled = localModel.useLocalModel;
           final progress = localModel.downloadProgress;
           final error = localModel.error;
 
-          return _GlassCard(children: [
+          return Column(children: [
+            // Status Badge + Info
             Row(children: [
-              Icon(Icons.memory_rounded, color: AppColors.secondary, size: 22),
-              const SizedBox(width: 12),
+              Icon(Icons.memory_rounded, color: AppColors.success, size: 20),
+              const SizedBox(width: 10),
               Expanded(
-                child: Text('Lokales KI-Modell',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                child: Text(localModel.modelDisplayName,
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               ),
               if (isAvailable)
                 _Badge('Bereit', color: AppColors.success)
@@ -819,29 +854,13 @@ class _SettingsScreenState extends State<SettingsScreen>
               else
                 _Badge('Nicht installiert', color: AppColors.textSecondary),
             ]),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-            // Model info
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: AppColors.bgElevated.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(localModel.modelDisplayName,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                const SizedBox(height: 4),
-                Text('${localModel.modelSizeDisplay} · Q4_K_M Quantization',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 2),
-                Text('Läuft vollständig offline auf dem Gerät. Keine Internetverbindung nötig.',
-                  style: TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.4)),
-              ]),
-            ),
+            Text('${localModel.modelSizeDisplay} · Q4_K_M Quantization · Läuft vollständig offline',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
             const SizedBox(height: 16),
 
-            // Download / Toggle / Delete
+            // Download / Delete / Progress
             if (!isAvailable && !isDownloading) ...[
               Row(children: [
                 Expanded(child: _GradientButton(
@@ -891,13 +910,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             ],
 
             if (isAvailable && !isDeleting) ...[
-              Row(children: [
-                Expanded(child: _GradientButton(
-                  icon: isEnabled ? Icons.check_circle_rounded : Icons.circle_outlined,
-                  label: isEnabled ? 'Lokales Modell aktiv' : 'Lokales Modell aktivieren',
-                  onTap: () => localModel.setUseLocalModel(!isEnabled),
-                )),
-              ]),
+              Text('Modell ist bereit und wird verwendet, wenn „Lokal“ aktiv ist.',
+                style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: InkWell(
@@ -928,7 +942,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: BoxDecoration(
                       color: AppColors.error.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),

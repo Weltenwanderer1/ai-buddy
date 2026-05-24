@@ -15,7 +15,7 @@ class SecureConfigService {
   static const keyOpenRouterApiKey = 'OPENROUTER_API_KEY';
   static const keyOpenRouterModel = 'OPENROUTER_MODEL';
   static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
-  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama' or 'openrouter'
+  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', or 'local'
   static const keyTavilyApiKey = 'TAVILY_API_KEY';
 
   // TTS config
@@ -83,6 +83,7 @@ class SecureConfigService {
   String get llmProvider =>
       _cache[keyLlmProvider] ?? _env(keyLlmProvider) ?? 'ollama';
   bool get useOpenRouter => llmProvider == 'openrouter';
+  bool get useLocalModel => llmProvider == 'local';
 
   String get activeBaseUrl => useOpenRouter ? openRouterBaseUrl : ollamaBaseUrl;
   String get activeApiKey => useOpenRouter ? openRouterApiKey : ollamaApiKey;
