@@ -811,9 +811,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.8',
+              subtitle: 'v0.93.9',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.8', color: AppColors.secondary),
+              trailing: _Badge('v0.93.9', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),

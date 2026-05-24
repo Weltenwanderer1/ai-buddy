@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio/dio.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 
 /// Service für lokales KI-Modell (Gemma 4 E2B).
@@ -109,6 +110,9 @@ class LocalModelService extends ChangeNotifier {
     _cancelToken = CancelToken();
     notifyListeners();
 
+    // Keep screen awake during download
+    await WakelockPlus.enable();
+
     try {
       final dir = await _getModelDir();
       await Directory(dir).create(recursive: true);
@@ -179,6 +183,8 @@ class LocalModelService extends ChangeNotifier {
       return false;
     } finally {
       _cancelToken = null;
+      // Screen can sleep again
+      await WakelockPlus.disable();
     }
   }
 
