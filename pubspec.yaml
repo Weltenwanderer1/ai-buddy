@@ -1,7 +1,7 @@
 name: ai_buddy
 description: AI Companion App with Chat, Voice, Memory, Persona & Tool System
 publish_to: 'none'
-version: 0.93.9+99
+version: 0.93.10+100
 
 environment:
   sdk: '>=3.0.0 <4.0.0'

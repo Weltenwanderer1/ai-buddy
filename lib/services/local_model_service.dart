@@ -7,14 +7,68 @@ import 'package:dio/dio.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:llama_flutter_android/llama_flutter_android.dart';
 
-/// Service für lokales KI-Modell (Gemma 4 E2B).
+/// Konfiguration für ein verfügbares lokales Modell.
+class LocalModelConfig {
+  final String id;
+  final String displayName;
+  final String fileName;
+  final String downloadUrl;
+  final int sizeBytes;
+  final String quantization;
+
+  const LocalModelConfig({
+    required this.id,
+    required this.displayName,
+    required this.fileName,
+    required this.downloadUrl,
+    required this.sizeBytes,
+    required this.quantization,
+  });
+
+  String get sizeDisplay {
+    final gb = sizeBytes / (1024 * 1024 * 1024);
+    return '${gb.toStringAsFixed(1)} GB';
+  }
+}
+
+/// Verfügbare lokale Modelle.
+class LocalModels {
+  static const e4b = LocalModelConfig(
+    id: 'e4b',
+    displayName: 'Gemma 4 E4B (Q4_K_M)',
+    fileName: 'gemma-4-E4B-it-Q4_K_M.gguf',
+    downloadUrl: 'https://huggingface.co/unsloth/gemma-4-E4B-it-GGUF/resolve/main/gemma-4-E4B-it-Q4_K_M.gguf',
+    sizeBytes: 4756340736, // ~4.43 GB
+    quantization: 'Q4_K_M',
+  );
+
+  static const e2b = LocalModelConfig(
+    id: 'e2b',
+    displayName: 'Gemma 4 E2B (Q4_K_M)',
+    fileName: 'gemma-4-E2B-it-Q4_K_M.gguf',
+    downloadUrl: 'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf',
+    sizeBytes: 3717059584, // ~3.46 GB
+    quantization: 'Q4_K_M',
+  );
+
+  static const all = [e4b, e2b];
+
+  static LocalModelConfig? byId(String id) {
+    try {
+      return all.firstWhere((m) => m.id == id);
+    } catch (_) {
+      return null;
+    }
+  }
+}
+
+/// Service für lokales KI-Modell.
 /// Verwaltet Download, Speicherort und lokale Inferenz via llama.cpp.
 class LocalModelService extends ChangeNotifier {
-  static const _modelFileName = 'gemma-4-E2B-it-Q4_K_M.gguf';
-  static const _downloadUrl =
-      'https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf';
-  static const _modelSizeBytes = 3717059584; // ~3.46 GB Q4_K_M
-  static const _modelDisplayName = 'Gemma 4 E2B (Q4_K_M)';
+  static const _prefsKeyModelId = 'local_model_id';
+  static const _prefsKeyUseLocal = 'use_local_model';
+
+  LocalModelConfig _activeModel = LocalModels.e4b;
 
   LlamaController? _controller;
   bool _isModelLoaded = false;
@@ -36,21 +90,35 @@ class LocalModelService extends ChangeNotifier {
   bool get useLocalModel => _useLocalModel;
   bool get isModelAvailable => _modelPath != null;
 
-  String get modelDisplayName => _modelDisplayName;
-  String get downloadUrl => _downloadUrl;
-  String get modelFileName => _modelFileName;
-  int get modelSizeBytes => _modelSizeBytes;
-
-  String get modelSizeDisplay {
-    const gb = _modelSizeBytes / (1024 * 1024 * 1024);
-    return '${gb.toStringAsFixed(1)} GB';
-  }
+  LocalModelConfig get activeModel => _activeModel;
+  String get modelDisplayName => _activeModel.displayName;
+  String get downloadUrl => _activeModel.downloadUrl;
+  String get modelFileName => _activeModel.fileName;
+  int get modelSizeBytes => _activeModel.sizeBytes;
+  String get modelSizeDisplay => _activeModel.sizeDisplay;
+  String get quantization => _activeModel.quantization;
+  List<LocalModelConfig> get availableModels => LocalModels.all;
 
   LocalModelService() { _init(); }
 
   Future<void> _init() async {
+    await _loadModelIdPref();
     await _checkModelExists();
     await _loadUseLocalModelPref();
+  }
+
+  Future<void> _loadModelIdPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    final id = prefs.getString(_prefsKeyModelId) ?? LocalModels.e4b.id;
+    final model = LocalModels.byId(id);
+    if (model != null) {
+      _activeModel = model;
+    }
+  }
+
+  Future<void> _saveModelIdPref() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_prefsKeyModelId, _activeModel.id);
   }
 
   Future<String> _getModelDir() async {
@@ -60,7 +128,7 @@ class LocalModelService extends ChangeNotifier {
 
   Future<String> _getModelFilePath() async {
     final dir = await _getModelDir();
-    return '$dir/$_modelFileName';
+    return '$dir/${_activeModel.fileName}';
   }
 
   Future<void> _checkModelExists() async {
@@ -70,6 +138,20 @@ class LocalModelService extends ChangeNotifier {
       _modelPath = path;
     } else {
       _modelPath = null;
+    }
+    notifyListeners();
+  }
+
+  /// Wechselt das aktive Modell (E4B oder E2B).
+  Future<void> setActiveModel(LocalModelConfig model) async {
+    if (_isDownloading) return;
+    _activeModel = model;
+    await _saveModelIdPref();
+    await _checkModelExists();
+    // If we switched and the new model isn't available, disable local mode
+    if (_modelPath == null && _useLocalModel) {
+      _useLocalModel = false;
+      await _saveUseLocalModelPref(false);
     }
     notifyListeners();
   }
@@ -99,7 +181,7 @@ class LocalModelService extends ChangeNotifier {
 
     final hasSpace = await hasEnoughFreeSpace();
     if (!hasSpace) {
-      _error = 'Nicht genug Speicherplatz. Mindestens 4 GB frei benötigt.';
+      _error = 'Nicht genug Speicherplatz. Mindestens ${_activeModel.sizeDisplay} frei benötigt.';
       notifyListeners();
       return false;
     }
@@ -116,18 +198,18 @@ class LocalModelService extends ChangeNotifier {
     try {
       final dir = await _getModelDir();
       await Directory(dir).create(recursive: true);
-      final filePath = '$dir/$_modelFileName';
+      final filePath = await _getModelFilePath();
 
       final dio = Dio();
       await dio.download(
-        _downloadUrl,
+        _activeModel.downloadUrl,
         filePath,
         cancelToken: _cancelToken,
         onReceiveProgress: (received, total) {
           if (total > 0) {
             _downloadProgress = received / total;
           } else {
-            _downloadProgress = (received / _modelSizeBytes).clamp(0.0, 0.99);
+            _downloadProgress = (received / _activeModel.sizeBytes).clamp(0.0, 0.99);
           }
           notifyListeners();
         },
@@ -224,7 +306,7 @@ class LocalModelService extends ChangeNotifier {
 
   Future<void> _loadUseLocalModelPref() async {
     final prefs = await SharedPreferences.getInstance();
-    _useLocalModel = prefs.getBool('use_local_model') ?? false;
+    _useLocalModel = prefs.getBool(_prefsKeyUseLocal) ?? false;
     if (_useLocalModel && _modelPath == null) {
       _useLocalModel = false;
       await _saveUseLocalModelPref(false);
@@ -234,7 +316,7 @@ class LocalModelService extends ChangeNotifier {
 
   Future<void> _saveUseLocalModelPref(bool value) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('use_local_model', value);
+    await prefs.setBool(_prefsKeyUseLocal, value);
   }
 
   Future<void> setUseLocalModel(bool value) async {

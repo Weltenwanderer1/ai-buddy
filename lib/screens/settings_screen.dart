@@ -811,9 +811,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.93.9',
+              subtitle: 'v0.93.10',
               color: AppColors.secondary,
-              trailing: _Badge('v0.93.9', color: AppColors.secondary),
+              trailing: _Badge('v0.93.10', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -837,14 +837,72 @@ class _SettingsScreenState extends State<SettingsScreen>
           final isAvailable = localModel.isModelAvailable;
           final progress = localModel.downloadProgress;
           final error = localModel.error;
+          final activeModel = localModel.activeModel;
 
           return Column(children: [
+            // Modell-Auswahl Dropdown
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.bgElevated.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<LocalModelConfig>(
+                  isExpanded: true,
+                  value: activeModel,
+                  dropdownColor: AppColors.bgDark,
+                  borderRadius: BorderRadius.circular(12),
+                  icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary),
+                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                  onChanged: isDownloading
+                      ? null
+                      : (LocalModelConfig? newModel) {
+                          if (newModel != null) {
+                            localModel.setActiveModel(newModel);
+                          }
+                        },
+                  items: localModel.availableModels.map((model) {
+                    return DropdownMenuItem<LocalModelConfig>(
+                      value: model,
+                      child: Row(children: [
+                        Icon(
+                          model.id == activeModel.id
+                              ? Icons.radio_button_checked_rounded
+                              : Icons.radio_button_unchecked_rounded,
+                          color: model.id == activeModel.id
+                              ? AppColors.success
+                              : AppColors.textSecondary,
+                          size: 18,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(model.displayName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: model.id == activeModel.id ? FontWeight.w600 : FontWeight.w400,
+                              color: model.id == activeModel.id
+                                  ? AppColors.textPrimary
+                                  : AppColors.textSecondary,
+                            )),
+                        ),
+                        Text(model.sizeDisplay,
+                          style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ]),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
             // Status Badge + Info
             Row(children: [
               Icon(Icons.memory_rounded, color: AppColors.success, size: 20),
               const SizedBox(width: 10),
               Expanded(
-                child: Text(localModel.modelDisplayName,
+                child: Text(activeModel.displayName,
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               ),
               if (isAvailable)
@@ -856,7 +914,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ]),
             const SizedBox(height: 8),
 
-            Text('${localModel.modelSizeDisplay} · Q4_K_M Quantization · Läuft vollständig offline',
+            Text('${activeModel.sizeDisplay} · ${activeModel.quantization} Quantization · Läuft vollständig offline',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
             const SizedBox(height: 16),
 
@@ -865,7 +923,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.download_rounded,
-                  label: 'Herunterladen (${localModel.modelSizeDisplay})',
+                  label: 'Herunterladen (${activeModel.sizeDisplay})',
                   onTap: () => localModel.downloadModel(),
                 )),
               ]),
@@ -910,7 +968,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ],
 
             if (isAvailable && !isDeleting) ...[
-              Text('Modell ist bereit und wird verwendet, wenn „Lokal“ aktiv ist.',
+              Text('Modell ist bereit und wird verwendet, wenn „Lokal" aktiv ist.',
                 style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500)),
               const SizedBox(height: 12),
               Row(children: [
@@ -922,7 +980,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                         backgroundColor: AppColors.bgDark,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         title: Text('Modell löschen?', style: TextStyle(color: AppColors.textPrimary)),
-                        content: Text('Das ${localModel.modelSizeDisplay} große Modell wird vom Gerät entfernt. Du kannst es jederzeit neu herunterladen.',
+                        content: Text('Das ${activeModel.sizeDisplay} große Modell wird vom Gerät entfernt. Du kannst es jederzeit neu herunterladen.',
                           style: TextStyle(color: AppColors.textSecondary)),
                         actions: [
                           TextButton(
