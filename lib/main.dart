@@ -20,6 +20,7 @@ import 'services/notification_service.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
 import 'services/local_model_service.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'tools/tool_registry.dart';
@@ -89,6 +90,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
   Future<void> _initServices() async {
     try {
+      // Initialize flutter_gemma for on-device AI via LiteRT-LM
+      await FlutterGemma.initialize();
+
       try { await dotenv.load(fileName: '.env', isOptional: true); } catch (_) {}
       _secureConfig = SecureConfigService(); await _secureConfig.init();
       _settings = SettingsService(); await _settings.init();

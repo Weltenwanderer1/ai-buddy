@@ -811,9 +811,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.94.2',
+              subtitle: 'v0.95.0',
               color: AppColors.secondary,
-              trailing: _Badge('v0.94.2', color: AppColors.secondary),
+              trailing: _Badge('v0.95.0', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -921,7 +921,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ]),
             const SizedBox(height: 8),
 
-            Text('${activeModel.sizeDisplay} · ${activeModel.quantization} Quantization · Läuft vollständig offline',
+            Text('${activeModel.sizeDisplay} · Läuft vollständig offline via LiteRT-LM',
               style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
             const SizedBox(height: 16),
 

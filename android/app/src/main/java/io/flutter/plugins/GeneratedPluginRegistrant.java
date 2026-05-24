@@ -26,6 +26,11 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin audio_session, com.ryanheise.audio_session.AudioSessionPlugin", e);
     }
     try {
+      flutterEngine.getPlugins().add(new com.bbflight.background_downloader.BDPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin background_downloader, com.bbflight.background_downloader.BDPlugin", e);
+    }
+    try {
       flutterEngine.getPlugins().add(new com.builttoroam.devicecalendar.DeviceCalendarPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin device_calendar, com.builttoroam.devicecalendar.DeviceCalendarPlugin", e);
@@ -39,6 +44,11 @@ public final class GeneratedPluginRegistrant {
       flutterEngine.getPlugins().add(new com.mr.flutter.plugin.filepicker.FilePickerPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin file_picker, com.mr.flutter.plugin.filepicker.FilePickerPlugin", e);
+    }
+    try {
+      flutterEngine.getPlugins().add(new dev.flutterberlin.flutter_gemma.FlutterGemmaPlugin());
+    } catch (Exception e) {
+      Log.e(TAG, "Error registering plugin flutter_gemma, dev.flutterberlin.flutter_gemma.FlutterGemmaPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new com.dexterous.flutterlocalnotifications.FlutterLocalNotificationsPlugin());
@@ -81,14 +91,9 @@ public final class GeneratedPluginRegistrant {
       Log.e(TAG, "Error registering plugin just_audio, com.ryanheise.just_audio.JustAudioPlugin", e);
     }
     try {
-      flutterEngine.getPlugins().add(new com.write4me.llama_flutter_android.LlamaFlutterAndroidPlugin());
+      flutterEngine.getPlugins().add(new com.example.large_file_handler.LargeFileHandlerPlugin());
     } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin llama_flutter_android, com.write4me.llama_flutter_android.LlamaFlutterAndroidPlugin", e);
-    }
-    try {
-      flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.packageinfo.PackageInfoPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin package_info_plus, dev.fluttercommunity.plus.packageinfo.PackageInfoPlugin", e);
+      Log.e(TAG, "Error registering plugin large_file_handler, com.example.large_file_handler.LargeFileHandlerPlugin", e);
     }
     try {
       flutterEngine.getPlugins().add(new com.baseflow.permissionhandler.PermissionHandlerPlugin());
@@ -124,11 +129,6 @@ public final class GeneratedPluginRegistrant {
       flutterEngine.getPlugins().add(new io.flutter.plugins.urllauncher.UrlLauncherPlugin());
     } catch (Exception e) {
       Log.e(TAG, "Error registering plugin url_launcher_android, io.flutter.plugins.urllauncher.UrlLauncherPlugin", e);
-    }
-    try {
-      flutterEngine.getPlugins().add(new dev.fluttercommunity.plus.wakelock.WakelockPlusPlugin());
-    } catch (Exception e) {
-      Log.e(TAG, "Error registering plugin wakelock_plus, dev.fluttercommunity.plus.wakelock.WakelockPlusPlugin", e);
     }
   }
 }

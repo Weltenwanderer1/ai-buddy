@@ -175,40 +175,33 @@ class ChatService {
       messages.add({'role': 'user', 'content': userMessage});
     }
 
-    if (hasTools && !_isLocalActive()) {
-      final pickedModel = _pickModel(userMessage, true);
-      // Signal that tools are being executed (prevents UI from showing "thinking" forever)
-      yield '🔧';
-      final reply = await _chatWithToolLoop(
-        systemPrompt: _withToolInstructions(systemPrompt, null),
-        messages: messages,
-        tools: _toolRegistry!.getToolDefinitions(),
-        persona: persona,
-        memory: memory,
-        personaEvolution: personaEvolution,
-        userMessage: userMessage,
-        onToolActivity: onToolActivity,
-        model: pickedModel,
-      );
-      if (reply.isNotEmpty) {
-        // Chunk the reply into words for streaming feel
-        final words = reply.split(' ');
-        for (int i = 0; i < words.length; i++) {
-          yield (i == 0 ? '' : ' ') + words[i];
-        }
-      }
-      return;
-    }
-
     if (_isLocalActive()) {
       try {
-        final reply = await _localModel!.chat(
-          messages.map((m) => {
-                'role': m['role'] as String,
-                'content': m['content'] as String,
-              }).toList(),
-          temperature: 0.3,
-        );
+        String reply;
+        if (hasTools) {
+          // 🔧 Local model with tools — use full tool loop via cloud-style path
+          yield '🔧';
+          reply = await _chatWithToolLoop(
+            systemPrompt: _withToolInstructions(systemPrompt, null),
+            messages: messages,
+            tools: _toolRegistry!.getToolDefinitions(),
+            persona: persona,
+            memory: memory,
+            personaEvolution: personaEvolution,
+            userMessage: userMessage,
+            onToolActivity: onToolActivity,
+            model: _llm.defaultModel, // Fallback to cloud for tool loop if local fails
+          );
+        } else {
+          reply = await _localModel!.chat(
+            messages.map((m) => {
+                  'role': m['role'] as String,
+                  'content': m['content'] as String,
+                }).toList(),
+            systemPrompt: systemPrompt,
+            temperature: 0.3,
+          );
+        }
         // Chunk the reply for streaming feel
         final words = reply.split(' ');
         for (int i = 0; i < words.length; i++) {
@@ -230,10 +223,33 @@ class ChatService {
         }
         return;
       } catch (e) {
-        debugPrint('Local model crashed, falling back to cloud: $e');
-        // Deactivate local temporarily to prevent further crashes
+        debugPrint('Local model failed, falling back to cloud: $e');
         await _localModel?.unloadModel();
       }
+    }
+
+    if (hasTools) {
+      final pickedModel = _pickModel(userMessage, true);
+      // Signal that tools are being executed
+      yield '🔧';
+      final reply = await _chatWithToolLoop(
+        systemPrompt: _withToolInstructions(systemPrompt, null),
+        messages: messages,
+        tools: _toolRegistry!.getToolDefinitions(),
+        persona: persona,
+        memory: memory,
+        personaEvolution: personaEvolution,
+        userMessage: userMessage,
+        onToolActivity: onToolActivity,
+        model: pickedModel,
+      );
+      if (reply.isNotEmpty) {
+        final words = reply.split(' ');
+        for (int i = 0; i < words.length; i++) {
+          yield (i == 0 ? '' : ' ') + words[i];
+        }
+      }
+      return;
     }
 
     final pickedModel = _pickModel(userMessage, false);
@@ -310,34 +326,32 @@ class ChatService {
         _toolRegistry != null && _toolRegistry!.toolNames.isNotEmpty;
     final tools = hasTools ? _toolRegistry!.getToolDefinitions() : null;
 
-    if (hasTools && !_isLocalActive()) {
-      systemPrompt = _withToolInstructions(systemPrompt, null);
-    }
-
-    if (hasTools && !_isLocalActive()) {
-      final pickedModel = _pickModel(userMessage, true);
-      return await _chatWithToolLoop(
-        systemPrompt: systemPrompt,
-        messages: messages,
-        tools: tools!,
-        persona: persona,
-        memory: memory,
-        personaEvolution: personaEvolution,
-        userMessage: userMessage,
-        onToolActivity: onToolActivity,
-        model: pickedModel,
-      );
-    }
-
     if (_isLocalActive()) {
       try {
-        final reply = await _localModel!.chat(
-          messages.map((m) => {
-                'role': m['role'] as String,
-                'content': m['content'] as String,
-              }).toList(),
-          temperature: 0.3,
-        );
+        String reply;
+        if (hasTools) {
+          systemPrompt = _withToolInstructions(systemPrompt, null);
+          reply = await _chatWithToolLoop(
+            systemPrompt: systemPrompt,
+            messages: messages,
+            tools: tools!,
+            persona: persona,
+            memory: memory,
+            personaEvolution: personaEvolution,
+            userMessage: userMessage,
+            onToolActivity: onToolActivity,
+            model: _llm.defaultModel,
+          );
+        } else {
+          reply = await _localModel!.chat(
+            messages.map((m) => {
+                  'role': m['role'] as String,
+                  'content': m['content'] as String,
+                }).toList(),
+            systemPrompt: systemPrompt,
+            temperature: 0.3,
+          );
+        }
         await Future.wait([
           memory.addShortTerm(userMessage, source: 'user'),
           memory.addShortTerm(reply, source: 'assistant'),
@@ -354,9 +368,13 @@ class ChatService {
         }
         return reply;
       } catch (e) {
-        debugPrint('Local model crashed in sendMessage, falling back: $e');
+        debugPrint('Local model failed in sendMessage, falling back: $e');
         await _localModel?.unloadModel();
       }
+    }
+
+    if (hasTools) {
+      systemPrompt = _withToolInstructions(systemPrompt, null);
     }
 
     final pickedModel = _pickModel(userMessage, false);

@@ -1,7 +1,7 @@
 name: ai_buddy
 description: AI Companion App with Chat, Voice, Memory, Persona & Tool System
 publish_to: 'none'
-version: 0.94.2+101
+version: 0.95.0+102
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -10,8 +10,6 @@ dependencies:
   flutter:
     sdk: flutter
   http: ^1.2.0
-  dio: ^5.4.0
-  wakelock_plus: ^1.2.10
   path_provider: ^2.1.0
   shared_preferences: ^2.2.0
   provider: ^6.1.0
@@ -29,7 +27,6 @@ dependencies:
     git:
       url: https://github.com/dev-6768/piper_tts_plugin.git
       ref: dev-6768-v0.0.2
-  llama_flutter_android: ^0.2.2
   # Tool system dependencies
   flutter_local_notifications: ^18.0.1
   url_launcher: ^6.3.1
@@ -42,6 +39,7 @@ dependencies:
   geolocator: ^13.0.2
   flutter_map: ^8.0.0
   latlong2: ^0.9.1
+  flutter_gemma: ^0.12.6
 
 dev_dependencies:
   flutter_test:
