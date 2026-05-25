@@ -32,7 +32,7 @@ class LocalModels {
     displayName: 'Gemma 4 E4B (LiteRT-LM)',
     modelType: ModelType.gemmaIt,
     downloadUrl:
-        'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it-litert-lm.litertlm',
+        'https://huggingface.co/litert-community/gemma-4-E4B-it-litert-lm/resolve/main/gemma-4-E4B-it.litertlm',
     sizeBytes: 4617089843, // ~4.3 GB
   );
 
@@ -42,7 +42,7 @@ class LocalModels {
     displayName: 'Gemma 4 E2B (LiteRT-LM)',
     modelType: ModelType.gemmaIt,
     downloadUrl:
-        'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-litert-lm.litertlm',
+        'https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm',
     sizeBytes: 2576980377, // ~2.4 GB
   );
 
