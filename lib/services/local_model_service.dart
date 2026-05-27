@@ -728,19 +728,38 @@ class LocalModelService extends ChangeNotifier {
       throw Exception('createChat (text-tools) fehlgeschlagen: $e');
     }
 
-    // System prompt with tool instructions as FIRST non-user message
+    // System prompt embedded in FIRST user message — Gemma 4 ignores isUser: false
+    // on some devices, so we inject instructions directly into the user text.
+    var processedMessages = messages;
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      try {
-        await chat.addQueryChunk(
-          Message.text(text: systemPrompt, isUser: false),
-        );
-      } catch (e) {
-        debugPrint('addQueryChunk (system prompt) failed: $e');
+      // Build new list with system prompt embedded in first user message
+      processedMessages = [];
+      var systemEmbedded = false;
+      for (int i = 0; i < messages.length; i++) {
+        final msg = messages[i];
+        final role = msg['role'] ?? 'user';
+        final content = msg['content'] ?? '';
+        if (role == 'user' && !systemEmbedded && content.isNotEmpty) {
+          processedMessages.add({
+            'role': 'user',
+            'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]\n\n$content',
+          });
+          systemEmbedded = true;
+        } else {
+          processedMessages.add(msg);
+        }
+      }
+      // If no user message found, prepend one
+      if (!systemEmbedded) {
+        processedMessages.add({
+          'role': 'user',
+          'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]',
+        });
       }
     }
 
     // Add all conversation messages
-    for (final msg in messages) {
+    for (final msg in processedMessages) {
       final role = msg['role'] ?? 'user';
       final content = msg['content'] ?? '';
       if (content.isNotEmpty) {
@@ -831,19 +850,36 @@ class LocalModelService extends ChangeNotifier {
       throw Exception('createChat (text-only) fehlgeschlagen: $e');
     }
 
-    // System prompt as FIRST non-user message — Gemma 4 has no native system role
+    // System prompt embedded in FIRST user message — Gemma 4 ignores isUser: false
+    // on some devices, so we inject instructions directly into the user text.
+    var processedMessages = messages;
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      try {
-        await chat.addQueryChunk(
-          Message.text(text: systemPrompt, isUser: false),
-        );
-      } catch (e) {
-        debugPrint('addQueryChunk (system prompt) failed: $e');
+      processedMessages = [];
+      var systemEmbedded = false;
+      for (int i = 0; i < messages.length; i++) {
+        final msg = messages[i];
+        final role = msg['role'] ?? 'user';
+        final content = msg['content'] ?? '';
+        if (role == 'user' && !systemEmbedded && content.isNotEmpty) {
+          processedMessages.add({
+            'role': 'user',
+            'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]\n\n$content',
+          });
+          systemEmbedded = true;
+        } else {
+          processedMessages.add(msg);
+        }
+      }
+      if (!systemEmbedded) {
+        processedMessages.insert(0, {
+          'role': 'user',
+          'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]',
+        });
       }
     }
 
     // Add all conversation messages
-    for (final msg in messages) {
+    for (final msg in processedMessages) {
       final role = msg['role'] ?? 'user';
       final content = msg['content'] ?? '';
       if (content.isNotEmpty) {
@@ -890,18 +926,35 @@ class LocalModelService extends ChangeNotifier {
       modelType: _activeModel.modelType,
     );
 
-    // System prompt as FIRST non-user message — Gemma 4 has no native system role
+    // System prompt embedded in FIRST user message — Gemma 4 ignores isUser: false
+    // on some devices, so we inject instructions directly into the user text.
+    var processedMessages = messages;
     if (systemPrompt != null && systemPrompt.isNotEmpty) {
-      try {
-        await chat.addQueryChunk(
-          Message.text(text: systemPrompt, isUser: false),
-        );
-      } catch (e) {
-        debugPrint('addQueryChunk (system prompt) failed: $e');
+      processedMessages = [];
+      var systemEmbedded = false;
+      for (int i = 0; i < messages.length; i++) {
+        final msg = messages[i];
+        final role = msg['role'] ?? 'user';
+        final content = msg['content'] ?? '';
+        if (role == 'user' && !systemEmbedded && content.isNotEmpty) {
+          processedMessages.add({
+            'role': 'user',
+            'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]\n\n$content',
+          });
+          systemEmbedded = true;
+        } else {
+          processedMessages.add(msg);
+        }
+      }
+      if (!systemEmbedded) {
+        processedMessages.insert(0, {
+          'role': 'user',
+          'content': '[INSTRUCTIONS]\n$systemPrompt\n[END INSTRUCTIONS]',
+        });
       }
     }
 
-    for (final msg in messages) {
+    for (final msg in processedMessages) {
       final role = msg['role'] ?? 'user';
       final content = msg['content'] ?? '';
       if (content.isNotEmpty) {
