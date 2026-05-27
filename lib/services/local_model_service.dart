@@ -557,15 +557,21 @@ class LocalModelService extends ChangeNotifier {
         tools: _mapToGemmaTools(toolDefinitions),
         modelType: _activeModel.modelType,
         toolChoice: ToolChoice.auto,
-        systemInstruction: systemPrompt,
       );
     } catch (e) {
       throw Exception('createChat fehlgeschlagen: $e');
     }
 
-    // System prompt is passed via systemInstruction parameter above.
-    // For Gemma 4, the SDK handles system prompts natively via createConversation,
-    // so we do NOT add it as a separate addQueryChunk.
+    // System prompt as FIRST non-user message — Gemma 4 has no native system role
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      try {
+        await chat.addQueryChunk(
+          Message.text(text: systemPrompt, isUser: false),
+        );
+      } catch (e) {
+        debugPrint('addQueryChunk (system prompt) failed: $e');
+      }
+    }
 
     // Add all conversation messages
     for (final msg in messages) {
@@ -681,14 +687,21 @@ class LocalModelService extends ChangeNotifier {
         supportsFunctionCalls: false,
         tools: const [],
         modelType: _activeModel.modelType,
-        systemInstruction: systemPrompt,
       );
     } catch (e) {
       throw Exception('createChat (text-only) fehlgeschlagen: $e');
     }
 
-    // System prompt is passed via systemInstruction parameter above.
-    // Do NOT add it as a separate addQueryChunk — Gemma 4 handles it natively.
+    // System prompt as FIRST non-user message — Gemma 4 has no native system role
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      try {
+        await chat.addQueryChunk(
+          Message.text(text: systemPrompt, isUser: false),
+        );
+      } catch (e) {
+        debugPrint('addQueryChunk (system prompt) failed: $e');
+      }
+    }
 
     // Add all conversation messages
     for (final msg in messages) {
@@ -736,11 +749,18 @@ class LocalModelService extends ChangeNotifier {
       supportsFunctionCalls: false,
       tools: const [],
       modelType: _activeModel.modelType,
-      systemInstruction: systemPrompt,
     );
 
-    // System prompt is passed via systemInstruction parameter above.
-    // Do NOT add it as a separate addQueryChunk — Gemma 4 handles it natively.
+    // System prompt as FIRST non-user message — Gemma 4 has no native system role
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      try {
+        await chat.addQueryChunk(
+          Message.text(text: systemPrompt, isUser: false),
+        );
+      } catch (e) {
+        debugPrint('addQueryChunk (system prompt) failed: $e');
+      }
+    }
 
     for (final msg in messages) {
       final role = msg['role'] ?? 'user';
