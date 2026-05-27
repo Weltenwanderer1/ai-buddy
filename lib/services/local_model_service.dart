@@ -4,6 +4,7 @@ import 'package:flutter_gemma/core/domain/model_source.dart';
 import 'package:flutter_gemma/core/di/service_registry.dart';
 import 'package:flutter_gemma/core/services/model_repository.dart' as model_repo;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'tool_call_parser.dart';
 
 /// Callback signature for executing a tool call.
 typedef ToolExecutionCallback = Future<String> Function(
@@ -483,9 +484,9 @@ class LocalModelService extends ChangeNotifier {
   /// Chat with the local model (non-streaming).
   ///
   /// Defensive: max 512 tokens, max 10 history messages, trimmed system prompt.
-  /// If [toolDefinitions] and [onToolCall] are provided, enables native
-  /// Function Calling with up to [maxToolRounds] tool execution loops.
-  /// Catches native exceptions from LiteRT-LM to prevent app crashes.
+  /// Tool calls use text-based instructions (not native Function Calling, which
+  /// crashes on some devices). The model outputs tool calls as text
+  /// (`call:toolName{args: "value"}`) and we parse + execute them.
   Future<String> chat(
     List<Map<String, String>> messages, {
     String? systemPrompt,
@@ -510,28 +511,28 @@ class LocalModelService extends ChangeNotifier {
 
     // With tools active, system prompt must be shorter (tools eat context)
     final systemLimit = (toolDefinitions != null && toolDefinitions.isNotEmpty) ? 500 : 800;
-    final trimmedSystem = (systemPrompt != null && systemPrompt.length > systemLimit)
+    var trimmedSystem = (systemPrompt != null && systemPrompt.length > systemLimit)
         ? '${systemPrompt.substring(0, systemLimit)}...'
         : systemPrompt;
 
-    // ── Try 1: Native Function Calling (if tools requested) ──
+    // Inject tool instructions into system prompt for text-based tool calling
     if (toolDefinitions != null && toolDefinitions.isNotEmpty && onToolCall != null) {
-      try {
-        return await _chatWithToolLoop(
-          trimmedMessages,
-          trimmedSystem,
-          temperature: temperature,
-          toolDefinitions: toolDefinitions,
-          onToolCall: onToolCall,
-          maxToolRounds: maxToolRounds,
-        );
-      } catch (e) {
-        debugPrint('Native function calling failed, falling back to text-only: $e');
-        // Fall through to text-only mode
-      }
+      final toolInstructions = _buildToolInstructions(toolDefinitions);
+      trimmedSystem = trimmedSystem != null && trimmedSystem.isNotEmpty
+          ? '$trimmedSystem\n\n$toolInstructions'
+          : toolInstructions;
+
+      return await _chatWithTextTools(
+        trimmedMessages,
+        trimmedSystem,
+        temperature: temperature,
+        toolDefinitions: toolDefinitions,
+        onToolCall: onToolCall,
+        maxToolRounds: maxToolRounds,
+      );
     }
 
-    // ── Try 2: Text-Only Mode (safe fallback) ──
+    // No tools — simple text-only mode
     return await _chatTextOnly(
       trimmedMessages,
       trimmedSystem,
@@ -667,6 +668,144 @@ class LocalModelService extends ChangeNotifier {
       } catch (e) {
         debugPrint('Summary response failed: $e');
         finalText = 'Tool-Aufruf ausgeführt.';
+      }
+    }
+
+    return finalText;
+  }
+
+  /// Build compact tool instructions for text-based tool calling.
+  /// Instructs Gemma to use call:tool{arg: value} syntax inline.
+  String _buildToolInstructions(List<Map<String, dynamic>> toolDefinitions) {
+    final sb = StringBuffer();
+    sb.writeln('\u003d\u003d\u003d TOOLS ===');
+    sb.writeln('You have access to the following tools. Use them when needed.');
+    sb.writeln('To call a tool, output EXACTLY: call:TOOL_NAME{arg1: "value", arg2: "value"}');
+    sb.writeln('You can call multiple tools in one turn. After tool results, respond naturally.');
+    sb.writeln();
+    for (final def in toolDefinitions) {
+      final name = def['name'] as String? ?? '';
+      final desc = def['description'] as String? ?? '';
+      sb.writeln('Tool: $name');
+      sb.writeln('  $desc');
+      final params = def['parameters'] as Map<String, dynamic>?;
+      if (params != null && params.isNotEmpty) {
+        sb.writeln('  Parameters:');
+        for (final entry in params.entries) {
+          final paramDesc = (entry.value is Map && (entry.value as Map).containsKey('description'))
+              ? (entry.value as Map)['description'] as String? ?? ''
+              : entry.value.toString();
+          sb.writeln('    ${entry.key}: $paramDesc');
+        }
+      }
+      sb.writeln();
+    }
+    sb.writeln('=== END TOOLS ===');
+    return sb.toString().trimRight();
+  }
+
+  /// Text-based tool calling — no native Function Calling.
+  /// Injects tool instructions into system prompt, parses text output
+  /// for call:tool{args} syntax, executes tools, and continues the
+  /// conversation with results.
+  Future<String> _chatWithTextTools(
+    List<Map<String, String>> messages,
+    String? systemPrompt, {
+    required double temperature,
+    required List<Map<String, dynamic>> toolDefinitions,
+    required ToolExecutionCallback onToolCall,
+    required int maxToolRounds,
+  }) async {
+    InferenceChat? chat;
+    try {
+      chat = await _model!.createChat(
+        temperature: temperature,
+        supportsFunctionCalls: false,
+        tools: const [],
+        modelType: _activeModel.modelType,
+      );
+    } catch (e) {
+      throw Exception('createChat (text-tools) fehlgeschlagen: $e');
+    }
+
+    // System prompt with tool instructions as FIRST non-user message
+    if (systemPrompt != null && systemPrompt.isNotEmpty) {
+      try {
+        await chat.addQueryChunk(
+          Message.text(text: systemPrompt, isUser: false),
+        );
+      } catch (e) {
+        debugPrint('addQueryChunk (system prompt) failed: $e');
+      }
+    }
+
+    // Add all conversation messages
+    for (final msg in messages) {
+      final role = msg['role'] ?? 'user';
+      final content = msg['content'] ?? '';
+      if (content.isNotEmpty) {
+        try {
+          await chat.addQueryChunk(
+            Message.text(text: content, isUser: role == 'user'),
+          );
+        } catch (e) {
+          debugPrint('addQueryChunk (history) failed: $e');
+        }
+      }
+    }
+
+    // Tool-execution loop
+    String finalText = '';
+    int toolRounds = 0;
+
+    while (toolRounds < maxToolRounds) {
+      ModelResponse response;
+      try {
+        response = await chat.generateChatResponse();
+      } catch (e) {
+        throw Exception('generateChatResponse fehlgeschlagen: $e');
+      }
+
+      if (response is TextResponse) {
+        final rawText = response.token;
+        debugPrint('TextTools response: $rawText');
+
+        // Parse inline tool calls from text
+        final toolCalls = ToolCallParser.parseInline(rawText, null);
+        if (toolCalls.isEmpty || toolRounds >= maxToolRounds - 1) {
+          // No more tool calls — return cleaned text
+          finalText = ToolCallParser.stripFunctionCallTags(rawText);
+          break;
+        }
+
+        // Execute tool calls
+        for (final call in toolCalls) {
+          final toolName = call['name'] as String;
+          final args = call['arguments'] as Map<String, dynamic>;
+          debugPrint('TextTools executing: $toolName args=$args');
+
+          String resultText;
+          try {
+            resultText = await onToolCall(toolName, args);
+          } catch (e) {
+            resultText = 'Fehler: $e';
+          }
+
+          final resultMsg = resultText.length > 300
+              ? '${resultText.substring(0, 300)}...'
+              : resultText;
+          try {
+            await chat.addQueryChunk(
+              Message.text(text: resultMsg, isUser: true),
+            );
+          } catch (e) {
+            debugPrint('addQueryChunk (tool result) failed: $e');
+          }
+        }
+        toolRounds++;
+      } else {
+        finalText = response.toString();
+        break;
       }
     }
 
