@@ -42,7 +42,7 @@
     </queries>
 
     <application
-        android:label="AI-Agent"
+        android:label="AI-Buddy"
         android:name="${applicationName}"
         android:icon="@drawable/ic_launcher"
         android:allowBackup="false"

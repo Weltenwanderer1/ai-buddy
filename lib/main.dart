@@ -8,8 +8,8 @@ import 'services/memory_service.dart';
 import 'services/persona_service.dart';
 import 'services/settings_service.dart';
 import 'services/chat_history_service.dart';
+import 'services/chat_service.dart';
 import 'services/secure_config_service.dart';
-import 'services/ollama_cloud_service.dart';
 import 'services/tts_playback_service.dart';
 import 'services/piper_tts_service.dart';
 import 'services/persona_evolution_service.dart';
@@ -32,7 +32,6 @@ import 'tools/update_config_tool.dart';
 import 'tools/get_calendar_events_tool.dart';
 import 'tools/add_calendar_event_tool.dart';
 import 'tools/get_clipboard_tool.dart';
-import 'services/embedding_service.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:device_calendar/device_calendar.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,7 +57,6 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late SelfIdentityService _selfIdentity;
   late ChatHistoryService _chatHistory;
   late SecureConfigService _secureConfig;
-  late OllamaCloudService _ollamaService;
   late PiperTtsService _piperTtsService;
   late TtsPlaybackService _ttsPlaybackService;
   late PersonaEvolutionService _personaEvolution;
@@ -77,7 +75,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   void dispose() {
     if (_initialized) {
       _persona.removeListener(_onPersonaChanged);
-      _ttsPlaybackService.dispose(); _ollamaService.dispose();
+      _ttsPlaybackService.dispose();
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
@@ -100,45 +98,40 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         promotionThreshold: _settings['memory_promotion_threshold'] as int? ?? 3,
         ttl: Duration(minutes: _settings['memory_ttl_minutes'] as int? ?? 60),
       );
-      if (_secureConfig.ollamaBaseUrl.contains('127.0.0.1') || _secureConfig.ollamaBaseUrl.contains('localhost')) {
-        _memory.setEmbeddingService(EmbeddingService(
-          baseUrl: _secureConfig.ollamaBaseUrl.replaceAll(RegExp(r'/api$'), ''),
-        ));
-      }
       await _memory.init();
       _persona = PersonaService(); await _persona.init();
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _buddyNotes = BuddyNotesService(); await _buddyNotes.init();
       _buddyCapabilities = BuddyCapabilitiesService(); await _buddyCapabilities.init();
       _chatHistory = ChatHistoryService(); await _chatHistory.init();
-      _ollamaService = OllamaCloudService(
-        baseUrl: _secureConfig.activeBaseUrl,
-        apiKey: _secureConfig.activeApiKey,
-        defaultModel: _secureConfig.activeModel,
-        fallbackModel: _secureConfig.activeFallbackModel,
-      );
-      // Warm up TCP/TLS connection before first user message
-      _ollamaService.preconnect();
       _piperTtsService = PiperTtsService();
       _ttsPlaybackService = TtsPlaybackService(_piperTtsService);
       await _ttsPlaybackService.loadEnginePreference(_secureConfig);
-      _personaEvolution = PersonaEvolutionService(_ollamaService);
+      _personaEvolution = PersonaEvolutionService();
       try { await _personaEvolution.init(); } catch (e) { debugPrint('Evolution init: $e'); }
       _notificationService = NotificationService();
       try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
 
       _locationService = LocationService();
 
-      _localModel = LocalModelService();
-
       final appDocDir = await getApplicationDocumentsDirectory();
       final rootPath = appDocDir.path;
 
+      // ToolRegistry FIRST (needed by ChatService)
       _toolRegistry = ToolRegistry.createDefault(
         tavilyApiKey: _secureConfig.tavilyApiKey.isNotEmpty ? _secureConfig.tavilyApiKey : null,
         rootPathProvider: () => rootPath,
       );
       _toolRegistry.registerLocation(_locationService);
+      _toolRegistry.registerBuddyCapabilities(_buddyCapabilities);
+      _toolRegistry.registerSearchMemories(_memory);
+      _toolRegistry.registerSelfIdentity(_selfIdentity);
+      _toolRegistry.registerBuddyNotes(_buddyNotes);
+      _toolRegistry.registerSaveMemory(_memory);
+
+      _localModel = LocalModelService();
+
+
 
       // Register capabilities tool
       _toolRegistry.registerBuddyCapabilities(_buddyCapabilities);
@@ -156,18 +149,23 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       GetClipboardTool.readClipboardCallback = () async { return null; };
 
       ReadConfigTool.readConfigCallback = () => {
-        'persona_name': _persona.name, 'default_model': _ollamaService.defaultModel,
-        'tts_engine': _secureConfig.ttsEngine, 'temperature': _settings['temperature'] ?? 0.7,
+        'persona_name': _persona.name,
+        'default_model': 'local-${_localModel.activeModel.id}',
+        'tts_engine': _secureConfig.ttsEngine,
+        'temperature': _settings['temperature'] ?? 0.7,
         'memory_ttl_minutes': _settings['memory_ttl_minutes'] ?? 60,
         'memory_promotion_threshold': _settings['memory_promotion_threshold'] ?? 3,
         'max_history': _settings['max_history'] ?? 20,
+        'local_model_active': _localModel.useLocalModel,
+        'local_model_available': _localModel.isModelAvailable,
+        'local_model_name': _localModel.activeModel.id,
       };
 
       UpdateConfigTool.updateConfigCallback = (key, value) async {
         try {
           switch (key) {
             case 'persona_name': await _persona.save(name: value.toString(), personality: _persona.personality, greeting: _persona.greeting, backstory: _persona.backstory); return true;
-            case 'default_model': await _secureConfig.setOllamaModel(value.toString()); _ollamaService.updateConfig(defaultModel: value.toString()); return true;
+            case 'default_model': return true; // local only, model selected in settings
             case 'tts_engine': await _secureConfig.setTtsEngine(value.toString()); return true;
             case 'temperature': _settings['temperature'] = double.tryParse(value.toString()) ?? 0.7; return true;
             case 'memory_ttl_minutes': _settings['memory_ttl_minutes'] = int.tryParse(value.toString()) ?? 60; return true;
@@ -293,7 +291,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       providers: [
         ChangeNotifierProvider.value(value: _settings), ChangeNotifierProvider.value(value: _memory),
         ChangeNotifierProvider.value(value: _persona), ChangeNotifierProvider.value(value: _chatHistory),
-        ChangeNotifierProvider.value(value: _ollamaService), ChangeNotifierProvider.value(value: _personaEvolution),
+        ChangeNotifierProvider.value(value: _personaEvolution),
         ChangeNotifierProvider.value(value: _selfIdentity),
         ChangeNotifierProvider.value(value: _buddyNotes),
         ChangeNotifierProvider.value(value: _buddyCapabilities),

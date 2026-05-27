@@ -1,7 +1,7 @@
 name: ai_buddy
 description: AI Companion App with Chat, Voice, Memory, Persona & Tool System
 publish_to: 'none'
-version: 0.95.2+104
+version: 0.97.5+118
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -39,7 +39,7 @@ dependencies:
   geolocator: ^13.0.2
   flutter_map: ^8.0.0
   latlong2: ^0.9.1
-  flutter_gemma: ^0.12.6
+  flutter_gemma: ^0.16.1
 
 dev_dependencies:
   flutter_test:

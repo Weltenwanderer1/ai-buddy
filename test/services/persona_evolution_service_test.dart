@@ -1,23 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ai_buddy/services/persona_evolution_service.dart';
-import 'package:ai_buddy/services/ollama_cloud_service.dart';
-
-OllamaCloudService _testLLM() => OllamaCloudService(
-      baseUrl: 'https://test.example.com',
-      apiKey: 'test',
-      defaultModel: 'test',
-      fallbackModel: 'test-fallback',
-    );
 
 void main() {
   group('PersonaEvolutionService', () {
     test('buildEvolutionContext returns empty when no data', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       expect(service.buildEvolutionContext(), '');
     });
 
     test('buildEvolutionContext includes preferred style', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       service.testPreferredStyle = ['kurz', 'direkt'];
       service.testAvoidTopics = ['Politik'];
       service.testLearnedTraits = ['freundlich'];
@@ -29,7 +21,7 @@ void main() {
     });
 
     test('buildEvolutionContext includes avoid topics', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       service.testAvoidTopics = ['Sport', 'Wetter'];
       final context = service.buildEvolutionContext();
       expect(context, contains('Sport'));
@@ -37,7 +29,7 @@ void main() {
     });
 
     test('exportData includes all fields', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       service.testLearnedTraits = ['trait1'];
       service.testAvoidTopics = ['topic1'];
       service.testPreferredStyle = ['style1'];
@@ -51,7 +43,7 @@ void main() {
     });
 
     test('importData restores all fields', () async {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
 
       final importData = {
         'traits': ['trait1', 'trait2'],
@@ -66,7 +58,7 @@ void main() {
     });
 
     test('parseEvolutionResponse handles valid JSON', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       const response = '{"new_traits": ["empathisch"], "avoid": ["Smalltalk"], "style": ["formal"]}';
       service.parseEvolutionResponse(response);
       expect(service.learnedTraits, contains('empathisch'));
@@ -74,21 +66,21 @@ void main() {
     });
 
     test('parseEvolutionResponse handles JSON embedded in text', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       const response = 'Hier ist die Analyse:\n{"new_traits": ["humorvoll"], "avoid": [], "style": ["sarkastisch"]}\nDas wars!';
       service.parseEvolutionResponse(response);
       expect(service.learnedTraits, contains('humorvoll'));
     });
 
     test('parseEvolutionResponse handles invalid JSON gracefully', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       // Should not throw
       service.parseEvolutionResponse('not json at all');
       expect(service.learnedTraits, isEmpty);
     });
 
     test('traits are capped at 20', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       final traits = List.generate(25, (i) => 'trait_$i');
       service.testLearnedTraits = traits;
 
@@ -101,7 +93,7 @@ void main() {
     });
 
     test('no duplicate traits added', () {
-      final service = PersonaEvolutionService(_testLLM());
+      final service = PersonaEvolutionService();
       service.testLearnedTraits = ['freundlich'];
       final newTraits = ['freundlich', 'neugierig'];
       for (final t in newTraits) {

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
 import '../services/secure_config_service.dart';
-import '../services/ollama_cloud_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/piper_tts_service.dart';
 import '../services/backup_service.dart';
@@ -13,6 +12,7 @@ import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/tile_download_service.dart';
 import '../services/local_model_service.dart';
+import '../services/ollama_cloud_service.dart';
 import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
@@ -42,8 +42,21 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   bool _ollamaExpanded = true;
   bool _elevenExpanded = true;
-  String _llmProvider = 'ollama'; // 'ollama' or 'openrouter'
+  String _llmProvider = 'ollama';
   TtsEngine _ttsEngine = TtsEngine.piper;
+
+  // Cloud model presets
+  static const List<Map<String, String>> _ollamaModels = [
+    {'id': 'kimi-k2.6:cloud', 'name': 'Kimi K2.6 (Kontext: 262k)'},
+    {'id': 'deepseek-chat-v4:cloud', 'name': 'DeepSeek Chat V4 (Kontext: 128k)'},
+    {'id': 'deepseek-v4-flash:cloud', 'name': 'DeepSeek Flash V4 (Schnell)'},
+  ];
+  static const List<Map<String, String>> _openRouterModels = [
+    {'id': 'openrouter/moonshotai/kimi-k2.6', 'name': 'Kimi K2.6 (262k Kontext)'},
+    {'id': 'openrouter/deepseek/deepseek-chat-v4', 'name': 'DeepSeek V4 Pro (128k)'},
+    {'id': 'anthropic/claude-3.5-sonnet', 'name': 'Claude 3.5 Sonnet (ausgewogen)'},
+    {'id': 'google/gemini-2.0-flash-001', 'name': 'Gemini 2.0 Flash (schnell)'},
+  ];
 
   @override
   void initState() {
@@ -81,36 +94,32 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _saveOllamaConfig() async {
     final config = context.read<SecureConfigService>();
-    final ollama = context.read<OllamaCloudService>();
-    await config.setOllamaApiKey(_ollamaKeyController.text);
-    await config.setOllamaBaseUrl(_ollamaBaseUrlController.text);
-    await config.setOllamaModel(_ollamaModelController.text);
-    await config.setOllamaFallbackModel(_ollamaFallbackController.text);
-    await config.setOpenRouterApiKey(_openRouterKeyController.text);
-    await config.setOpenRouterModel(_openRouterModelController.text);
-    await config.setOpenRouterFallbackModel(_openRouterFallbackController.text);
-    await config.setLlmProvider(_llmProvider);
-    ollama.updateConfig(
-      baseUrl: config.activeBaseUrl,
-      apiKey: config.activeApiKey,
-      defaultModel: config.activeModel,
-      fallbackModel: config.activeFallbackModel,
-    );
-
-    // Sync LocalModelService with provider choice
     final localModel = context.read<LocalModelService>();
+
+    // Fix 1: Persist the selected provider
+    await config.setLlmProvider(_llmProvider);
+
+    // Fix 2: Save all cloud config fields
+    await config.setOllamaBaseUrl(_ollamaBaseUrlController.text.trim());
+    await config.setOllamaApiKey(_ollamaKeyController.text.trim());
+    await config.setOllamaModel(_ollamaModelController.text.trim());
+    await config.setOllamaFallbackModel(_ollamaFallbackController.text.trim());
+    await config.setOpenRouterApiKey(_openRouterKeyController.text.trim());
+    await config.setOpenRouterModel(_openRouterModelController.text.trim());
+    await config.setOpenRouterFallbackModel(_openRouterFallbackController.text.trim());
+
     if (_llmProvider == 'local') {
       if (localModel.isModelAvailable) {
         await localModel.setUseLocalModel(true);
+        if (mounted) _showSnack('Lokales Modell aktiv ✅', AppColors.success);
       } else {
         if (mounted) _showSnack('Modell nicht installiert. Bitte zuerst herunterladen.', AppColors.warning);
-        return;
       }
     } else {
+      // Cloud provider: disable local model flag
       await localModel.setUseLocalModel(false);
+      if (mounted) _showSnack('${_llmProvider == "ollama" ? "Ollama" : "OpenRouter"} gespeichert ✅', AppColors.success);
     }
-
-    if (mounted) _showSnack('KI-Modell gespeichert ✅', AppColors.success);
   }
 
   Future<void> _saveTtsConfig() async {
@@ -118,6 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     final tts = context.read<TtsPlaybackService>();
     await config.setTtsEngine(_ttsEngine.name);
     tts.engine = _ttsEngine;
+    await config.setPiperSpeed(tts.piperSpeed);
     if (_ttsEngine == TtsEngine.device) {
       await tts.initDeviceTts();
     }
@@ -127,16 +137,33 @@ class _SettingsScreenState extends State<SettingsScreen>
   Future<void> _testOllama() async {
     setState(() { _isTestingOllama = true; _ollamaTestResult = null; });
     try {
-      final ollama = context.read<OllamaCloudService>();
-      final reply = await ollama.chatWithTools(
-        systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
-        messages: [{'role': 'user', 'content': 'Hallo, Test!'}],
-        temperature: 0.1,
-      );
-      final text = reply.content.length > 60
-          ? '${reply.content.substring(0, 60)}...'
-          : reply.content;
-      setState(() => _ollamaTestResult = 'Verbindung OK — $text');
+      final config = context.read<SecureConfigService>();
+      if (_llmProvider == 'local') {
+        // Test local model
+        final localModel = context.read<LocalModelService>();
+        final reply = await localModel.chat(
+          [{'role': 'user', 'content': 'Hallo, Test!'}],
+          systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
+          temperature: 0.1,
+        );
+        final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
+        setState(() => _ollamaTestResult = 'Lokal OK — $text');
+      } else {
+        // Test cloud provider
+        final cloud = OllamaCloudService(
+          baseUrl: _llmProvider == 'openrouter' ? config.openRouterBaseUrl : config.ollamaBaseUrl,
+          apiKey: _llmProvider == 'openrouter' ? _openRouterKeyController.text.trim().isNotEmpty ? _openRouterKeyController.text.trim() : config.openRouterApiKey : _ollamaKeyController.text.trim().isNotEmpty ? _ollamaKeyController.text.trim() : config.ollamaApiKey,
+          defaultModel: _llmProvider == 'openrouter' ? (_openRouterModelController.text.trim().isNotEmpty ? _openRouterModelController.text.trim() : config.openRouterModel) : (_ollamaModelController.text.trim().isNotEmpty ? _ollamaModelController.text.trim() : config.ollamaModel),
+          fallbackModel: _llmProvider == 'openrouter' ? (_openRouterFallbackController.text.trim().isNotEmpty ? _openRouterFallbackController.text.trim() : config.openRouterFallbackModel) : (_ollamaFallbackController.text.trim().isNotEmpty ? _ollamaFallbackController.text.trim() : config.ollamaFallbackModel),
+        );
+        final reply = await cloud.chat(
+          systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
+          messages: [{'role': 'user', 'content': 'Hallo, Test!'}],
+          temperature: 0.1,
+        );
+        final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
+        setState(() => _ollamaTestResult = '${_llmProvider == "openrouter" ? "OpenRouter" : "Ollama"} OK — $text');
+      }
     } catch (e) {
       setState(() => _ollamaTestResult = 'Fehler: ${_trunc(e.toString(), 120)}');
     } finally {
@@ -498,6 +525,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
               ),
             ),
+            _Divider(),
             _ListTile(
               icon: Icons.psychology_rounded,
               title: 'Meine Fähigkeiten',
@@ -541,6 +569,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           child: Text(
                             'Ollama',
                             textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                             style: TextStyle(
                               color: _llmProvider == 'ollama' ? Colors.white : AppColors.textSecondary,
                               fontWeight: FontWeight.w700,
@@ -562,6 +592,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           child: Text(
                             'OpenRouter',
                             textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                             style: TextStyle(
                               color: _llmProvider == 'openrouter' ? Colors.white : AppColors.textSecondary,
                               fontWeight: FontWeight.w700,
@@ -583,6 +615,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           child: Text(
                             'Lokal',
                             textAlign: TextAlign.center,
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
                             style: TextStyle(
                               color: _llmProvider == 'local' ? Colors.white : AppColors.textSecondary,
                               fontWeight: FontWeight.w700,
@@ -608,9 +642,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                   controller: _ollamaKeyController,
                   obscure: true,
                 ),
-                _GlassTextField(
+                // Modell-Dropdown statt Textfeld
+                _buildModelDropdown(
                   label: 'Modell',
                   icon: Icons.smart_toy_rounded,
+                  models: _ollamaModels,
                   controller: _ollamaModelController,
                 ),
                 _GlassTextField(
@@ -625,9 +661,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                   controller: _openRouterKeyController,
                   obscure: true,
                 ),
-                _GlassTextField(
-                  label: 'Modell (z.B. anthropic/claude-3.5-sonnet)',
+                // Modell-Dropdown statt Textfeld
+                _buildModelDropdown(
+                  label: 'Modell',
                   icon: Icons.smart_toy_rounded,
+                  models: _openRouterModels,
                   controller: _openRouterModelController,
                 ),
                 _GlassTextField(
@@ -650,7 +688,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 const SizedBox(width: 8),
                 Expanded(child: _OutlineButton(
                   icon: _isTestingOllama ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                  label: _isTestingOllama ? 'Teste...' : 'Verbindung testen',
+                  label: _isTestingOllama ? 'Teste…' : 'Testen',
                   onTap: _isTestingOllama ? null : _testOllama,
                 )),
               ]),
@@ -737,6 +775,59 @@ class _SettingsScreenState extends State<SettingsScreen>
                       },
                     )),
                     const SizedBox(height: 8),
+                    // ── Piper Speed Slider ──
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('Sprechgeschwindigkeit', style: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontWeight: FontWeight.w600)),
+                              Builder(builder: (context) {
+                                final tts = context.select<TtsPlaybackService, double>((s) => s.piperSpeed);
+                                return Text('${tts.toStringAsFixed(1)}x', style: TextStyle(color: AppColors.primary, fontSize: 13, fontWeight: FontWeight.w600));
+                              }),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Builder(builder: (context) {
+                            final speed = context.select<TtsPlaybackService, double>((s) => s.piperSpeed);
+                            return SliderTheme(
+                              data: SliderThemeData(
+                                activeTrackColor: AppColors.primary,
+                                inactiveTrackColor: AppColors.textTertiary.withValues(alpha: 0.3),
+                                thumbColor: AppColors.primary,
+                                overlayColor: AppColors.primary.withValues(alpha: 0.2),
+                                trackHeight: 3,
+                              ),
+                              child: Slider(
+                                value: speed,
+                                min: 0.1,
+                                max: 1.5,
+                                divisions: 14,
+                                onChanged: (value) {
+                                  context.read<TtsPlaybackService>().piperSpeed = value;
+                                },
+                                onChangeEnd: (value) {
+                                  final config = context.read<SecureConfigService>();
+                                  config.setPiperSpeed(value);
+                                },
+                              ),
+                            );
+                          }),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text('langsam', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                              Text('schnell', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     Row(children: [
                       Expanded(child: _GradientButton(
                         icon: Icons.save_rounded,
@@ -811,9 +902,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.95.2',
-              color: AppColors.secondary,
-              trailing: _Badge('v0.95.2', color: AppColors.secondary),
+              subtitle: 'v0.97.5',
+              trailing: _Badge('v0.97.5', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -885,6 +975,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(model.displayName,
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
                               style: TextStyle(
                                 fontSize: 14,
                                 fontWeight: model.id == activeModel.id ? FontWeight.w600 : FontWeight.w400,
@@ -921,8 +1013,10 @@ class _SettingsScreenState extends State<SettingsScreen>
             ]),
             const SizedBox(height: 8),
 
-            Text('${activeModel.sizeDisplay} · Läuft vollständig offline via LiteRT-LM',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4)),
+            Text('${activeModel.sizeDisplay} · Offline via LiteRT-LM',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 2),
             const SizedBox(height: 16),
 
             // Download / Delete / Progress
@@ -930,7 +1024,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.download_rounded,
-                  label: 'Herunterladen (${activeModel.sizeDisplay})',
+                  label: 'Download',
                   onTap: () => localModel.downloadModel(),
                 )),
               ]),
@@ -1047,6 +1141,143 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 }
 
+/// Glass-styled model dropdown for cloud provider presets.
+Widget _buildModelDropdown({
+  required String label,
+  required IconData icon,
+  required List<Map<String, String>> models,
+  required TextEditingController controller,
+}) {
+  return _ModelDropdown(
+    label: label,
+    icon: icon,
+    models: models,
+    controller: controller,
+  );
+}
+
+class _ModelDropdown extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final List<Map<String, String>> models;
+  final TextEditingController controller;
+  const _ModelDropdown({
+    required this.label,
+    required this.icon,
+    required this.models,
+    required this.controller,
+  });
+  @override
+  State<_ModelDropdown> createState() => _ModelDropdownState();
+}
+
+class _ModelDropdownState extends State<_ModelDropdown> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentId = widget.controller.text;
+    final isCustom = !widget.models.any((m) => m['id'] == currentId);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
+      child: Focus(
+        onFocusChange: (f) => setState(() => _focused = f),
+        child: DropdownButtonFormField<String>(
+          value: isCustom ? '__custom__' : currentId,
+          icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textTertiary),
+          decoration: InputDecoration(
+            hintText: widget.label,
+            hintStyle: TextStyle(color: AppColors.textTertiary.withValues(alpha: 0.5), fontSize: 15),
+            prefixIcon: Icon(widget.icon, size: 20, color: _focused
+              ? AppColors.primary
+              : AppColors.textTertiary.withValues(alpha: 0.6)),
+            filled: true,
+            fillColor: _focused
+              ? AppColors.textPrimary.withValues(alpha: 0.04)
+              : Colors.white.withValues(alpha: 0.02),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide.none,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.glassBorder.withValues(alpha: 0.25), width: 1),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.5),
+            ),
+            isDense: true,
+          ),
+          dropdownColor: AppColors.bgCard,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w500),
+          items: [
+            ...widget.models.map((model) => DropdownMenuItem(
+              value: model['id'],
+              child: Text(model['name']!, style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+            )),
+            DropdownMenuItem(
+              value: '__custom__',
+              child: Row(children: [
+                Icon(Icons.edit_rounded, size: 16, color: AppColors.textTertiary),
+                const SizedBox(width: 8),
+                Text(isCustom ? 'Eigene: ${currentId.length > 30 ? "${currentId.substring(0, 30)}…" : currentId}' : 'Eigene ID eingeben…',
+                  style: TextStyle(color: isCustom ? AppColors.primary : AppColors.textSecondary, fontSize: 14)),
+              ]),
+            ),
+          ],
+          onChanged: (value) async {
+            if (value == '__custom__') {
+              final custom = await _showCustomModelDialog(context, widget.controller.text);
+              if (custom != null && custom.isNotEmpty) {
+                setState(() => widget.controller.text = custom);
+              }
+            } else if (value != null) {
+              setState(() => widget.controller.text = value);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _showCustomModelDialog(BuildContext context, String current) async {
+    final controller = TextEditingController(text: current);
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.bgCard,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Modell-ID', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
+          decoration: InputDecoration(
+            hintText: 'z.B. kimi-k2.6:cloud',
+            hintStyle: TextStyle(color: AppColors.textTertiary),
+            filled: true,
+            fillColor: AppColors.bgDark,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: AppColors.primary)),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: Text('Abbrechen', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: Text('Speichern', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 // ──── UI Widgets ────
 
 class _GlassCard extends StatelessWidget {
@@ -1133,7 +1364,7 @@ class _ExpandableSectionState extends State<_ExpandableSection> {
                 Text(widget.title,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 const SizedBox(height: 2),
-                Text(widget.expanded ? 'Angeklappt zur Bearbeitung' : 'Zum Bearbeiten aufklappen',
+                Text(widget.expanded ? 'Einklappen zur Bearbeitung' : 'Aufklappen zur Bearbeitung',
                   style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
               ])),
               AnimatedRotation(
@@ -1204,7 +1435,7 @@ class _ListTile extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(subtitle!,
                   style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                  maxLines: 2, overflow: TextOverflow.ellipsis),
               ],
             ])),
             if (trailing != null) trailing!,
@@ -1239,7 +1470,7 @@ class _GlassTextFieldState extends State<_GlassTextField> {
   Widget build(BuildContext context) {
     final isObscure = widget.obscure && _obscureText;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
       child: Focus(
         onFocusChange: (f) => setState(() => _focused = f),
         child: TextField(
@@ -1263,7 +1494,7 @@ class _GlassTextFieldState extends State<_GlassTextField> {
             fillColor: _focused
               ? AppColors.textPrimary.withValues(alpha: 0.04)
               : Colors.white.withValues(alpha: 0.02),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide.none,
@@ -1276,6 +1507,7 @@ class _GlassTextFieldState extends State<_GlassTextField> {
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(color: AppColors.primary.withValues(alpha: 0.6), width: 1.5),
             ),
+            isDense: true,
           ),
         ),
       ),
@@ -1294,7 +1526,7 @@ class _GradientButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 8, 0, 16),
+        margin: const EdgeInsets.fromLTRB(0, 8, 0, 16),
         padding: const EdgeInsets.symmetric(vertical: 14),
         decoration: BoxDecoration(
           gradient: AppColors.primaryGradient,
@@ -1328,7 +1560,7 @@ class _OutlineButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(0, 8, 16, 16),
+        margin: const EdgeInsets.fromLTRB(0, 8, 0, 16),
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color: Colors.transparent,
@@ -1359,7 +1591,7 @@ class _ResultBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final ok = !text.startsWith('Fehler');
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+      margin: const EdgeInsets.fromLTRB(0, 4, 0, 16),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: (ok ? AppColors.success : AppColors.error).withValues(alpha: 0.08),

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../services/context_service.dart';
-import '../services/ollama_cloud_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 
@@ -38,7 +37,7 @@ typedef ProactiveCallback = void Function(ProactiveSuggestion suggestion);
 ///
 /// Checks: calendar heads-up, battery guardian, evening recap.
 class ProactiveEngine extends ChangeNotifier {
-  final OllamaCloudService _llm;
+  final dynamic _llm;
   final MemoryService _memory;
   final PersonaService _persona;
   final ContextService _context;
@@ -65,7 +64,7 @@ class ProactiveEngine extends ChangeNotifier {
   static const _batteryThreshold = 20; // warn below 20%
 
   ProactiveEngine({
-    required OllamaCloudService llm,
+    required dynamic llm,
     required MemoryService memory,
     required PersonaService persona,
     FlutterLocalNotificationsPlugin? notifications,

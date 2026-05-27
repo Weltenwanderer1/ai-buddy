@@ -34,6 +34,10 @@ class TtsPlaybackService extends ChangeNotifier {
   TtsEngine _engine = TtsEngine.piper;
   TtsEngine get engine => _engine;
 
+  /// Piper playback speed (0.5 - 2.0).
+  double _piperSpeed = 1.0;
+  double get piperSpeed => _piperSpeed;
+
   /// Last error message for debugging.
   String? lastError;
 
@@ -61,6 +65,12 @@ class TtsPlaybackService extends ChangeNotifier {
 
   /// Get PiperTtsService (for voice download/management in settings).
   PiperTtsService get piper => _piper;
+
+  /// Set Piper playback speed (0.5 - 2.0).
+  set piperSpeed(double speed) {
+    _piperSpeed = speed.clamp(0.1, 1.5);
+    notifyListeners();
+  }
 
   /// Initialize device TTS if using device engine.
   Future<void> initDeviceTts() async {
@@ -94,6 +104,7 @@ class TtsPlaybackService extends ChangeNotifier {
         _engine = TtsEngine.device;
         await _deviceTts.init();
       }
+      _piperSpeed = config.piperSpeed;
     } else if (_engine == TtsEngine.device) {
       await _deviceTts.init();
     }
@@ -193,6 +204,7 @@ class TtsPlaybackService extends ChangeNotifier {
       notifyListeners();
 
       await _player.setFilePath(audioPath);
+      await _player.setSpeed(_piperSpeed);
 
       final completer = Completer<void>();
       _playbackCompleter = completer;

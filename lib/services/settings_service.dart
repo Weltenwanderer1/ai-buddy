@@ -39,7 +39,16 @@ class SettingsService extends ChangeNotifier {
     _data.putIfAbsent('memory_ttl_minutes', () => 60);
     _data.putIfAbsent('tts_enabled', () => false);
     _data.putIfAbsent('stt_enabled', () => false);
-    _data.putIfAbsent('temperature', () => 0.7);
+    _data.putIfAbsent('temperature', () => 0.5);
+    _data.putIfAbsent('context_compression', () => true);
+    _data.putIfAbsent('auto_memory', () => true);
+    _data.putIfAbsent('live_voice_sensitivity', () => 0.5);
+    _data.putIfAbsent('tool_calling', () => true);
+    _data.putIfAbsent('max_tool_rounds', () => 3);
+    _data.putIfAbsent('persona_evolution', () => true);
+    _data.putIfAbsent('piper_speed', () => 1.0);
+    _data.putIfAbsent('local_model_temperature', () => 0.5);
+    _data.putIfAbsent('local_model_max_tokens', () => 512);
   }
 
   void _scheduleSave() {

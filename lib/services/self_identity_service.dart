@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
-import 'ollama_cloud_service.dart';
 
 /// Das Selbstbild der KI — ihr "Ich", ihre Persönlichkeit, ihr Sein.
 ///
@@ -307,7 +306,7 @@ class SelfIdentityService extends ChangeNotifier {
   /// ECHTE Implementierung — kein Stub mehr. Nutzt das LLM für Reflexion.
   Future<Map<String, dynamic>?> introspect(
     String conversationSummary,
-    OllamaCloudService llm,
+    dynamic llm,
   ) async {
     if (conversationSummary.trim().isEmpty) return null;
 

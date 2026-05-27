@@ -21,6 +21,7 @@ class SecureConfigService {
   // TTS config
   static const keyTtsEngine = 'TTS_ENGINE';
   static const keyPiperVoice = 'PIPER_VOICE';
+  static const keyPiperSpeed = 'PIPER_SPEED';
 
   // Cache
   final Map<String, String> _cache = {};
@@ -40,6 +41,7 @@ class SecureConfigService {
       keyTavilyApiKey,
       keyTtsEngine,
       keyPiperVoice,
+      keyPiperSpeed,
     ];
 
     for (final key in allKeys) {
@@ -95,6 +97,10 @@ class SecureConfigService {
   // TTS config
   String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'piper';
   String get piperVoice => _cache[keyPiperVoice] ?? _env(keyPiperVoice) ?? 'de_DE-thorsten-high';
+  double get piperSpeed {
+    final raw = _cache[keyPiperSpeed] ?? _env(keyPiperSpeed) ?? '1.0';
+    return double.tryParse(raw) ?? 1.0;
+  }
 
   // --- Setters ---
 
@@ -151,6 +157,12 @@ class SecureConfigService {
   Future<void> setPiperVoice(String value) async {
     await _storage.write(key: keyPiperVoice, value: value);
     _cache[keyPiperVoice] = value;
+  }
+
+  Future<void> setPiperSpeed(double value) async {
+    final str = value.toStringAsFixed(2);
+    await _storage.write(key: keyPiperSpeed, value: str);
+    _cache[keyPiperSpeed] = str;
   }
 
   bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;

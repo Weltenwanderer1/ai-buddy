@@ -177,6 +177,17 @@ class PiperTtsService extends ChangeNotifier {
   Future<bool> loadVoice(PiperVoice voice) async {
     if (_isLoaded && _currentVoice == voice) return true; // Already loaded
 
+    // Unload previous voice first to avoid ONNX session conflicts
+    if (_isLoaded) {
+      try {
+        await _piper.unload();
+      } catch (e) {
+        debugPrint('PiperTts: unload failed: $e');
+      }
+      _isLoaded = false;
+      _currentVoice = null;
+    }
+
     try {
       final dir = await _getModelsDir();
       final modelFile = File('${dir.path}/${voice.id}.onnx');

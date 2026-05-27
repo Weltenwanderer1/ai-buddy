@@ -1,170 +1,184 @@
 import 'dart:convert';
 
-import 'ollama_cloud_service.dart';
-import '../tools/tool_registry.dart';
-
-/// Robust parser for model-emitted fallback tool calls.
+/// Reaktiviert: Tool Call Parser als Fallback für Function Calling.
 ///
-/// Primary path is native OpenAI/Ollama `tool_calls`. Some local/proxy models
-/// instead emit inline XML/JSON. We accept those as a compatibility layer, but
-/// ChatService still asks the model to choose a tool semantically first.
+/// flutter_gemma 0.12.8 hat native Function Calling via `FunctionCallResponse`,
+/// aber wenn das Modell Text-Antworten mit Inline-Tool-Calls zurückgibt,
+/// kann dieser Parser sie extrahieren.
+///
+/// Unterstützt:
+/// - XML-Tags: `<tool_call name="...">{"arg": "val"}</tool_call>`
+/// - JSON-Blocks: `{"tool": "name", "arguments": {...}}`
+/// - Markdown-Code-Blocks mit JSON
 class ToolCallParser {
-  static List<ToolCall> parseInline(String content, ToolRegistry? registry) {
-    final calls = <ToolCall>[];
-    var index = 0;
+  /// Parse all inline tool calls from a text response.
+  static List<Map<String, dynamic>> parseInline(
+      String content, dynamic registry) {
+    final calls = <Map<String, dynamic>>[];
+    if (content.isEmpty) return calls;
 
-    calls.addAll(_parseXml(content, registry, () => 'inline_tool_${index++}'));
-    calls.addAll(
-        _parseJsonBlocks(content, registry, () => 'inline_tool_${index++}'));
-
-    final seen = <String>{};
-    return calls.where((call) {
-      final key = '${call.name}:${jsonEncode(call.arguments)}';
-      return seen.add(key);
-    }).toList(growable: false);
-  }
-
-  static List<ToolCall> _parseXml(
-    String content,
-    ToolRegistry? registry,
-    String Function() nextId,
-  ) {
-    if (!content.contains('<function_calls') && !content.contains('<invoke')) {
-      return const [];
+    // 1. Parse XML-style tool calls: <tool_call>call:open_app{app_name: "..."}</tool_call>
+    final xmlCallPattern = RegExp(
+      r'<tool_call>\s*call:([^\{]+)\{([^}]+)\}\s*</tool_call>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    for (final match in xmlCallPattern.allMatches(content)) {
+      final name = match.group(1)?.trim();
+      final argsStr = match.group(2);
+      if (name == null || name.isEmpty) continue;
+      final args = _parseArgs(argsStr ?? '');
+      calls.add({'name': name, 'arguments': args});
     }
-    final calls = <ToolCall>[];
-    final invokeRegex = RegExp(
-      r'<invoke\s+name=["\x27]([^"\x27]+)["\x27]\s*>([\s\S]*?)</invoke>',
+
+    // 1b. Parse XML-style with name attribute: <tool_call name="weather">{"city": "Wien"}</tool_call>
+    final xmlPattern = RegExp(
+      r'<tool_call\s+name="([^"]+)"\u003e\s*(.*?)\s*</tool_call>',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    for (final match in xmlPattern.allMatches(content)) {
+      final name = match.group(1)?.trim();
+      final jsonStr = match.group(2)?.trim();
+      if (name == null || name.isEmpty) continue;
+      Map<String, dynamic> args = {};
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        try {
+          args = jsonDecode(jsonStr) as Map<String, dynamic>;
+        } catch (_) {
+          args = {'input': jsonStr};
+        }
+      }
+      calls.add({'name': name, 'arguments': args});
+    }
+
+    // 1c. Parse plain call: syntax without XML tags: call:open_app{app_name: "..."}
+    final plainCallPattern = RegExp(
+      r'call:([^\{&lt;\n]+)\{([^}]*)\}',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    for (final match in plainCallPattern.allMatches(content)) {
+      final name = match.group(1)?.trim();
+      final argsStr = match.group(2);
+      if (name == null || name.isEmpty) continue;
+      final args = _parseArgs(argsStr ?? '');
+      calls.add({'name': name, 'arguments': args});
+    }
+
+    // 2. Parse JSON-style tool calls in code blocks
+    final jsonBlockPattern = RegExp(
+      r'```(?:json)?\s*\n?\s*(\{[\s\S]*?\})\s*\n?```',
       caseSensitive: false,
     );
-    final parameterRegex = RegExp(
-      r'<parameter\s+name=["\x27]([^"\x27]+)["\x27]\s*>([\s\S]*?)</parameter>',
-      caseSensitive: false,
-    );
-
-    for (final invoke in invokeRegex.allMatches(content)) {
-      final name = invoke.group(1)?.trim() ?? '';
-      if (name.isEmpty || registry?.hasTool(name) != true) continue;
-      final args = <String, dynamic>{};
-      for (final parameter
-          in parameterRegex.allMatches(invoke.group(2) ?? '')) {
-        final key = parameter.group(1)?.trim() ?? '';
-        final value = _stripInlineToolMarkup(parameter.group(2) ?? '');
-        if (key.isNotEmpty) args[key] = value;
-      }
-      calls.add(ToolCall(
-          id: nextId(), type: 'function', name: name, arguments: args));
-    }
-    return calls;
-  }
-
-  static List<ToolCall> _parseJsonBlocks(
-    String content,
-    ToolRegistry? registry,
-    String Function() nextId,
-  ) {
-    final snippets = <String>[];
-
-    final fenced =
-        RegExp(r'```(?:json)?\s*([\s\S]*?)```', caseSensitive: false);
-    for (final match in fenced.allMatches(content)) {
-      snippets.add(match.group(1) ?? '');
-    }
-
-    final tagged = RegExp(r'<![CDATA[\s*([\s\S]*?)\s*]]>',
-        caseSensitive: false);
-    for (final match in tagged.allMatches(content)) {
-      snippets.add(match.group(1) ?? '');
-    }
-
-    snippets.add(content.trim());
-
-    final calls = <ToolCall>[];
-    for (final snippet in snippets) {
-      final decoded = _decodeJsonObjectOrArray(snippet);
-      if (decoded == null) continue;
-      final rawCalls = decoded is List ? decoded : [decoded];
-      for (final raw in rawCalls) {
-        if (raw is! Map) continue;
-        final normalized = raw.cast<String, dynamic>();
-        final name = (normalized['name'] ??
-                    normalized['tool'] ??
-                    normalized['tool_name'] ??
-                    normalized['function'])
-                ?.toString()
-                .trim() ??
-            '';
-        if (name.isEmpty || registry?.hasTool(name) != true) continue;
-        final rawArgs = normalized['arguments'] ??
-            normalized['parameters'] ??
-            normalized['args'] ??
-            <String, dynamic>{};
-        final args = _normalizeArgs(rawArgs);
-        calls.add(ToolCall(
-            id: nextId(), type: 'function', name: name, arguments: args));
-      }
-    }
-    return calls;
-  }
-
-  static dynamic _decodeJsonObjectOrArray(String text) {
-    final trimmed = text.trim();
-    if (trimmed.isEmpty) return null;
-    final candidates = <String>[trimmed];
-    final objectStart = trimmed.indexOf('{');
-    final objectEnd = trimmed.lastIndexOf('}');
-    if (objectStart >= 0 && objectEnd > objectStart) {
-      candidates.add(trimmed.substring(objectStart, objectEnd + 1));
-    }
-    final arrayStart = trimmed.indexOf('[');
-    final arrayEnd = trimmed.lastIndexOf(']');
-    if (arrayStart >= 0 && arrayEnd > arrayStart) {
-      candidates.add(trimmed.substring(arrayStart, arrayEnd + 1));
-    }
-    for (final candidate in candidates) {
+    for (final match in jsonBlockPattern.allMatches(content)) {
+      final jsonStr = match.group(1);
+      if (jsonStr == null) continue;
       try {
-        return jsonDecode(candidate);
+        final obj = jsonDecode(jsonStr) as Map<String, dynamic>;
+        final tool = obj['tool'] as String? ?? obj['name'] as String? ?? obj['function'] as String?;
+        final args = obj['arguments'] as Map<String, dynamic>? ?? obj['params'] as Map<String, dynamic>? ?? {};
+        if (tool != null && tool.isNotEmpty) {
+          calls.add({'name': tool, 'arguments': args});
+        }
       } catch (_) {
-        // try next candidate
+        // Not valid JSON — skip
       }
     }
-    return null;
-  }
 
-  static Map<String, dynamic> _normalizeArgs(dynamic rawArgs) {
-    if (rawArgs is Map<String, dynamic>) return rawArgs;
-    if (rawArgs is Map) return rawArgs.cast<String, dynamic>();
-    if (rawArgs is String) {
+    // 3. Parse loose JSON objects that look like tool calls
+    // Pattern: {"tool": "name", "arguments": {...}} or {"name": "...", "parameters": {...}}
+    final looseJsonPattern = RegExp(
+      r'\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}',
+    );
+    for (final match in looseJsonPattern.allMatches(content)) {
+      // Prefer stricter patterns if we already have calls
+      if (calls.isNotEmpty) continue;
+
       try {
-        final decoded = jsonDecode(rawArgs);
-        if (decoded is Map<String, dynamic>) return decoded;
-        if (decoded is Map) return decoded.cast<String, dynamic>();
-      } catch (_) {}
+        final obj = jsonDecode(match.group(0)!) as Map<String, dynamic>;
+        final tool = obj['tool'] as String? ?? obj['name'] as String? ?? obj['function'] as String?;
+        final args = obj['arguments'] as Map<String, dynamic>? ?? obj['params'] as Map<String, dynamic>? ?? {};
+        if (tool != null && tool.isNotEmpty) {
+          calls.add({'name': tool, 'arguments': args});
+        }
+      } catch (_) {
+        // Skip invalid JSON
+      }
     }
-    return <String, dynamic>{};
+
+    return calls;
   }
 
-  static String _stripInlineToolMarkup(String value) {
-    return value
-        .replaceAll(RegExp(r'<[^>]+>'), '')
-        .replaceAll('&quot;', '"')
-        .replaceAll('&amp;', '&')
-        .replaceAll('&lt;', '<')
-        .replaceAll('&gt;', '>')
-        .trim();
-  }
-
-  /// Strip all <function_calls>...</function_calls> blocks from text so
-  /// they don't appear as raw XML in the chat UI.
+  /// Strip function call tags from a response, keeping only the human-readable text.
   static String stripFunctionCallTags(String content) {
-    var cleaned = content.replaceAll(
-      RegExp(r'<function_calls>[\s\S]*?</function_calls>', caseSensitive: false),
-      '',
+    if (content.isEmpty) return content;
+
+    var cleaned = content;
+
+    // Remove XML tool calls with call: syntax
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(
+        r'<tool_call>\s*call:[^\{]+\{[^}]*\}\s*</tool_call>',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      (_) => '',
     );
-    cleaned = cleaned.replaceAll(
-      RegExp(r'<invoke\s+name=["\x27][^"\x27]+["\x27]\s*>[\s\S]*?</invoke>', caseSensitive: false),
-      '',
+
+    // Remove XML tool calls with name attribute
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(
+        r'<tool_call\s+name="[^"]+"\u003e\s*.*?\s*</tool_call>',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      (_) => '',
     );
+
+    // Remove plain call: syntax
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(
+        r'call:[^\{&lt;\n]+\{[^}]*\}',
+        caseSensitive: false,
+        dotAll: true,
+      ),
+      (_) => '',
+    );
+
+    // Remove JSON code blocks that contain tool calls
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(
+        r'```(?:json)?\s*\n?\s*\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}\s*\n?```',
+        caseSensitive: false,
+      ),
+      (_) => '',
+    );
+
     return cleaned.trim();
+  }
+
+  /// Parse key:value arguments from Gemma-style call syntax.
+  /// Example: `app_name: "Spotify"` → {app_name: Spotify}
+  static Map<String, dynamic> _parseArgs(String argsStr) {
+    final args = <String, dynamic>{};
+    if (argsStr.isEmpty) return args;
+
+    // Pattern: key: value (value runs until comma or closing brace)
+    final pattern = RegExp(r'(\w+):\s*([^,}]+)');
+    for (final match in pattern.allMatches(argsStr)) {
+      final key = match.group(1);
+      var value = match.group(2)?.trim() ?? '';
+      // Strip surrounding quotes
+      if (value.startsWith('"') && value.endsWith('"')) {
+        value = value.substring(1, value.length - 1);
+      } else if (value.startsWith("'") && value.endsWith("'")) {
+        value = value.substring(1, value.length - 1);
+      }
+      if (key != null && value.isNotEmpty) {
+        args[key] = value;
+      }
+    }
+    return args;
   }
 }

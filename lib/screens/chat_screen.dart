@@ -10,7 +10,6 @@ import '../services/memory_service.dart';
 import '../services/buddy_notes_service.dart';
 import '../services/buddy_capabilities_service.dart';
 import '../services/persona_service.dart';
-import '../services/ollama_cloud_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/live_voice_service.dart';
 import '../services/stt_service.dart';
@@ -18,6 +17,7 @@ import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/location_service.dart';
 import '../services/local_model_service.dart';
+
 
 import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
@@ -81,11 +81,10 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   void _initProactiveEngine() {
     try {
-      final ollamaService = context.read<OllamaCloudService>();
-      final memory = context.read<MemoryService>();
+        final memory = context.read<MemoryService>();
       final persona = context.read<PersonaService>();
-      _proactive = ProactiveEngine(
-        llm: ollamaService,
+        _proactive = ProactiveEngine(
+        llm: null,
         memory: memory,
         persona: persona,
         onSuggestion: (s) {
@@ -172,7 +171,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
     final memory = context.read<MemoryService>();
     final chatHistory = context.read<ChatHistoryService>();
-    final ollamaService = context.read<OllamaCloudService>();
     final personaEvolution = context.read<PersonaEvolutionService>();
     final selfIdentity = context.read<SelfIdentityService>();
     final persona = context.read<PersonaService>();
@@ -186,12 +184,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>(), localModel: context.read<LocalModelService>());
+      final chatService = ChatService(context.read<LocalModelService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
       await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
     } catch (e) {
       debugPrint('Streaming failed: $e');
       try {
-        final chatService = ChatService(ollamaService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>(), localModel: context.read<LocalModelService>());
+        final chatService = ChatService(context.read<LocalModelService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
         final reply = await chatService.sendMessage(
           userMessage: text,
           persona: persona,
@@ -316,20 +314,24 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   LiveVoiceService _createLiveVoiceService(BuildContext context) {
     final stt = SttService();
     final tts = context.read<TtsPlaybackService>();
-    final llm = context.read<OllamaCloudService>();
+    final chatService = ChatService(
+      context.read<LocalModelService>(),
+      configService: context.read<SecureConfigService>(),
+      toolRegistry: _toolRegistry,
+      selfIdentity: context.read<SelfIdentityService>(),
+      locationService: context.read<LocationService>(),
+      buddyCapabilities: context.read<BuddyCapabilitiesService>(),
+    );
     final chatHistory = context.read<ChatHistoryService>();
     final memory = context.read<MemoryService>();
     final persona = context.read<PersonaService>();
-    final locationService = context.read<LocationService>();
     return LiveVoiceService(
       stt: stt,
       tts: tts,
-      llm: llm,
+      chatService: chatService,
       chatHistory: chatHistory,
       memory: memory,
       persona: persona,
-      toolRegistry: _toolRegistry,
-      locationService: locationService,
     );
   }
 
