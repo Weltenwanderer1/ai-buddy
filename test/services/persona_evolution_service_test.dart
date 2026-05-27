@@ -8,24 +8,65 @@ void main() {
       expect(service.buildEvolutionContext(), '');
     });
 
-    test('buildEvolutionContext includes preferred style', () {
+    test('buildEvolutionContext includes learned traits', () {
       final service = PersonaEvolutionService();
-      service.testPreferredStyle = ['kurz', 'direkt'];
-      service.testAvoidTopics = ['Politik'];
-      service.testLearnedTraits = ['freundlich'];
-
+      service.testLearnedTraits = ['freundlich', 'geduldig'];
       final context = service.buildEvolutionContext();
-      expect(context, contains('kurz'));
-      expect(context, contains('direkt'));
-      expect(context, contains('Politik'));
+      expect(context, contains('freundlich'));
+      expect(context, contains('geduldig'));
     });
 
     test('buildEvolutionContext includes avoid topics', () {
       final service = PersonaEvolutionService();
-      service.testAvoidTopics = ['Sport', 'Wetter'];
+      service.testAvoidTopics = ['Politik', 'Sport'];
       final context = service.buildEvolutionContext();
+      expect(context, contains('Politik'));
       expect(context, contains('Sport'));
-      expect(context, contains('Wetter'));
+    });
+
+    test('buildEvolutionContext includes preferred style', () {
+      final service = PersonaEvolutionService();
+      service.testPreferredStyle = ['kurz', 'direkt'];
+      final context = service.buildEvolutionContext();
+      expect(context, contains('kurz'));
+      expect(context, contains('direkt'));
+    });
+
+    test('parseEvolutionResponse reads bullet list entries', () {
+      final service = PersonaEvolutionService();
+      const response = '- freundlich\n- geduldig\n- humorvoll';
+      service.parseEvolutionResponse(response);
+      expect(service.learnedTraits, ['freundlich', 'geduldig', 'humorvoll']);
+    });
+
+    test('parseEvolutionResponse ignores non-bullet lines', () {
+      final service = PersonaEvolutionService();
+      const response = 'Hier ist die Analyse:\n- empathisch\nDas wars!';
+      service.parseEvolutionResponse(response);
+      expect(service.learnedTraits, ['empathisch']);
+    });
+
+    test('parseEvolutionResponse deduplicates traits', () {
+      final service = PersonaEvolutionService();
+      service.testLearnedTraits = ['freundlich'];
+      const response = '- freundlich\n- neugierig\n- freundlich';
+      service.parseEvolutionResponse(response);
+      expect(service.learnedTraits.length, 2);
+      expect(service.learnedTraits, ['freundlich', 'neugierig']);
+    });
+
+    test('parseEvolutionResponse handles empty response', () {
+      final service = PersonaEvolutionService();
+      service.parseEvolutionResponse('');
+      expect(service.learnedTraits, isEmpty);
+    });
+
+    test('parseEvolutionResponse handles JSON-like text as non-bullet (no crash)', () {
+      final service = PersonaEvolutionService();
+      const response = '{"traits": ["x"], "avoid": ["y"]}';
+      // JSON is not bullet-list format — should be ignored safely
+      service.parseEvolutionResponse(response);
+      expect(service.learnedTraits, isEmpty);
     });
 
     test('exportData includes all fields', () {
@@ -36,47 +77,25 @@ void main() {
       service.testLearnedStyle = {'traits': ['trait1'], 'avoid': ['topic1']};
 
       final data = service.exportData();
-      expect(data['traits'], ['trait1']);
-      expect(data['avoid'], ['topic1']);
-      expect(data['user_style'], ['style1']);
-      expect(data['style'], isA<Map>());
+      expect(data['learnedTraits'], ['trait1']);
+      expect(data['avoidTopics'], ['topic1']);
+      expect(data['preferredStyle'], ['style1']);
+      expect(data['learnedStyle'], isA<Map>());
     });
 
     test('importData restores all fields', () async {
       final service = PersonaEvolutionService();
 
       final importData = {
-        'traits': ['trait1', 'trait2'],
-        'avoid': ['topic1'],
-        'user_style': ['kurz', 'direkt'],
-        'style': {'key': 'value'},
+        'learnedTraits': ['trait1', 'trait2'],
+        'avoidTopics': ['topic1'],
+        'preferredStyle': ['kurz', 'direkt'],
+        'learnedStyle': {'key': 'value'},
       };
 
       await service.importData(importData);
       expect(service.learnedTraits, ['trait1', 'trait2']);
       expect(service.avoidTopics, ['topic1']);
-    });
-
-    test('parseEvolutionResponse handles valid JSON', () {
-      final service = PersonaEvolutionService();
-      const response = '{"new_traits": ["empathisch"], "avoid": ["Smalltalk"], "style": ["formal"]}';
-      service.parseEvolutionResponse(response);
-      expect(service.learnedTraits, contains('empathisch'));
-      expect(service.avoidTopics, contains('Smalltalk'));
-    });
-
-    test('parseEvolutionResponse handles JSON embedded in text', () {
-      final service = PersonaEvolutionService();
-      const response = 'Hier ist die Analyse:\n{"new_traits": ["humorvoll"], "avoid": [], "style": ["sarkastisch"]}\nDas wars!';
-      service.parseEvolutionResponse(response);
-      expect(service.learnedTraits, contains('humorvoll'));
-    });
-
-    test('parseEvolutionResponse handles invalid JSON gracefully', () {
-      final service = PersonaEvolutionService();
-      // Should not throw
-      service.parseEvolutionResponse('not json at all');
-      expect(service.learnedTraits, isEmpty);
     });
 
     test('traits are capped at 20', () {

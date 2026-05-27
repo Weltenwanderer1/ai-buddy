@@ -77,77 +77,7 @@ class ChatService {
     );
   }
 
-  /// Cached RegExps for _pickModel (avoid recompiling on every call).
-  static final RegExp _cmdPrefixRegex = RegExp(
-    r'^(oeffne|starte|mach|zeig|geh|navigier|fahr|bring|stell|timer|wecker|erinner|send|schick|schreib)',
-    caseSensitive: false,
-  );
-  static final RegExp _chitchatRegex = RegExp(
-    r'^(hi|hey|hallo|moin|servus|guten|nabend|danke|ok|okay|ja|nein|gut|super|toll|geil|cool|wie geht|was geht|und sonst|na du|machst du|was machst)',
-    caseSensitive: false,
-  );
-  static final RegExp _factualQuestionRegex = RegExp(
-    r'(wie|wo|wann|wer|was ist|welche|wieviel|wie viele)',
-    caseSensitive: false,
-  );
-
-  /// Known app names for fallback matching in preload.
-  static const _knownAppNames = [
-    'spotify',
-    'whatsapp',
-    'telegram',
-    'youtube',
-    'netflix',
-    'instagram',
-    'tiktok',
-    'discord',
-    'signal',
-    'threema',
-    'firefox',
-    'chrome',
-    'browser',
-    'maps',
-    'gmail',
-    'email',
-    'kamera',
-    'camera',
-    'fotos',
-    'photos',
-    'einstellungen',
-    'settings',
-    'kalender',
-    'calendar',
-    'uhr',
-    'clock',
-    'rechner',
-    'calculator',
-    'notizen',
-    'keep',
-    'wetter',
-    'weather',
-    'amazon',
-    'ebay',
-    'paypal',
-    'linkedin',
-    'pinterest',
-    'snapchat',
-    'twitch',
-    'prime',
-    'disney',
-    'zoom',
-    'teams',
-    'outlook',
-    'uber',
-    'wikipedia',
-    'vlc',
-    'shazam',
-    'soundcloud',
-    'airbnb',
-    'booking',
-    'reddit',
-    'twitter',
-    'x',
-  ];
+  // No longer used — model routing is handled via config, not regex heuristics
 
   Stream<String> streamResponse({
     required String userMessage,
@@ -523,7 +453,7 @@ class ChatService {
           result = await _localModel.chat(
             [{'role': 'user', 'content': prompt}],
             temperature: 0.3,
-            maxTokens: 256,
+            maxTokens: 512,
           );
         } else if (_useCloud()) {
           result = await _getCloudService().chat(

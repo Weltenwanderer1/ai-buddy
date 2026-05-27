@@ -12,10 +12,16 @@ import 'dart:convert';
 /// - Markdown-Code-Blocks mit JSON
 class ToolCallParser {
   /// Parse all inline tool calls from a text response.
+  /// Avoids double-parsing when a single tool call is matched by multiple patterns.
   static List<Map<String, dynamic>> parseInline(
       String content, dynamic registry) {
     final calls = <Map<String, dynamic>>[];
     if (content.isEmpty) return calls;
+
+    final matchedSpans = <({int start, int end})>[];
+
+    bool _overlaps(int s, int e) =>
+        matchedSpans.any((ms) => (ms.start < e && s < ms.end));
 
     // 1. Parse XML-style tool calls: <tool_call>call:open_app{app_name: "..."}</tool_call>
     final xmlCallPattern = RegExp(
@@ -24,6 +30,8 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in xmlCallPattern.allMatches(content)) {
+      if (_overlaps(match.start, match.end)) continue;
+      matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final argsStr = match.group(2);
       if (name == null || name.isEmpty) continue;
@@ -38,6 +46,8 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in xmlPattern.allMatches(content)) {
+      if (_overlaps(match.start, match.end)) continue;
+      matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final jsonStr = match.group(2)?.trim();
       if (name == null || name.isEmpty) continue;
@@ -59,6 +69,8 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in plainCallPattern.allMatches(content)) {
+      if (_overlaps(match.start, match.end)) continue;
+      matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final argsStr = match.group(2);
       if (name == null || name.isEmpty) continue;
@@ -72,6 +84,8 @@ class ToolCallParser {
       caseSensitive: false,
     );
     for (final match in jsonBlockPattern.allMatches(content)) {
+      if (_overlaps(match.start, match.end)) continue;
+      matchedSpans.add((start: match.start, end: match.end));
       final jsonStr = match.group(1);
       if (jsonStr == null) continue;
       try {
@@ -87,12 +101,12 @@ class ToolCallParser {
     }
 
     // 3. Parse loose JSON objects that look like tool calls
-    // Pattern: {"tool": "name", "arguments": {...}} or {"name": "...", "parameters": {...}}
     final looseJsonPattern = RegExp(
       r'\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}',
     );
     for (final match in looseJsonPattern.allMatches(content)) {
-      // Prefer stricter patterns if we already have calls
+      if (_overlaps(match.start, match.end)) continue;
+      // Only try if no other patterns matched yet
       if (calls.isNotEmpty) continue;
 
       try {

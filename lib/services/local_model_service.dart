@@ -199,6 +199,8 @@ class LocalModelService extends ChangeNotifier {
       // listInstalledModels failed — trust per-model flag as fallback
       if (wasInstalled) {
         _reRegisterActiveModel();
+        // Restore repository metadata so future checks work
+        await _ensureRepositoryMetadata();
         _modelAvailable = true;
       } else {
         _modelAvailable = false;

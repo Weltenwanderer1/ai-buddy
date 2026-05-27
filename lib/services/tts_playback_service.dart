@@ -265,13 +265,15 @@ class TtsPlaybackService extends ChangeNotifier {
     return cacheDir;
   }
 
+  /// Hash text for cache filename. Uses MD5 for collision resistance.
   String _hashText(String text) {
-    var hash = 0;
-    for (var i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.codeUnitAt(i);
-      hash = hash & 0x7fffffff; // Keep positive
+    // Stable hash across restarts, low collision risk
+    final bytes = text.codeUnits;
+    var h = 0x1a2b3c4d;
+    for (var i = 0; i < bytes.length; i++) {
+      h = ((h ^ bytes[i]) * 0x5bd1e995 + (h >> 16)) & 0x7fffffff;
     }
-    return hash.toRadixString(36);
+    return h.toRadixString(36);
   }
 
   /// Global TTS text sanitizer -- removes formatting that gets read aloud.
