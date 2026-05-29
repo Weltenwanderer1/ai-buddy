@@ -201,7 +201,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     try {
       final chatService = ChatService(cloudService: context.read<OllamaCloudService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
       // Use sendMessage (with tool support) as primary path
-      final reply = await chatService.sendMessage(
+      final result = await chatService.sendMessage(
         userMessage: text,
         persona: persona,
         memory: memory,
@@ -214,7 +214,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
           }
         },
       );
-      final assistantMsg = ChatMessage(text: reply, isUser: false);
+      final assistantMsg = ChatMessage(
+        text: result.text,
+        isUser: false,
+        metadata: result.metadata,
+      );
       await chatHistory.add(assistantMsg);
       _scrollToBottom();
 
@@ -223,7 +227,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         final buddyName = context.read<SecureConfigService>().buddyName;
         await BuddyNotifier.notifyBuddyReply(
           buddyName: buddyName,
-          message: reply,
+          message: result.text,
           appInBackground: true,
         );
       }

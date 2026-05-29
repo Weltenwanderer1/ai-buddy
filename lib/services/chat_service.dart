@@ -19,6 +19,14 @@ typedef ToolExecutionCallback = Future<String> Function(String toolName, Map<Str
 typedef ToolDisplayCallback = void Function(ChatMessage toolMessage);
 typedef StreamingCallback = void Function(String partialText);
 
+/// Result from sendMessage — carries the reply text and optional metadata
+/// from tool calls (e.g. route data for navigation, location coordinates).
+class ChatResult {
+  final String text;
+  final Map<String, dynamic>? metadata;
+  ChatResult(this.text, {this.metadata});
+}
+
 class ChatService {
   final OllamaCloudService? _cloudService;
   final SecureConfigService? _configService;
@@ -141,7 +149,7 @@ class ChatService {
     return controller.stream;
   }
 
-  Future<String> sendMessage({
+  Future<ChatResult> sendMessage({
     required String userMessage,
     required PersonaService persona,
     required MemoryService memory,
@@ -176,11 +184,12 @@ class ChatService {
 
     final provider = _resolveProvider();
     if (provider == null) {
-      return 'Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).';
+      return ChatResult('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).');
     }
 
     try {
-      // Build tool execution callbacks
+      // Build tool execution callbacks — capture extraData from last tool result
+      Map<String, dynamic>? lastToolExtraData;
       Future<String> Function(String, Map<String, dynamic>)? onToolCall;
       void Function(String)? onToolActivityWrapper;
 
@@ -188,6 +197,9 @@ class ChatService {
         onToolCall = (String toolName, Map<String, dynamic> args) async {
           debugPrint('ChatService tool: $toolName');
           final result = await _toolRegistry!.execute(toolName, args);
+          if (result.extraData != null && result.extraData!.isNotEmpty) {
+            lastToolExtraData = result.extraData;
+          }
           return result.result;
         };
 
@@ -214,11 +226,11 @@ class ChatService {
 
       await _saveMemory(memory, userMessage, reply);
       _maybeEvolve(personaEvolution, history, userMessage, reply);
-      return reply;
+      return ChatResult(reply, metadata: lastToolExtraData);
     } catch (e) {
       debugPrint('Provider failed: $e');
       final errStr = e.toString();
-      return 'KI-Problem: ${errStr.length > 100 ? errStr.substring(0, 100) + '...' : errStr}';
+      return ChatResult('KI-Problem: ${errStr.length > 100 ? errStr.substring(0, 100) + '...' : errStr}');
     }
   }
 

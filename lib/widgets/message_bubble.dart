@@ -34,15 +34,28 @@ class MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget content = switch (message.type) {
-      MessageType.text => message.isUser ? _userBubble(context) : _aiBubble(context),
-      MessageType.system => _systemBubble(),
-      MessageType.toolActivity => _toolActivity(context),
-      MessageType.error => _errorBubble(context),
-      MessageType.voice => message.isUser ? _userBubble(context) : _aiBubble(context),
-      MessageType.navigation => _navigationBubble(context),
-      MessageType.locationMap => _locationMapBubble(context),
-    };
+    // Detect navigation/location metadata on text messages from AI
+    Widget content;
+    if (message.type == MessageType.text && !message.isUser) {
+      final md = message.metadata;
+      if (md != null && md['show_map'] == true) {
+        content = _navigationBubble(context);
+      } else if (md != null && md['lat'] != null && md['lon'] != null) {
+        content = _locationMapBubble(context);
+      } else {
+        content = _aiBubble(context);
+      }
+    } else {
+      content = switch (message.type) {
+        MessageType.text => message.isUser ? _userBubble(context) : _aiBubble(context),
+        MessageType.system => _systemBubble(),
+        MessageType.toolActivity => _toolActivity(context),
+        MessageType.error => _errorBubble(context),
+        MessageType.voice => message.isUser ? _userBubble(context) : _aiBubble(context),
+        MessageType.navigation => _navigationBubble(context),
+        MessageType.locationMap => _locationMapBubble(context),
+      };
+    }
 
     if (animation != null) {
       content = SlideTransition(

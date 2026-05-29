@@ -144,18 +144,22 @@ class LiveVoiceService extends ChangeNotifier {
 
         if (!_active) break;
 
-        debugPrint('LiveVoice [$iteration]: reply = "${reply.length > 80 ? '${reply.substring(0, 80)}…' : reply}"');
+        debugPrint('LiveVoice [$iteration]: reply = "${reply.text.length > 80 ? '${reply.text.substring(0, 80)}…' : reply.text}"');
 
-        final assistantMsg = ChatMessage(text: reply, isUser: false);
+        final assistantMsg = ChatMessage(
+          text: reply.text,
+          isUser: false,
+          metadata: reply.metadata,
+        );
         await _chatHistory.add(assistantMsg);
 
-        _lastReply = reply;
+        _lastReply = reply.text;
         notifyListeners();
 
         // 3. Speak
         _setState(LiveVoiceState.speaking);
         debugPrint('LiveVoice [$iteration]: speaking...');
-        final sanitizedReply = _sanitizeForTts(reply);
+        final sanitizedReply = _sanitizeForTts(reply.text);
         debugPrint('LiveVoice [$iteration]: sanitized = "${sanitizedReply.length > 80 ? '${sanitizedReply.substring(0, 80)}...' : sanitizedReply}"');
         final spoken = await _tts.speak(sanitizedReply);
 
