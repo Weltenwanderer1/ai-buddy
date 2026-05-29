@@ -6,8 +6,8 @@ import 'package:latlong2/latlong.dart';
 /// Falls primary server down, wechselt auf Fallback.
 /// Waldwege via 'walking' (foot) profile standardmäßig.
 class NavigationService {
-  static const String kDefaultOsrm = 'router.project-osrm.org';
-  static const String kFallbackOsrm = 'routing.openstreetmap.de';
+  static const String kDefaultOsrm = 'routing.openstreetmap.de';
+  static const String kFallbackOsrm = 'router.project-osrm.org';
 
   final String _osrmBase;
 
