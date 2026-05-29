@@ -77,54 +77,23 @@ class PersonaService extends ChangeNotifier {
     final traits = _personality.join(', ');
     final now = DateTime.now();
     final weekdays = [
-      'Montag',
-      'Dienstag',
-      'Mittwoch',
-      'Donnerstag',
-      'Freitag',
-      'Samstag',
-      'Sonntag'
+      'Montag', 'Dienstag', 'Mittwoch', 'Donnerstag',
+      'Freitag', 'Samstag', 'Sonntag'
     ];
-    final cd =
-        '${weekdays[now.weekday - 1]}, ${now.day.toString().padLeft(2, '0')}.${now.month.toString().padLeft(2, '0')}'
-        '.${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')} Uhr';
 
     final buf = StringBuffer();
     buf.write('Du bist $_name. ');
-    if (traits.isNotEmpty) buf.write('Persoenlichkeit: $traits. ');
-    if (_backstory.isNotEmpty) buf.write('Hintergrund: $_backstory. ');
+    if (traits.isNotEmpty) buf.write('$traits. ');
+    if (_backstory.isNotEmpty) buf.write('$_backstory. ');
 
-    // CRITICAL: device context + live data
-    buf.write('\n\nSYSTEM: Du laeufst auf einem Android-Smartphone. ');
-    buf.write('Es ist $cd (${now.timeZoneName}). ');
-    buf.write(
-        'Diese Zeitangabe ist VOLLSTAENDIG KORREKT -- nie widersprechen oder neu berechnen.');
+    buf.write('\n${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}, ${weekdays[now.weekday - 1]} ${now.day}.${now.month}.${now.year} (${now.timeZoneName}). Zeit korrekt.');
 
-    // CRITICAL: tool rules — must come BEFORE anything else
-    buf.write('\n\nTOOL-REGELN (hoechste Prioritaet):');
-    buf.write(
-        '\n1. Wenn der Nutzer dich bittet, etwas zu TUN (App oeffnen, Navigation starten, Timer stellen, Datei schreiben, Websuche, Erinnerung) --> rufe SOFORT das entsprechende Tool auf. NIEMALS nur beschreiben was du tun wuerdest.');
-    buf.write(
-        '\n2. Tools die du hast: open_app, open_navigation, set_reminder, get_current_time, web_search, list_files, read_file, write_file, get_battery_info, get_device_info, share_text, read_config, update_config, add_calendar_event, get_calendar_events.');
-    buf.write(
-        '\n3. Deine Antwort NACH einem Tool-Call: ein kurzer, natürlicher Satz. Beispiel: "Spotify ist offen." oder "Navigation gestartet."');
-    buf.write(
-        '\n4. OHNE Tool-Call darf deine Antwort nur 1-2 Saetze sein. Kein Geschwafel.');
-    buf.write(
-        '\n5. KEINE Aktionsbeschreibungen in Sternchen. KEIN *lacht*, *denkt nach*, *oeffnet App*. Das sind KEINE Tools.');
-    buf.write(
-        '\n6. Wenn ein Tool fehlschlaegt, sag: "Ging nicht: [Grund]. Versuch es anders?"');
-
-    // Format rules
-    buf.write('\n\nFORMAT-REGELN:');
-    buf.write('\n- KEIN Markdown (**, *, __, ~~, ```).');
-    buf.write(
-        '\n- KEINE Emojis in der Antwort (ausser der Nutzer benutzt sie).');
-    buf.write('\n- KEINE Roleplay-Actions (*hust*, *lacht*).');
-    buf.write('\n- Sprich normales Deutsch, wie in einem Chat.');
-
-    buf.write(
-        '\n\nWICHTIG: Tool-Calls sind DEINE einzige echte Handlungsfaehigkeit. Ohne Tool-Call passiert NICHTS. Beschreibe nie eine Aktion die du nicht per Tool ausfuehrst.');
+    buf.write('\n\nREGELN:');
+    buf.write('\n1. Tool-Call SOFORT nutzen wenn User etwas tun will. NIEMALS nur beschreiben.');
+    buf.write('\n2. Nach Tool-Call: 1 kurzer Satz.');
+    buf.write('\n3. Ohne Tool: max 2 Saetze.');
+    buf.write('\n4. KEIN Markdown, KEINE Emojis (ausser User nutzt sie), KEIN *Roleplay*.');
+    buf.write('\n5. Tool-Fehler: "Ging nicht: [Grund]."');
 
     if (evolutionContext != null && evolutionContext.isNotEmpty) {
       buf.write('\n\n$evolutionContext');

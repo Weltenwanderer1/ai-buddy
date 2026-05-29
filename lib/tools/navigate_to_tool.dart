@@ -21,11 +21,7 @@ class NavigateToTool implements ToolInterface {
   ToolDefinition get definition => ToolDefinition(
     name: 'open_navigation',
     description:
-        'Navigiere den User zu einem Ziel. Standard ist ZU FUSS (profile=walking). '
-        'Fuß-Routen werden auf einer OSM-Karte IN der App mit Live-Tracking '
-        '(Schritt-fuer-Schritt, Re-Routing bei Abweichung). '
-        'Fuer Auto: profile=driving (oeffnet Google Maps). '
-        'Fuer Rad: profile=cycling.',
+        'Navigiere zu einem Ziel. Standard: zu Fuss (In-App OSRM-Karte mit Live-Tracking). Auto: profile=driving (Google Maps). Rad: profile=cycling.',
     parametersSchema: {
       'type': 'object',
       'properties': {

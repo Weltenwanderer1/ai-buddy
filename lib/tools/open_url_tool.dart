@@ -6,8 +6,7 @@ import 'tool_result.dart';
 class OpenUrlTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'open_url',
-    description:
-        'Öffnet eine URL im Standard-Browser des Geräts. Nutze dies, wenn der Nutzer eine Website öffnen möchte.',
+    description: 'Oeffnet eine URL im Browser.',
     parametersSchema: {
       'type': 'object',
       'properties': {

@@ -9,7 +9,7 @@ class SaveMemoryTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'save_memory',
-    description: 'Speichere eine wichtige Information dauerhaft. Nutze dies für Fakten über den Nutzer, wichtige Ereignisse, Vorlieben, oder alles was du dir für zukünftige Gespräche merken möchtest. Wähle den passenden Tier: "core" für identitätsprägende Fakten über den Nutzer oder die Beziehung, "long_term" für wichtige Fakten und Vorlieben.',
+    description: 'Speichere wichtige Info dauerhaft. Tier: "core" fuer identitaetspraegend, "long_term" fuer Fakten/Vorlieben.',
     parametersSchema: {
       'type': 'object',
       'properties': {

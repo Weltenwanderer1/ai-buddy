@@ -8,8 +8,7 @@ import 'tool_result.dart';
 class GetWebpageTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_webpage',
-    description:
-        'Ruft eine Webseite ab und extrahiert den Textinhalt. Nutze dies, um Informationen von einer bestimmten URL zu holen.',
+    description: 'Ruft eine URL ab und extrahiert den Text.',
     parametersSchema: {
       'type': 'object',
       'properties': {

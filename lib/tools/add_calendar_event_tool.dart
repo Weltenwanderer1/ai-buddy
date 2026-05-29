@@ -6,8 +6,7 @@ import 'tool_result.dart';
 class AddCalendarEventTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'add_calendar_event',
-    description:
-        'Fügt einen Termin zum Kalender hinzu. Gib Titel, Startzeit und Endzeit/Dauer an.',
+    description: 'Termin zum Kalender hinzufuegen.',
     parametersSchema: {
       'type': 'object',
       'properties': {

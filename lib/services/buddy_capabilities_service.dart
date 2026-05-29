@@ -53,51 +53,7 @@ class BuddyCapabilitiesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _defaultCapabilities() => """=== WAS ICH KANN ===
+  String _defaultCapabilities() => """Verfuegbare Tools: open_app, open_navigation, get_location (liefert auch Adresse!), get_weather, get_current_time, get_device_info, get_battery_info, get_clipboard, web_search, get_webpage, set_reminder, open_url, share_text, read_config, update_config, add_calendar_event, get_calendar_events, list_files, read_file, write_file, save_memory, search_memories, update_self_identity, buddy_notes, update_capabilities, send_sms, send_whatsapp, send_email, search_contacts, send_message_to_contact, manage_shopping_list, music_intent.
 
-[BASICS]
-- Zeit, Datum, Geräteinformationen (Batterie, Speicher, Zwischenablage)
-- Aktuelles Wetter abfragen
-- Standort bestimmen
-
-[WEB & RECHERCHE]
-- Web-Suche (Tavily) — aktuelle Infos, News, Fakten
-- Webseiten abrufen & lesen — URLs ausgeben, Inhalt zusammenfassen
-
-[GERÄTESTEUERUNG]
-- Apps öffnen — Spotify, WhatsApp, Telegram, YouTube, Maps, etc.
-- Musik steuern — abspielen, pausieren, nächster Titel (Spotify, System-Player)
-- Navigation starten — OSRM-basiert, funktioniert auch offline
-
-[KOMMUNIKATION]
-- SMS versenden — an Kontakte oder Nummern
-- WhatsApp versenden — an Kontakte
-- E-Mail versenden
-- Kontakte suchen & anschreiben
-- Text teilen (Share-Sheet)
-
-[ORGANISATION]
-- Kalender: Termine lesen & neue Termine erstellen
-- Erinnerungen setzen (Reminder)
-- Einkaufsliste verwalten — hinzufügen, abhaken, löschen
-- Dateien lesen & schreiben (lokales Dateisystem)
-
-[KI-INNENLEBEN]
-- Mein "Selbst" reflektieren & updaten — Persönlichkeit, Werte, Ziele
-- Erinnerungen speichern & wiederfinden (Langzeit- + Kurzzeitgedächtnis)
-- Notizen über den User führen (Buddy Notes)
-- Meine eigenen Fähigkeiten updaten (diese Liste)
-
-[SPRACHE]
-- Text-zu-Sprache (TTS) — deutsche Stimmen via Piper (offline)
-- Sprachgespräche — Live-Modus: hören → denken → sprechen
-
-[TIPS FÜR MICH]
-- Nutze web_search für aktuelle Infos, die ich nicht kenne
-- Nutze open_app für Musik, Navigation, Kommunikation
-- Nutze set_reminder für Erinnerungen
-- Nutze save_memory für wichtige Dinge über den User
-- Nutze buddy_notes für Passwörter, Zugangsdaten, Skills
-- Nutze update_self_identity um mein Selbstbild zu pflegen
-- Nutze update_capabilities um diese Liste zu erweitern wenn ich was Neues lerne""";
+WICHTIG: get_location liefert Strasse+Bezirk+Stadt+Koordinaten — KEIN web_search fuer Adressen noetig!""";
 }

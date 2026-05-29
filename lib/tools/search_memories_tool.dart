@@ -13,11 +13,7 @@ class SearchMemoriesTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'search_memories',
-    description:
-        'Durchsucht das Gedächtnis des Nutzers nach relevanten Informationen. '
-        'Nutze dies, wenn der Nutzer nach vergangenen Gesprächen, '
-        'gespeicherten Fakten oder früheren Ereignissen fragt. '
-        'Auch nützlich um Kontext für personalisierte Antworten zu finden.',
+    description: 'Durchsucht gespeicherte Erinnerungen nach Stichworten.',
     parametersSchema: {
       'type': 'object',
       'properties': {

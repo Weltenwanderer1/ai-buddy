@@ -6,12 +6,7 @@ import 'tool_result.dart';
 class UpdateCapabilitiesTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'update_capabilities',
-    description:
-        'Aktualisiere mein Wissen darüber, was ich alles kann. '
-        'Ersetzt die gesamte "Fähigkeiten"-Liste. '
-        'Nutze nur wenn sich etwas Grundlegendes geändert hat '
-        '(z.B. neue App-Integration, neuer Skill gelernt, fehlerhafte Beschreibung korrigiert). '
-        'Halte die Liste kompakt.',
+    description: 'Aktualisiert die Faehigkeiten-Liste. Kompakt halten.',
     parametersSchema: {
       'type': 'object',
       'properties': {

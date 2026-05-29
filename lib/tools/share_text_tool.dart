@@ -6,8 +6,7 @@ import 'tool_result.dart';
 class ShareTextTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'share_text',
-    description:
-        'Teilt Text über das Android Share-Sheet (z.B. an WhatsApp, E-Mail, etc.). Nutze dies, wenn der Nutzer etwas teilen möchte.',
+    description: 'Teilt Text ueber das Android Share-Sheet.',
     parametersSchema: {
       'type': 'object',
       'properties': {

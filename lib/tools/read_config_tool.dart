@@ -6,8 +6,7 @@ import 'tool_result.dart';
 class ReadConfigTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'read_config',
-    description:
-        'Liest die aktuelle AI-Buddy-Konfiguration. Ohne Parameter: liest alles. Mit "key": liest einen bestimmten Wert (z.B. persona_name, agent_name, tts_engine).',
+    description: 'Liest die AI-Buddy-Konfiguration. Optional: key fuer Einzelwert.',
     parametersSchema: {
       'type': 'object',
       'properties': {

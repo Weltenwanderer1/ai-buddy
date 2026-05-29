@@ -78,7 +78,7 @@ class OpenAppTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'open_app',
     description:
-        'Oeffnet eine App auf dem Geraet. Verwende dies IMMER wenn der Nutzer eine App starten, oeffnen, oder aufrufen moechte — egal wie formuliert: "mach Spotify auf", "starte WhatsApp", "oeffne YouTube", "ich will Netflix", "bring mich zu Google Maps", "Spotify anmachen", "Telegram rein". Oeffnet die App direkt (nicht den Play Store). Parameter: App-Name (z.B. "spotify", "whatsapp") oder Package-Name (z.B. "com.spotify.music"). Bekannte Apps: spotify, whatsapp, telegram, youtube, maps, chrome, gmail, kamera, fotos, einstellungen, kalender, uhr, rechner, notizen, wetter, netflix, instagram, tiktok, discord, signal, threema, firefox, outlook, teams, zoom, uber, wikipedia, vlc, soundcloud, disney+, prime video, google play.',
+        'Oeffnet eine App. Parameter: App-Name (z.B. "spotify", "whatsapp", "telegram", "youtube", "maps", "chrome", "gmail", "netflix", "instagram", "tiktok", "discord", "signal", "firefox") oder Package-Name.',
     parametersSchema: {
       'type': 'object',
       'properties': {

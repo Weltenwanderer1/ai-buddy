@@ -12,10 +12,7 @@ class BuddyNotesTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'buddy_notes',
     description:
-        'Liest oder schreibt die Buddy Notizen. Nutze dies um wichtige Informationen über Tools, Skills, Passwörter, oder Erkenntnisse dauerhaft zu speichern. '
-        'action=read: lies aktuelle Notizen. '
-        'action=write: füge eine neue Notiz hinzu (bestehende werden nicht überschrieben). '
-        'action=overwrite: ersetze alle Notizen (vorsicht!).',
+        'Buddy Notizen lesen/schreiben. action=read: lesen, write: anhaengen, overwrite: ersetzen.',
     parametersSchema: {
       'type': 'object',
       'properties': {

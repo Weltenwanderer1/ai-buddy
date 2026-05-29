@@ -12,9 +12,7 @@ class SendMessageToContactTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'send_message_to_contact',
-    description: 'Sendet eine Nachricht an einen Kontakt per SMS oder WhatsApp. '
-        'Der Kontakt kann per Name (z.B. "Mama") oder Telefonnummer angegeben werden. '
-        'Die App oeffnet sich mit vorausgefuellter Nachricht.',
+    description: 'Sendet Nachricht an Kontakt per SMS/WhatsApp. Kontakt per Name oder Nummer.',
     parametersSchema: {
       'type': 'object',
       'properties': {

@@ -12,8 +12,7 @@ class ManageShoppingListTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'manage_shopping_list',
-    description: 'Verwaltet eine Einkaufsliste (Hinzufuegen, Entfernen, Auflisten, Leeren). '
-        'Kann optional auch die Bring! App oeffnen, wenn der Nutzer dies wuenscht.',
+    description: 'Einkaufsliste verwalten (add/remove/list/clear). Optional: Bring! App oeffnen.',
     parametersSchema: {
       'type': 'object',
       'properties': {

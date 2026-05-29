@@ -12,7 +12,7 @@ class GetLocationTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_location',
     description:
-        'Ermittelt den aktuellen Standort des Users (Stadt, Bezirk, Land, Koordinaten). Nützlich für lokale Empfehlungen, Wetter, Zeitzonen oder ortsbezogene Fragen.',
+        'Aktueller Standort inkl. Adresse und Koordinaten. Reverse-Geocoding inklusive — KEIN web_search fuer Adressen noetig!',
     parametersSchema: {
       'type': 'object',
       'properties': {

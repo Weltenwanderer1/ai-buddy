@@ -15,8 +15,7 @@ import 'tool_result.dart';
 class MusicIntentTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'music_intent',
-    description:
-        'Best-effort Musik-Aktion: öffnet eine Musik-App (z.B. Spotify/YouTube Music/SoundCloud) und sucht optional nach Song, Album, Künstler oder Playlist. Nutze dies für Wünsche wie "spiel mir Musik", "spiel Queen", "mach Spotify-Musik an". Echte Wiedergabe ohne Nutzerinteraktion ist ohne Accessibility/SDK nicht garantiert.',
+    description: 'Oeffnet Musik-App, sucht optional nach Song/Artist/Playlist.',
     parametersSchema: {
       'type': 'object',
       'properties': {

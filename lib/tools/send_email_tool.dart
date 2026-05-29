@@ -12,8 +12,7 @@ class SendEmailTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'send_email',
-    description: 'Sendet eine E-Mail. Oeffnet die Mail-App mit vorausgefuellten Feldern. '
-        'Der Empfaenger kann ein Name (z.B. "Chef", "Sohn") oder eine E-Mail-Adresse sein.',
+    description: 'Oeffnet Mail-App mit vorausgefuellten Feldern. Empfaenger per Name oder E-Mail.',
     parametersSchema: {
       'type': 'object',
       'properties': {

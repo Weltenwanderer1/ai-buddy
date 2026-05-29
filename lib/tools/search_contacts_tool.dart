@@ -11,9 +11,7 @@ class SearchContactsTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'search_contacts',
-    description: 'Sucht in den Geraetekontakten nach Name oder Telefonnummer. '
-        'Gibt eine Liste mit Name, Telefonnummern und E-Mail zurueck. '
-        'Nutze dies um Kontaktdaten fuer Nachrichten oder Anrufe zu finden.',
+    description: 'Sucht Geraetekontakte nach Name/Nummer.',
     parametersSchema: {
       'type': 'object',
       'properties': {

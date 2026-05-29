@@ -7,8 +7,7 @@ import 'tool_result.dart';
 class GetDeviceInfoTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_device_info',
-    description:
-        'Gibt Geräteinformationen zurück: Gerätename, Betriebssystemversion, freier Speicherplatz und Plattform.',
+    description: 'Geraetename, OS-Version, freier Speicher, Plattform.',
     parametersSchema: {
       'type': 'object',
       'properties': {},

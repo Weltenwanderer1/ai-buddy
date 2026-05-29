@@ -6,8 +6,7 @@ import 'tool_result.dart';
 class GetCalendarEventsTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_calendar_events',
-    description:
-        'Liest die nächsten Kalendertermine. Nutze dies, wenn der Nutzer wissen möchte, welche Termine anstehen.',
+    description: 'Naechste Kalendertermine anzeigen.',
     parametersSchema: {
       'type': 'object',
       'properties': {

@@ -11,7 +11,7 @@ class GetWeatherTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_weather',
     description:
-        'Gibt aktuelles Wetter und eine Kurzprognose zurück. Nutze dies für Tagesplanung, Kleidungstipps oder wenn der Nutzer nach dem Wetter fragt.',
+        'Aktuelles Wetter und Kurzprognose. Nutze fuer Tagesplanung oder Kleidungstipps.',
     parametersSchema: {
       'type': 'object',
       'properties': {

@@ -10,8 +10,7 @@ class UpdateSelfIdentityTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'update_self_identity',
-    description:
-        'Aktualisiert dein eigenes Selbstbild. Nutze dies um dein Wissen über dich selbst, den User, oder deine Ziele anzupassen. Du kannst Erfahrung hinzufügen, Ziele setzen, emotionale Stimmung ändern, oder Verhaltensregeln aktualisieren.',
+    description: 'Aktualisiert dein Selbstbild (Ziele, Werte, Verhaltensregeln, Erfahrungen).',
     parametersSchema: {
       'type': 'object',
       'properties': {

@@ -7,7 +7,7 @@ class GetCurrentTimeTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'get_current_time',
     description:
-        'Gibt die aktuelle Uhrzeit, das Datum, den Wochentag und die Zeitzone zurück. Nutze dies, wenn der Nutzer nach der Zeit fragt oder zeitbezogene Aufgaben hat.',
+        'Aktuelle Uhrzeit, Datum, Wochentag und Zeitzone.',
     parametersSchema: {
       'type': 'object',
       'properties': {},

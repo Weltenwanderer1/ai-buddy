@@ -7,8 +7,7 @@ import 'tool_result.dart';
 class SetReminderTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'set_reminder',
-    description:
-        'Setzt eine lokale Erinnerung/Benachrichtigung. Der Nutzer wird zum angegebenen Zeitpunkt benachrichtigt. Gib Titel, Beschreibung und Zeitpunkt an.',
+    description: 'Setzt eine lokale Erinnerung/Benachrichtigung.',
     parametersSchema: {
       'type': 'object',
       'properties': {

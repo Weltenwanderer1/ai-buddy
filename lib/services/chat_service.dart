@@ -314,14 +314,14 @@ class ChatService {
     // Relevante Memories — limitiert auf 3 pro Tier
     final relevant = await memory.retrieveRelevant(query, limitPerTier: 3);
     if (relevant['longTerm']!.isNotEmpty) {
-      final buf = StringBuffer('\n=== Erinnerungen ===\n');
+      final buf = StringBuffer('\nErinnerungen:\n');
       for (final m in relevant['longTerm']!) {
         buf.writeln('- ${m.content}');
       }
       parts.add(buf.toString());
     }
     if (relevant['shortTerm']!.isNotEmpty) {
-      final buf = StringBuffer('\n=== Kontext ===\n');
+      final buf = StringBuffer('\nKontext:\n');
       for (final m in relevant['shortTerm']!) {
         buf.writeln('- ${m.content}');
       }
@@ -329,7 +329,7 @@ class ChatService {
     }
 
     // Tool-Hinweis — kompakt
-    parts.add('\n🧠 Tools: update_self_identity, save_memory, search_memories — nutze sie aktiv.');
+    parts.add('\nNutze update_self_identity, save_memory, search_memories aktiv.');
 
     // Standort — nur wenn wirklich da
     final locService = _locationService;

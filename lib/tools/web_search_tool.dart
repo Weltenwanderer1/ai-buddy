@@ -8,8 +8,7 @@ import 'tool_result.dart';
 class WebSearchTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'web_search',
-    description:
-        'Sucht im Internet nach Informationen. Nutze dies, wenn der Nutzer eine Frage hat, die aktuelle Informationen aus dem Web erfordert (Wetter, Nachrichten, Fakten, etc.).',
+    description: 'Websuche nach aktuellen Informationen.',
     parametersSchema: {
       'type': 'object',
       'properties': {
