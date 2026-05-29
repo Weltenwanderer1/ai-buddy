@@ -100,7 +100,31 @@ class ToolCallParser {
       }
     }
 
-    // 3. Parse loose JSON objects that look like tool calls
+    // 3. Parse raw JSON tool calls: {"name": "tool_name", "arguments": {...}}
+    //    Some LLMs output this format directly instead of using the API's structured tool_calls.
+    final rawJsonToolPattern = RegExp(
+      r'\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{[^}]*\})\s*\}',
+      dotAll: true,
+    );
+    for (final match in rawJsonToolPattern.allMatches(content)) {
+      if (_overlaps(match.start, match.end)) continue;
+      final name = match.group(1)?.trim();
+      final argsStr = match.group(2);
+      if (name == null || name.isEmpty) continue;
+      Map<String, dynamic> args = {};
+      if (argsStr != null && argsStr.isNotEmpty) {
+        try {
+          args = jsonDecode(argsStr) as Map<String, dynamic>;
+        } catch (_) {
+          args = _parseArgs(argsStr);
+        }
+      }
+      calls.add({'name': name, 'arguments': args});
+      matchedSpans.add((start: match.start, end: match.end));
+    }
+
+    // 4. Parse generic loose JSON objects that look like tool calls
+    //    Catches {"tool": "...", "arguments": {...}} etc.
     final looseJsonPattern = RegExp(
       r'\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}',
     );
@@ -165,6 +189,15 @@ class ToolCallParser {
       RegExp(
         r'```(?:json)?\s*\n?\s*\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}\s*\n?```',
         caseSensitive: false,
+      ),
+      (_) => '',
+    );
+
+    // Remove raw JSON tool calls: {"name": "tool_name", "arguments": {...}}
+    cleaned = cleaned.replaceAllMapped(
+      RegExp(
+        r'\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}\s*\}',
+        dotAll: true,
       ),
       (_) => '',
     );

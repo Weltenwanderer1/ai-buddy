@@ -11,7 +11,7 @@ import 'package:path_provider/path_provider.dart';
 /// und anpassen, aber die KI entwickelt es weiter.
 class SelfIdentityService extends ChangeNotifier {
   // ── Core Self ──
-  String _name = 'Agent';
+  String _name = 'Buddy';
   String _essence = '';
 
   // ── Verhaltensregeln ──

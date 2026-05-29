@@ -16,7 +16,8 @@ import '../services/stt_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/location_service.dart';
-import '../services/local_model_service.dart';
+
+import '../services/ollama_cloud_service.dart';
 
 
 import '../tools/tool_registry.dart';
@@ -121,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   Future<void> _loadWelcome() async {
-    // Chat startet leer — keine automatische Begrüßung.
+    // Chat startet leer - keine automatische Begrüßung.
     // User kann direkt schreiben.
   }
 
@@ -147,7 +148,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     for (final i in selected) {
       if (i < chatHistory.messages.length) {
         final msg = chatHistory.messages[i];
-        final prefix = msg.isUser ? 'Du' : 'Kiro';
+        final buddyName = context.read<SecureConfigService>().buddyName;
+        final prefix = msg.isUser ? 'Du' : buddyName;
         buffer.writeln('[$prefix] ${msg.text}');
       }
     }
@@ -184,22 +186,29 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(context.read<LocalModelService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
-      await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
+      final chatService = ChatService(cloudService: context.read<OllamaCloudService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
+      // Use sendMessage (with tool support) as primary path
+      final reply = await chatService.sendMessage(
+        userMessage: text,
+        persona: persona,
+        memory: memory,
+        history: chatHistory.messages,
+        personaEvolution: personaEvolution,
+        onToolActivity: (msg) {
+          if (mounted) {
+            chatHistory.add(msg);
+            _scrollToBottom();
+          }
+        },
+      );
+      final assistantMsg = ChatMessage(text: reply, isUser: false);
+      await chatHistory.add(assistantMsg);
+      _scrollToBottom();
     } catch (e) {
-      debugPrint('Streaming failed: $e');
+      debugPrint('sendMessage failed: $e, falling back to streaming');
       try {
-        final chatService = ChatService(context.read<LocalModelService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
-        final reply = await chatService.sendMessage(
-          userMessage: text,
-          persona: persona,
-          memory: memory,
-          history: chatHistory.messages,
-          personaEvolution: personaEvolution,
-        );
-        final assistantMsg = ChatMessage(text: reply, isUser: false);
-        await chatHistory.add(assistantMsg);
-        _scrollToBottom();
+        final chatService = ChatService(cloudService: context.read<OllamaCloudService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
+        await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
       } catch (e2) {
         debugPrint('Non-streaming fallback also failed: $e2');
         final errorMsg = e2.toString().contains('Timeout')
@@ -256,7 +265,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
     await for (final chunk in stream) {
       if (chunk == '🔧') {
-        // Tool execution marker — show activity, keep thinking state
+        // Tool execution marker - show activity, keep thinking state
         setState(() => _isThinking = false);
         continue;
       }
@@ -315,7 +324,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final stt = SttService();
     final tts = context.read<TtsPlaybackService>();
     final chatService = ChatService(
-      context.read<LocalModelService>(),
+      cloudService: context.read<OllamaCloudService>(),
       configService: context.read<SecureConfigService>(),
       toolRegistry: _toolRegistry,
       selfIdentity: context.read<SelfIdentityService>(),
@@ -493,7 +502,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    persona.name.isNotEmpty ? persona.name : 'AI-Buddy',
+                    persona.name.isNotEmpty ? persona.name : context.select<SecureConfigService, String>((s) => s.buddyName),
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
@@ -517,7 +526,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 ],
               ),
             ),
-            // Settings button — clean, minimal
+            // Settings button - clean, minimal
             Material(
               color: Colors.transparent,
               borderRadius: BorderRadius.circular(12),
@@ -639,7 +648,7 @@ class _ThinkingBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Text('Denkt nach…',
+                Text('Denkt nach...',
                   style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
                 SizedBox(height: 4),
                 _AnimatedDots(),
@@ -798,9 +807,9 @@ class _LiveStatusBar extends StatelessWidget {
         final state = liveVoice.state;
         final stateLabel = switch (state) {
           LiveVoiceState.idle => 'Bereit',
-          LiveVoiceState.listening => 'Ich höre zu…',
-          LiveVoiceState.thinking => 'Denkt nach…',
-          LiveVoiceState.speaking => 'Spricht…',
+          LiveVoiceState.listening => 'Ich höre zu...',
+          LiveVoiceState.thinking => 'Denkt nach...',
+          LiveVoiceState.speaking => 'Spricht...',
           LiveVoiceState.error => 'Fehler',
         };
         final stateColor = switch (state) {
@@ -952,7 +961,7 @@ class _PulsingIconState extends State<_PulsingIcon> with SingleTickerProviderSta
   }
 }
 
-// ─── Status Line: animated "denkt…" / "schreibt…" / "Online" ───
+// ─── Status Line: animated "denkt..." / "schreibt..." / "Online" ───
 
 class _StatusLine extends StatefulWidget {
   final bool isThinking;

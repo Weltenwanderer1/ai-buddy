@@ -8,7 +8,6 @@ import 'services/memory_service.dart';
 import 'services/persona_service.dart';
 import 'services/settings_service.dart';
 import 'services/chat_history_service.dart';
-import 'services/chat_service.dart';
 import 'services/secure_config_service.dart';
 import 'services/tts_playback_service.dart';
 import 'services/piper_tts_service.dart';
@@ -19,8 +18,7 @@ import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
-import 'services/local_model_service.dart';
-import 'package:flutter_gemma/flutter_gemma.dart';
+import 'services/ollama_cloud_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'tools/tool_registry.dart';
@@ -66,7 +64,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late NotificationService _notificationService;
   late BackupService _backupService;
   late LocationService _locationService;
-  late LocalModelService _localModel;
+  late OllamaCloudService _cloudService;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -79,7 +77,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
-      _notificationService.dispose(); _localModel.dispose();
+      _notificationService.dispose();
+      _cloudService.dispose();
     }
     super.dispose();
   }
@@ -88,9 +87,6 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
   Future<void> _initServices() async {
     try {
-      // Initialize flutter_gemma for on-device AI via LiteRT-LM
-      await FlutterGemma.initialize();
-
       try { await dotenv.load(fileName: '.env', isOptional: true); } catch (_) {}
       _secureConfig = SecureConfigService(); await _secureConfig.init();
       _settings = SettingsService(); await _settings.init();
@@ -100,6 +96,10 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       );
       await _memory.init();
       _persona = PersonaService(); await _persona.init();
+      // Use buddy name from config if persona has no name
+      if (_persona.name.isEmpty) {
+        _persona.testName = _secureConfig.buddyName;
+      }
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _buddyNotes = BuddyNotesService(); await _buddyNotes.init();
       _buddyCapabilities = BuddyCapabilitiesService(); await _buddyCapabilities.init();
@@ -129,9 +129,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _toolRegistry.registerBuddyNotes(_buddyNotes);
       _toolRegistry.registerSaveMemory(_memory);
 
-      _localModel = LocalModelService();
-
-
+      _cloudService = OllamaCloudService(
+        baseUrl: _secureConfig.activeBaseUrl,
+        apiKey: _secureConfig.activeApiKey,
+        defaultModel: _secureConfig.activeModel,
+        fallbackModel: _secureConfig.activeFallbackModel,
+      );
 
       // Register capabilities tool
       _toolRegistry.registerBuddyCapabilities(_buddyCapabilities);
@@ -150,22 +153,19 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
       ReadConfigTool.readConfigCallback = () => {
         'persona_name': _persona.name,
-        'default_model': 'local-${_localModel.activeModel.id}',
+        'default_model': _secureConfig.activeModel,
         'tts_engine': _secureConfig.ttsEngine,
         'temperature': _settings['temperature'] ?? 0.7,
         'memory_ttl_minutes': _settings['memory_ttl_minutes'] ?? 60,
         'memory_promotion_threshold': _settings['memory_promotion_threshold'] ?? 3,
         'max_history': _settings['max_history'] ?? 20,
-        'local_model_active': _localModel.useLocalModel,
-        'local_model_available': _localModel.isModelAvailable,
-        'local_model_name': _localModel.activeModel.id,
       };
 
       UpdateConfigTool.updateConfigCallback = (key, value) async {
         try {
           switch (key) {
             case 'persona_name': await _persona.save(name: value.toString(), personality: _persona.personality, greeting: _persona.greeting, backstory: _persona.backstory); return true;
-            case 'default_model': return true; // local only, model selected in settings
+            case 'default_model': return true; // model selected in settings
             case 'tts_engine': await _secureConfig.setTtsEngine(value.toString()); return true;
             case 'temperature': _settings['temperature'] = double.tryParse(value.toString()) ?? 0.7; return true;
             case 'memory_ttl_minutes': _settings['memory_ttl_minutes'] = int.tryParse(value.toString()) ?? 60; return true;
@@ -296,7 +296,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _buddyNotes),
         ChangeNotifierProvider.value(value: _buddyCapabilities),
         ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
-        ChangeNotifierProvider.value(value: _ttsPlaybackService), Provider.value(value: _localModel),
+        ChangeNotifierProvider.value(value: _ttsPlaybackService),
+        Provider.value(value: _cloudService),
         Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _locationService),

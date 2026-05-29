@@ -23,6 +23,9 @@ class SecureConfigService {
   static const keyPiperVoice = 'PIPER_VOICE';
   static const keyPiperSpeed = 'PIPER_SPEED';
 
+  // Buddy name
+  static const keyBuddyName = 'BUDDY_NAME';
+
   // Cache
   final Map<String, String> _cache = {};
 
@@ -42,6 +45,7 @@ class SecureConfigService {
       keyTtsEngine,
       keyPiperVoice,
       keyPiperSpeed,
+      keyBuddyName,
     ];
 
     for (final key in allKeys) {
@@ -97,6 +101,15 @@ class SecureConfigService {
   // TTS config
   String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'piper';
   String get piperVoice => _cache[keyPiperVoice] ?? _env(keyPiperVoice) ?? 'de_DE-thorsten-high';
+  /// Buddy display name (e.g. "Buddy" or a custom name).
+  String get buddyName => _cache[keyBuddyName] ?? 'Buddy';
+
+  // --- Buddy name setter ---
+  Future<void> setBuddyName(String value) async {
+    await _storage.write(key: keyBuddyName, value: value);
+    _cache[keyBuddyName] = value;
+  }
+
   double get piperSpeed {
     final raw = _cache[keyPiperSpeed] ?? _env(keyPiperSpeed) ?? '1.0';
     return double.tryParse(raw) ?? 1.0;

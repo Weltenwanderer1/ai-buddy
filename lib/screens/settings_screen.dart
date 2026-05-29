@@ -11,7 +11,6 @@ import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/tile_download_service.dart';
-import '../services/local_model_service.dart';
 import '../services/ollama_cloud_service.dart';
 import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
@@ -36,12 +35,15 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _openRouterKeyController = TextEditingController();
   final _openRouterModelController = TextEditingController();
   final _openRouterFallbackController = TextEditingController();
+  // Buddy name controller
+  final _buddyNameController = TextEditingController();
 
   bool _isTestingOllama = false;
   String? _ollamaTestResult;
 
   bool _ollamaExpanded = true;
   bool _elevenExpanded = true;
+  bool _buddyNameExpanded = true;
   String _llmProvider = 'ollama';
   TtsEngine _ttsEngine = TtsEngine.piper;
 
@@ -73,6 +75,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterKeyController.text = config.openRouterApiKey;
     _openRouterModelController.text = config.openRouterModel;
     _openRouterFallbackController.text = config.openRouterFallbackModel;
+    _buddyNameController.text = config.buddyName;
     _llmProvider = config.llmProvider;
     _ttsEngine = switch (config.ttsEngine) {
       'device' => TtsEngine.device,
@@ -89,17 +92,29 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterKeyController.dispose();
     _openRouterModelController.dispose();
     _openRouterFallbackController.dispose();
+    _buddyNameController.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveBuddyName() async {
+    final config = context.read<SecureConfigService>();
+    final name = _buddyNameController.text.trim();
+    if (name.isEmpty) {
+      _buddyNameController.text = 'Buddy';
+      await config.setBuddyName('Buddy');
+    } else {
+      await config.setBuddyName(name);
+    }
+    if (mounted) _showSnack('Buddy-Name gespeichert ✅', AppColors.success);
   }
 
   Future<void> _saveOllamaConfig() async {
     final config = context.read<SecureConfigService>();
-    final localModel = context.read<LocalModelService>();
 
-    // Fix 1: Persist the selected provider
+    // Persist the selected provider
     await config.setLlmProvider(_llmProvider);
 
-    // Fix 2: Save all cloud config fields
+    // Save all cloud config fields
     await config.setOllamaBaseUrl(_ollamaBaseUrlController.text.trim());
     await config.setOllamaApiKey(_ollamaKeyController.text.trim());
     await config.setOllamaModel(_ollamaModelController.text.trim());
@@ -108,18 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     await config.setOpenRouterModel(_openRouterModelController.text.trim());
     await config.setOpenRouterFallbackModel(_openRouterFallbackController.text.trim());
 
-    if (_llmProvider == 'local') {
-      if (localModel.isModelAvailable) {
-        await localModel.setUseLocalModel(true);
-        if (mounted) _showSnack('Lokales Modell aktiv ✅', AppColors.success);
-      } else {
-        if (mounted) _showSnack('Modell nicht installiert. Bitte zuerst herunterladen.', AppColors.warning);
-      }
-    } else {
-      // Cloud provider: disable local model flag
-      await localModel.setUseLocalModel(false);
-      if (mounted) _showSnack('${_llmProvider == "ollama" ? "Ollama" : "OpenRouter"} gespeichert ✅', AppColors.success);
-    }
+    if (mounted) _showSnack('${_llmProvider == "ollama" ? "Ollama" : "OpenRouter"} gespeichert ✅', AppColors.success);
   }
 
   Future<void> _saveTtsConfig() async {
@@ -138,19 +142,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() { _isTestingOllama = true; _ollamaTestResult = null; });
     try {
       final config = context.read<SecureConfigService>();
-      if (_llmProvider == 'local') {
-        // Test local model
-        final localModel = context.read<LocalModelService>();
-        final reply = await localModel.chat(
-          [{'role': 'user', 'content': 'Hallo, Test!'}],
-          systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
-          temperature: 0.1,
-        );
-        final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
-        setState(() => _ollamaTestResult = 'Lokal OK — $text');
-      } else {
-        // Test cloud provider
-        final cloud = OllamaCloudService(
+      final cloud = OllamaCloudService(
           baseUrl: _llmProvider == 'openrouter' ? config.openRouterBaseUrl : config.ollamaBaseUrl,
           apiKey: _llmProvider == 'openrouter' ? _openRouterKeyController.text.trim().isNotEmpty ? _openRouterKeyController.text.trim() : config.openRouterApiKey : _ollamaKeyController.text.trim().isNotEmpty ? _ollamaKeyController.text.trim() : config.ollamaApiKey,
           defaultModel: _llmProvider == 'openrouter' ? (_openRouterModelController.text.trim().isNotEmpty ? _openRouterModelController.text.trim() : config.openRouterModel) : (_ollamaModelController.text.trim().isNotEmpty ? _ollamaModelController.text.trim() : config.ollamaModel),
@@ -163,7 +155,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         );
         final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
         setState(() => _ollamaTestResult = '${_llmProvider == "openrouter" ? "OpenRouter" : "Ollama"} OK — $text');
-      }
     } catch (e) {
       setState(() => _ollamaTestResult = 'Fehler: ${_trunc(e.toString(), 120)}');
     } finally {
@@ -538,6 +529,33 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ])),
 
+          // ── Buddy-Name ──
+          SliverToBoxAdapter(child: _ExpandableSection(
+            title: 'Buddy-Name',
+            icon: Icons.person_rounded,
+            color: AppColors.accent,
+            expanded: _buddyNameExpanded,
+            onToggle: () => setState(() => _buddyNameExpanded = !_buddyNameExpanded),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                child: _GlassTextField(
+                  label: 'Wie soll dein Buddy heißen?',
+                  icon: Icons.edit_rounded,
+                  controller: _buddyNameController,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: Icons.save_rounded,
+                  label: 'Speichern',
+                  onTap: _saveBuddyName,
+                )),
+              ]),
+            ],
+          )),
+
           // ── KI-Modell ──
           SliverToBoxAdapter(child: _ExpandableSection(
             title: 'KI-Modell',
@@ -603,29 +621,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _llmProvider = 'local'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            gradient: _llmProvider == 'local' ? AppColors.successGradient : null,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Lokal',
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: _llmProvider == 'local' ? Colors.white : AppColors.textSecondary,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
@@ -673,9 +668,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                   icon: Icons.backup_rounded,
                   controller: _openRouterFallbackController,
                 ),
-              ] else if (_llmProvider == 'local') ...[
-                // Lokal: Gemma 4 E2B Panel
-                _buildLocalModelContent(),
               ],
 
               const SizedBox(height: 8),
@@ -902,240 +894,14 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v0.97.5',
-              trailing: _Badge('v0.97.5', color: AppColors.secondary),
+              subtitle: 'v0.99.4',
+              trailing: _Badge('v0.99.4', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
 
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
         ],
-      ),
-    );
-  }
-
-  // ═══════════════════════════════════════════════════
-  // Lokales KI-Modell Inhalt (für KI-Modell Tabs)
-  // ═══════════════════════════════════════════════════
-  Widget _buildLocalModelContent() {
-    return ChangeNotifierProvider.value(
-      value: context.read<LocalModelService>(),
-      child: Consumer<LocalModelService>(
-        builder: (context, localModel, _) {
-          final isDownloading = localModel.isDownloading;
-          final isDeleting = localModel.isDeleting;
-          final isAvailable = localModel.isModelAvailable;
-          final progress = localModel.downloadProgress;
-          final error = localModel.error;
-          final activeModel = localModel.activeModel;
-
-          return Column(children: [
-            // Modell-Auswahl Dropdown
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 0),
-              padding: const EdgeInsets.only(left: 16, right: 8, top: 4, bottom: 4),
-              decoration: BoxDecoration(
-                color: AppColors.bgElevated.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
-              ),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<LocalModelConfig>(
-                  isExpanded: true,
-                  value: activeModel,
-                  dropdownColor: AppColors.bgDark,
-                  borderRadius: BorderRadius.circular(12),
-                  icon: Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textSecondary, size: 24),
-                  ),
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
-                  onChanged: isDownloading
-                      ? null
-                      : (LocalModelConfig? newModel) {
-                          if (newModel != null) {
-                            localModel.setActiveModel(newModel);
-                          }
-                        },
-                  items: localModel.availableModels.map((model) {
-                    return DropdownMenuItem<LocalModelConfig>(
-                      value: model,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Row(children: [
-                          Icon(
-                            model.id == activeModel.id
-                                ? Icons.radio_button_checked_rounded
-                                : Icons.radio_button_unchecked_rounded,
-                            color: model.id == activeModel.id
-                                ? AppColors.success
-                                : AppColors.textSecondary,
-                            size: 18,
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(model.displayName,
-                              overflow: TextOverflow.ellipsis,
-                              maxLines: 1,
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: model.id == activeModel.id ? FontWeight.w600 : FontWeight.w400,
-                                color: model.id == activeModel.id
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary,
-                              )),
-                          ),
-                          Text(model.sizeDisplay,
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                        ]),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Status Badge + Info
-            Row(children: [
-              Icon(Icons.memory_rounded, color: AppColors.success, size: 20),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(activeModel.displayName,
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-              ),
-              if (isAvailable)
-                _Badge('Bereit', color: AppColors.success)
-              else if (isDownloading)
-                _Badge('Download…', color: AppColors.warning)
-              else
-                _Badge('Nicht installiert', color: AppColors.textSecondary),
-            ]),
-            const SizedBox(height: 8),
-
-            Text('${activeModel.sizeDisplay} · Offline via LiteRT-LM',
-              style: TextStyle(fontSize: 12, color: AppColors.textSecondary, height: 1.4),
-              overflow: TextOverflow.ellipsis,
-              maxLines: 2),
-            const SizedBox(height: 16),
-
-            // Download / Delete / Progress
-            if (!isAvailable && !isDownloading) ...[
-              Row(children: [
-                Expanded(child: _GradientButton(
-                  icon: Icons.download_rounded,
-                  label: 'Download',
-                  onTap: () => localModel.downloadModel(),
-                )),
-              ]),
-            ],
-
-            if (isDownloading) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: progress,
-                  backgroundColor: AppColors.bgElevated,
-                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                  minHeight: 8,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                Text('${(progress * 100).toStringAsFixed(0)}%',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                InkWell(
-                  onTap: () => localModel.cancelDownload(),
-                  borderRadius: BorderRadius.circular(6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text('Abbrechen',
-                      style: TextStyle(fontSize: 12, color: AppColors.error, fontWeight: FontWeight.w600)),
-                  ),
-                ),
-              ]),
-            ],
-
-            if (isDeleting) ...[
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.error)),
-                const SizedBox(width: 8),
-                Text('Wird gelöscht…', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-              ]),
-            ],
-
-            if (isAvailable && !isDeleting) ...[
-              Text('Modell ist bereit und wird verwendet, wenn „Lokal" aktiv ist.',
-                style: TextStyle(fontSize: 12, color: AppColors.success, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 12),
-              Row(children: [
-                Expanded(child: InkWell(
-                  onTap: () async {
-                    final confirmed = await showDialog<bool>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: AppColors.bgDark,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        title: Text('Modell löschen?', style: TextStyle(color: AppColors.textPrimary)),
-                        content: Text('Das ${activeModel.sizeDisplay} große Modell wird vom Gerät entfernt. Du kannst es jederzeit neu herunterladen.',
-                          style: TextStyle(color: AppColors.textSecondary)),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, false),
-                            child: Text('Abbrechen', style: TextStyle(color: AppColors.textSecondary)),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(context, true),
-                            child: Text('Löschen', style: TextStyle(color: AppColors.error)),
-                          ),
-                        ],
-                      ),
-                    );
-                    if (confirmed == true) {
-                      await localModel.deleteModel();
-                    }
-                  },
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: AppColors.error.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      Icon(Icons.delete_forever_outlined, color: AppColors.error, size: 18),
-                      const SizedBox(width: 8),
-                      Text('Modell löschen',
-                        style: TextStyle(color: AppColors.error, fontWeight: FontWeight.w600, fontSize: 14)),
-                    ]),
-                  ),
-                )),
-              ]),
-            ],
-
-            if (error != null) ...[
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: AppColors.error.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
-                ),
-                child: Row(children: [
-                  Icon(Icons.error_outline, color: AppColors.error, size: 18),
-                  const SizedBox(width: 8),
-                  Expanded(child: Text(error, style: TextStyle(fontSize: 12, color: AppColors.error))),
-                ]),
-              ),
-            ],
-          ]);
-        },
       ),
     );
   }

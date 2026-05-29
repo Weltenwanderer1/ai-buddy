@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
-import '../services/local_model_service.dart';
+import '../services/llm_provider.dart';
+import '../services/ollama_cloud_provider.dart';
 import '../services/ollama_cloud_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/memory_service.dart';
@@ -12,14 +13,13 @@ import '../services/location_service.dart';
 import '../services/buddy_capabilities_service.dart';
 import '../tools/tool_registry.dart';
 
-/// Callback signature for executing a tool call via cloud LLM.
+/// Callback signature for tool execution — kept for backward compat in tool calls.
 typedef ToolExecutionCallback = Future<String> Function(String toolName, Map<String, dynamic> arguments);
 
 typedef ToolDisplayCallback = void Function(ChatMessage toolMessage);
 typedef StreamingCallback = void Function(String partialText);
 
 class ChatService {
-  final LocalModelService _localModel;
   final OllamaCloudService? _cloudService;
   final SecureConfigService? _configService;
   final ToolRegistry? _toolRegistry;
@@ -29,7 +29,7 @@ class ChatService {
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService(this._localModel, {OllamaCloudService? cloudService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities})
+  ChatService({OllamaCloudService? cloudService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities})
       : _cloudService = cloudService,
         _configService = configService,
         _toolRegistry = toolRegistry,
@@ -37,47 +37,25 @@ class ChatService {
         _locationService = locationService,
         _buddyCapabilities = buddyCapabilities;
 
-  /// Returns true if we should use the local model for inference.
-  bool _useLocal() {
+  /// Resolve the active LLM provider based on config.
+  /// Only cloud providers (ollama/openrouter).
+  LlmProvider? _resolveProvider() {
     final config = _configService;
-    if (config == null) return _localModel.isModelAvailable;
-    return config.llmProvider == 'local' && _localModel.isModelAvailable;
-  }
+    final provider = config?.llmProvider ?? 'ollama';
 
-  /// Returns true if we should use a cloud provider for inference.
-  bool _useCloud() {
-    final config = _configService;
-    if (config == null) return false;
-    final provider = config.llmProvider;
-    return (provider == 'ollama' || provider == 'openrouter');
-  }
-
-  /// Get or create a cloud service instance based on current config.
-  OllamaCloudService _getCloudService() {
-    if (_cloudService != null) {
-      // Update config from SecureConfigService if available
-      final config = _configService;
-      if (config != null) {
-        _cloudService!.updateConfig(
-          baseUrl: config.activeBaseUrl,
-          apiKey: config.activeApiKey,
-          defaultModel: config.activeModel,
-          fallbackModel: config.activeFallbackModel,
-        );
-      }
-      return _cloudService!;
+    if ((provider == 'ollama' || provider == 'openrouter') && _cloudService != null) {
+      // Update cloud config from SecureConfigService
+      _cloudService!.updateConfig(
+        baseUrl: config!.activeBaseUrl,
+        apiKey: config.activeApiKey,
+        defaultModel: config.activeModel,
+        fallbackModel: config.activeFallbackModel,
+      );
+      return OllamaCloudProvider(_cloudService!);
     }
-    // Fallback: create from config service
-    final config = _configService!;
-    return OllamaCloudService(
-      baseUrl: config.activeBaseUrl,
-      apiKey: config.activeApiKey,
-      defaultModel: config.activeModel,
-      fallbackModel: config.activeFallbackModel,
-    );
-  }
 
-  // No longer used — model routing is handled via config, not regex heuristics
+    return null;
+  }
 
   Stream<String> streamResponse({
     required String userMessage,
@@ -118,143 +96,33 @@ class ChatService {
           messages.add({'role': 'user', 'content': userMessage});
         }
 
-        if (_useCloud()) {
-          // ── Cloud inference path (Ollama/OpenRouter) ──
-          try {
-            final cloud = _getCloudService();
-
-            // Tool execution callback for cloud tool calls
-            Future<String> onCloudToolCall(String toolName, Map<String, dynamic> args) async {
-              debugPrint('ChatService (cloud) executing tool: $toolName args=$args');
-              if (onToolActivity != null) {
-                onToolActivity(ChatMessage(
-                  text: '🔧 $toolName...',
-                  isUser: false,
-                  type: MessageType.toolActivity,
-                ));
-              }
-              final result = await _toolRegistry!.execute(toolName, args);
-              if (onToolActivity != null && result.displayText != null) {
-                onToolActivity(ChatMessage(
-                  text: result.displayText!,
-                  isUser: false,
-                  type: MessageType.toolActivity,
-                ));
-              }
-              return result.result;
-            }
-
-            // Build messages for cloud API
-            final cloudMessages = messages.map((m) => {
-              'role': m['role'] as String,
-              'content': m['content'] as String,
-            }).toList();
-
-            if (_toolRegistry != null && _toolRegistry!.getToolDefinitions().isNotEmpty) {
-              // Use chatWithTools for cloud tool support
-              final chatResponse = await cloud.chatWithTools(
-                systemPrompt: systemPrompt!,
-                messages: cloudMessages.cast<Map<String, dynamic>>(),
-                tools: _toolRegistry!.getToolDefinitions(),
-                temperature: 0.5,
-              );
-
-              String reply;
-              if (chatResponse.hasToolCalls) {
-                // Execute tool calls in a loop
-                reply = await _executeCloudToolLoop(
-                  cloud: cloud,
-                  systemPrompt: systemPrompt!,
-                  messages: cloudMessages.cast<Map<String, dynamic>>(),
-                  chatResponse: chatResponse,
-                  onToolCall: onCloudToolCall,
-                  maxRounds: 3,
-                );
-              } else {
-                reply = chatResponse.content;
-              }
-
-              final words = reply.split(' ');
-              for (int i = 0; i < words.length; i++) {
-                if (controller.isClosed) break;
-                controller.add((i == 0 ? '' : ' ') + words[i]);
-              }
-              await _saveMemory(memory, userMessage, reply);
-              _maybeEvolve(personaEvolution, history, userMessage, reply);
-            } else {
-              // No tools — simple cloud chat
-              final reply = await cloud.chat(
-                systemPrompt: systemPrompt!,
-                messages: cloudMessages.cast<Map<String, String>>(),
-                temperature: 0.5,
-              );
-              final words = reply.split(' ');
-              for (int i = 0; i < words.length; i++) {
-                if (controller.isClosed) break;
-                controller.add((i == 0 ? '' : ' ') + words[i]);
-              }
-              await _saveMemory(memory, userMessage, reply);
-              _maybeEvolve(personaEvolution, history, userMessage, reply);
-            }
-          } catch (e) {
-            debugPrint('Cloud model failed: $e');
-            if (!controller.isClosed) {
-              controller.add('Entschuldige, die Cloud-Verbindung hat ein Problem: $e');
-            }
-          }
-        } else if (_useLocal()) {
-          // ── Local inference path ──
-          try {
-            // Tool execution callback for Function Calling
-            Future<String> onToolCall(String toolName, Map<String, dynamic> args) async {
-              debugPrint('ChatService executing tool: $toolName args=$args');
-              if (onToolActivity != null) {
-                onToolActivity(ChatMessage(
-                  text: '🔧 $toolName...',
-                  isUser: false,
-                  type: MessageType.toolActivity,
-                ));
-              }
-              final result = await _toolRegistry!.execute(toolName, args);
-              if (onToolActivity != null && result.displayText != null) {
-                onToolActivity(ChatMessage(
-                  text: result.displayText!,
-                  isUser: false,
-                  type: MessageType.toolActivity,
-                ));
-              }
-              return result.result;
-            }
-
-            final reply = await _localModel.chat(
-              messages.map((m) => {
-                    'role': m['role'] as String,
-                    'content': m['content'] as String,
-                  }).toList(),
-              systemPrompt: systemPrompt,
-              temperature: 0.5,
-              maxTokens: 512,
-              toolDefinitions: _toolRegistry?.getToolDefinitions(),
-              onToolCall: _toolRegistry != null ? onToolCall : null,
-              maxToolRounds: 3,
-            );
-            final words = reply.split(' ');
-            for (int i = 0; i < words.length; i++) {
-              if (controller.isClosed) break;
-              controller.add((i == 0 ? '' : ' ') + words[i]);
-            }
-            await _saveMemory(memory, userMessage, reply);
-            _maybeEvolve(personaEvolution, history, userMessage, reply);
-          } catch (e) {
-            debugPrint('Local model failed: $e');
-            try { await _localModel.unloadModel(); } catch (_) {}
-            if (!controller.isClosed) {
-              controller.add('Entschuldige, das lokale Modell hat ein Problem: $e');
-            }
-          }
-        } else {
+        final provider = _resolveProvider();
+        if (provider == null) {
           if (!controller.isClosed) {
-            controller.add('Bitte wähle einen KI-Anbieter in den Einstellungen oder lade ein lokales Modell herunter.');
+            controller.add('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).');
+          }
+          if (!controller.isClosed) controller.close();
+          return;
+        }
+
+        // Streaming currently only supports text-only (no tools)
+        try {
+          final stream = provider.streamChat(
+            systemPrompt: systemPrompt,
+            messages: messages.cast<Map<String, dynamic>>(),
+            temperature: 0.5,
+          );
+
+          await for (final chunk in stream) {
+            if (controller.isClosed) break;
+            controller.add(chunk);
+          }
+        } catch (e) {
+          debugPrint('Streaming failed: $e');
+          if (!controller.isClosed) {
+            final short = e.toString();
+            final msg = short.length > 120 ? '${short.substring(0, 120)}...' : short;
+            controller.add('Verbindungsproblem: $msg');
           }
         }
       } catch (e) {
@@ -306,123 +174,52 @@ class ChatService {
       messages.add({'role': 'user', 'content': userMessage});
     }
 
-    if (_useCloud()) {
-      // ── Cloud inference path (Ollama/OpenRouter) ──
-      try {
-        final cloud = _getCloudService();
-
-        // Tool execution callback
-        Future<String> onCloudToolCall(String toolName, Map<String, dynamic> args) async {
-          debugPrint('sendMessage (cloud) executing tool: $toolName args=$args');
-          if (onToolActivity != null) {
-            onToolActivity(ChatMessage(
-              text: '🔧 $toolName...',
-              isUser: false,
-              type: MessageType.toolActivity,
-            ));
-          }
-          final result = await _toolRegistry!.execute(toolName, args);
-          if (onToolActivity != null && result.displayText != null) {
-            onToolActivity(ChatMessage(
-              text: result.displayText!,
-              isUser: false,
-              type: MessageType.toolActivity,
-            ));
-          }
-          return result.result;
-        }
-
-        final cloudMessages = messages.map((m) => {
-          'role': m['role'] as String,
-          'content': m['content'] as String,
-        }).toList();
-
-        if (_toolRegistry != null && _toolRegistry!.getToolDefinitions().isNotEmpty) {
-          final chatResponse = await cloud.chatWithTools(
-            systemPrompt: systemPrompt!,
-            messages: cloudMessages.cast<Map<String, dynamic>>(),
-            tools: _toolRegistry!.getToolDefinitions(),
-            temperature: 0.3,
-          );
-
-          if (chatResponse.hasToolCalls) {
-            final reply = await _executeCloudToolLoop(
-              cloud: cloud,
-              systemPrompt: systemPrompt!,
-              messages: cloudMessages.cast<Map<String, dynamic>>(),
-              chatResponse: chatResponse,
-              onToolCall: onCloudToolCall,
-              maxRounds: 3,
-            );
-            await _saveMemory(memory, userMessage, reply);
-            _maybeEvolve(personaEvolution, history, userMessage, reply);
-            return reply;
-          } else {
-            final reply = chatResponse.content;
-            await _saveMemory(memory, userMessage, reply);
-            _maybeEvolve(personaEvolution, history, userMessage, reply);
-            return reply;
-          }
-        } else {
-          final reply = await cloud.chat(
-            systemPrompt: systemPrompt!,
-            messages: cloudMessages.cast<Map<String, String>>(),
-            temperature: 0.3,
-          );
-          await _saveMemory(memory, userMessage, reply);
-          _maybeEvolve(personaEvolution, history, userMessage, reply);
-          return reply;
-        }
-      } catch (e) {
-        debugPrint('Cloud model failed: $e');
-        return 'Entschuldige, die Cloud-Verbindung hat ein Problem: $e';
-      }
-    } else if (_useLocal()) {
-      // ── Local inference path ──
-      try {
-        Future<String> onToolCall(String toolName, Map<String, dynamic> args) async {
-          debugPrint('sendMessage executing tool: $toolName args=$args');
-          if (onToolActivity != null) {
-            onToolActivity(ChatMessage(
-              text: '🔧 $toolName...',
-              isUser: false,
-              type: MessageType.toolActivity,
-            ));
-          }
-          final result = await _toolRegistry!.execute(toolName, args);
-          if (onToolActivity != null && result.displayText != null) {
-            onToolActivity(ChatMessage(
-              text: result.displayText!,
-              isUser: false,
-              type: MessageType.toolActivity,
-            ));
-          }
-          return result.result;
-        }
-
-        final reply = await _localModel.chat(
-          messages.map((m) => {
-                'role': m['role'] as String,
-                'content': m['content'] as String,
-              }).toList(),
-          systemPrompt: systemPrompt,
-          temperature: 0.3,
-          maxTokens: 512,
-          toolDefinitions: _toolRegistry?.getToolDefinitions(),
-          onToolCall: _toolRegistry != null ? onToolCall : null,
-          maxToolRounds: 3,
-        );
-        await _saveMemory(memory, userMessage, reply);
-        _maybeEvolve(personaEvolution, history, userMessage, reply);
-        return reply;
-      } catch (e) {
-        debugPrint('Local model failed: $e');
-        await _localModel.unloadModel();
-        return 'Entschuldige, das lokale Modell hat ein Problem: $e';
-      }
+    final provider = _resolveProvider();
+    if (provider == null) {
+      return 'Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).';
     }
 
-    return 'Bitte wähle einen KI-Anbieter in den Einstellungen oder lade ein lokales Modell herunter.';
+    try {
+      // Build tool execution callbacks
+      Future<String> Function(String, Map<String, dynamic>)? onToolCall;
+      void Function(String)? onToolActivityWrapper;
+
+      if (_toolRegistry != null && _toolRegistry!.getToolDefinitions().isNotEmpty) {
+        onToolCall = (String toolName, Map<String, dynamic> args) async {
+          debugPrint('ChatService tool: $toolName');
+          final result = await _toolRegistry!.execute(toolName, args);
+          return result.result;
+        };
+
+        if (onToolActivity != null) {
+          onToolActivityWrapper = (String toolName) {
+            onToolActivity(ChatMessage(
+              text: '🔧 $toolName...',
+              isUser: false,
+              type: MessageType.toolActivity,
+            ));
+          };
+        }
+      }
+
+      final reply = await provider.chat(
+        systemPrompt: systemPrompt,
+        messages: messages.cast<Map<String, dynamic>>(),
+        temperature: 0.3,
+        toolDefinitions: _toolRegistry?.getToolDefinitions(),
+        onToolCall: onToolCall,
+        onToolActivity: onToolActivityWrapper,
+        maxToolRounds: 5,
+      );
+
+      await _saveMemory(memory, userMessage, reply);
+      _maybeEvolve(personaEvolution, history, userMessage, reply);
+      return reply;
+    } catch (e) {
+      debugPrint('Provider failed: $e');
+      final errStr = e.toString();
+      return 'KI-Problem: ${errStr.length > 100 ? errStr.substring(0, 100) + '...' : errStr}';
+    }
   }
 
   void _triggerEvolutionAndIntrospection(
@@ -447,16 +244,11 @@ class ChatService {
             '3. Wichtige Fakten über den User\n\n'
             'Gespräch:\n$conversation';
 
-        // Try local model first for evolution, then cloud
+        // Use whichever provider is available for evolution analysis
         String result;
-        if (_useLocal()) {
-          result = await _localModel.chat(
-            [{'role': 'user', 'content': prompt}],
-            temperature: 0.3,
-            maxTokens: 512,
-          );
-        } else if (_useCloud()) {
-          result = await _getCloudService().chat(
+        final provider = _resolveProvider();
+        if (provider != null) {
+          result = await provider.chat(
             systemPrompt: 'Du bist ein Analyse-Assistent.',
             messages: [{'role': 'user', 'content': prompt}],
             temperature: 0.3,
@@ -471,57 +263,6 @@ class ChatService {
         debugPrint('Evolution analysis error: $e');
       }
     });
-  }
-
-  /// Execute a tool-call loop for cloud LLM responses.
-  /// When the cloud model returns tool calls, execute them and continue the conversation.
-  Future<String> _executeCloudToolLoop({
-    required OllamaCloudService cloud,
-    required String systemPrompt,
-    required List<Map<String, dynamic>> messages,
-    required ChatResponse chatResponse,
-    required Future<String> Function(String, Map<String, dynamic>) onToolCall,
-    required int maxRounds,
-  }) async {
-    var currentMessages = List<Map<String, dynamic>>.from(messages);
-    var currentResponse = chatResponse;
-    int rounds = 0;
-
-    while (currentResponse.hasToolCalls && rounds < maxRounds) {
-      // Add assistant message with tool calls to history
-      currentMessages.add(currentResponse.toolCalls.first.toAssistantMessage());
-
-      for (final tc in currentResponse.toolCalls) {
-        debugPrint('Cloud tool call: ${tc.name} args=${tc.arguments}');
-        String result;
-        try {
-          result = await onToolCall(tc.name, tc.arguments);
-        } catch (e) {
-          result = 'Fehler: $e';
-        }
-        // Trim result to reasonable length
-        final trimmedResult = result.length > 2000 ? '${result.substring(0, 2000)}...' : result;
-        // Add tool result message
-        currentMessages.add({
-          'role': 'tool',
-          'tool_call_id': tc.id,
-          'content': trimmedResult,
-        });
-      }
-
-      // Get next response from the model
-      currentResponse = await cloud.chatWithTools(
-        systemPrompt: systemPrompt,
-        messages: currentMessages,
-        tools: _toolRegistry?.getToolDefinitions(),
-        temperature: 0.5,
-      );
-      rounds++;
-    }
-
-    return currentResponse.content.isNotEmpty
-        ? currentResponse.content
-        : 'Tool-Aufruf ausgeführt.';
   }
 
   /// Save memory entries (user + assistant) and promote if important.
