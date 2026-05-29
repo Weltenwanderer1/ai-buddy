@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:flutter/foundation.dart';
+import 'tool_call_parser.dart';
 
 /// Service for communicating with Ollama Cloud LLM API.
 /// Reads config from constructor params (injected from SecureConfigService).
@@ -155,6 +156,21 @@ class OllamaCloudService extends ChangeNotifier {
   }
 
   /// Internal: streaming request that handles both Ollama native and OpenAI-compatible endpoints.
+  /// Sanitize a string for safe JSON/UTF-8 encoding.
+  /// Removes C0 control chars AND unpaired surrogates that cause
+  /// 'Contains invalid characters' errors in Dart's HTTP client.
+  static String _sanitize(String s) {
+    final buf = StringBuffer();
+    for (final rune in s.runes) {
+      // Skip C0 control chars (except TAB/LF/CR)
+      if (rune >= 0x00 && rune <= 0x1F && rune != 0x09 && rune != 0x0A && rune != 0x0D) continue;
+      // Skip unpaired surrogates (invalid in UTF-8)
+      if (rune >= 0xD800 && rune <= 0xDFFF) continue;
+      buf.writeCharCode(rune);
+    }
+    return buf.toString();
+  }
+
   Stream<String> _doStreamRequest(
     String systemPrompt,
     List<Map<String, String>> messages,
@@ -162,8 +178,11 @@ class OllamaCloudService extends ChangeNotifier {
     double temperature,
   ) {
     final allMessages = [
-      {'role': 'system', 'content': systemPrompt},
-      ...messages,
+      {'role': 'system', 'content': _sanitize(systemPrompt)},
+      ...messages.map((m) => {
+        'role': m['role']!,
+        'content': _sanitize(m['content'] ?? ''),
+      }),
     ];
 
     final isNative = _isOllamaNative;
@@ -173,7 +192,7 @@ class OllamaCloudService extends ChangeNotifier {
         : Uri.parse(_chatCompletionsPath);
 
     final body = <String, dynamic>{
-      'model': model,
+      'model': _sanitize(model),
       'messages': allMessages,
       'stream': true,
     };
@@ -206,7 +225,10 @@ class OllamaCloudService extends ChangeNotifier {
       for (final entry in headers.entries) {
         request.headers.set(entry.key, entry.value);
       }
-      request.write(jsonEncode(body));
+      // Write as UTF-8 bytes to avoid Dart HTTP client string encoding issues
+      final jsonStr = jsonEncode(body);
+      final bytes = utf8.encode(jsonStr);
+      request.add(bytes);
       response = await request.close().timeout(const Duration(seconds: 120));
 
       if (response.statusCode != 200) {
@@ -608,7 +630,7 @@ class OllamaCloudService extends ChangeNotifier {
         final content = message['content'] as String? ?? '';
         final toolCalls = _parseToolCalls(message['tool_calls']);
         final finishReason = choices[0]['finish_reason'] as String? ?? '';
-        return ChatResponse(
+        return _maybeExtractInlineToolCalls(
           content: content,
           toolCalls: toolCalls,
           finishReason: finishReason,
@@ -621,7 +643,7 @@ class OllamaCloudService extends ChangeNotifier {
     if (msg != null) {
       final content = msg['content'] as String? ?? '';
       final toolCalls = _parseToolCalls(msg['tool_calls']);
-      return ChatResponse(
+      return _maybeExtractInlineToolCalls(
         content: content,
         toolCalls: toolCalls,
       );
@@ -631,7 +653,47 @@ class OllamaCloudService extends ChangeNotifier {
     final content = data['content'] as String? ??
         data['message']?['content'] as String? ??
         '';
-    return ChatResponse(content: content);
+    return _maybeExtractInlineToolCalls(content: content, toolCalls: []);
+  }
+
+  /// If no structured tool_calls found, try extracting XML/JSON inline tool
+  /// calls from the content text (common with cloud LLMs that embed tool calls
+  /// as text instead of using the structured API format).
+  ChatResponse _maybeExtractInlineToolCalls({
+    required String content,
+    required List<ToolCall> toolCalls,
+    String finishReason = '',
+  }) {
+    // Only fall back to inline parsing if structured tool_calls is empty
+    if (toolCalls.isNotEmpty) {
+      return ChatResponse(
+        content: content,
+        toolCalls: toolCalls,
+        finishReason: finishReason,
+      );
+    }
+
+    // Try extracting inline tool calls from content
+    final inlineCalls = ToolCallParser.parseInline(content, null);
+    if (inlineCalls.isEmpty) {
+      return ChatResponse(content: content, finishReason: finishReason);
+    }
+
+    // Convert to ToolCall objects and strip from content
+    final parsed = inlineCalls.map((call) => ToolCall(
+      id: 'inline_${call['name']}_${DateTime.now().millisecondsSinceEpoch}',
+      type: 'function',
+      name: call['name'] as String? ?? '',
+      arguments: (call['arguments'] as Map<String, dynamic>?) ?? {},
+    )).toList();
+
+    final cleanedContent = ToolCallParser.stripFunctionCallTags(content).trim();
+
+    return ChatResponse(
+      content: cleanedContent,
+      toolCalls: parsed,
+      finishReason: finishReason,
+    );
   }
 
   /// Parse tool_calls from the LLM response.
