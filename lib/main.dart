@@ -16,6 +16,8 @@ import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
 import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
+import 'services/buddy_scheduler.dart';
+import 'services/buddy_notifier.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
@@ -62,6 +64,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late BuddyCapabilitiesService _buddyCapabilities;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
+  late BuddyScheduler _buddyScheduler;
   late BackupService _backupService;
   late LocationService _locationService;
   late OllamaCloudService _cloudService;
@@ -78,6 +81,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
       _notificationService.dispose();
+      _buddyScheduler.dispose();
       _cloudService.dispose();
     }
     super.dispose();
@@ -111,6 +115,11 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       try { await _personaEvolution.init(); } catch (e) { debugPrint('Evolution init: $e'); }
       _notificationService = NotificationService();
       try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
+
+      _buddyScheduler = BuddyScheduler();
+      try { await _buddyScheduler.init(); } catch (e) { debugPrint('Scheduler init: $e'); }
+
+      BuddyNotifier.init();
 
       _locationService = LocationService();
 
@@ -301,6 +310,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _locationService),
+        ChangeNotifierProvider.value(value: _buddyScheduler),
       ],
       child: MaterialApp(title: 'AI-Buddy', theme: _theme(), darkTheme: _theme(),
         home: const HomeScreen(),

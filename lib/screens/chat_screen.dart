@@ -27,6 +27,7 @@ import 'settings_screen.dart';
 import '../widgets/proactive_card.dart';
 import '../services/proactive_engine.dart';
 import '../services/self_identity_service.dart';
+import '../services/buddy_notifier.dart';
 import '../core/theme/app_colors.dart';
 import '../core/version.dart';
 
@@ -37,7 +38,7 @@ class ChatScreen extends StatefulWidget {
   State<ChatScreen> createState() => _ChatScreenState();
 }
 
-class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin {
+class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   bool _isStreaming = false;
@@ -48,6 +49,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   ToolRegistry? _toolRegistry;
   ProactiveEngine? _proactive;
   ProactiveSuggestion? _proactiveSuggestion;
+  bool _isAppInBackground = false;
 
   // Multi-select for message copying
   final Set<int> _selectedIndices = <int>{};
@@ -59,10 +61,20 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
     _initToolRegistry();
     _loadWelcome();
     _initProactiveEngine();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _isAppInBackground = state != AppLifecycleState.resumed;
+    // Clear notifications when user returns to chat
+    if (state == AppLifecycleState.resumed) {
+      BuddyNotifier.clearAll();
+    }
   }
 
   void _onScroll() {
@@ -71,6 +83,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     _scrollOffsetNotifier.dispose();
@@ -204,6 +217,16 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       final assistantMsg = ChatMessage(text: reply, isUser: false);
       await chatHistory.add(assistantMsg);
       _scrollToBottom();
+
+      // Notify in taskbar if app is in background
+      if (_isAppInBackground) {
+        final buddyName = context.read<SecureConfigService>().buddyName;
+        await BuddyNotifier.notifyBuddyReply(
+          buddyName: buddyName,
+          message: reply,
+          appInBackground: true,
+        );
+      }
     } catch (e) {
       debugPrint('sendMessage failed: $e, falling back to streaming');
       try {
@@ -282,6 +305,16 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     if (fullReply.isNotEmpty) {
       final assistantMsg = ChatMessage(text: fullReply, isUser: false);
       await chatHistory.add(assistantMsg);
+
+      // Notify in taskbar if app is in background
+      if (_isAppInBackground) {
+        final buddyName = context.read<SecureConfigService>().buddyName;
+        await BuddyNotifier.notifyBuddyReply(
+          buddyName: buddyName,
+          message: fullReply,
+          appInBackground: true,
+        );
+      }
     }
 
     setState(() {

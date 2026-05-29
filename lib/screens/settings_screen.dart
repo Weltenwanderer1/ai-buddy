@@ -19,6 +19,7 @@ import 'buddy_notes_screen.dart';
 import 'buddy_capabilities_screen.dart';
 import 'memory_browser_screen.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
+import '../services/buddy_scheduler.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -889,6 +890,9 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ])),
 
+          // ── Hintergrund-Tasks ──
+          SliverToBoxAdapter(child: _SchedulerSection()),
+
           // ── Über ──
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
@@ -1544,5 +1548,100 @@ class _SmallButton extends StatelessWidget {
         ]),
       ),
     );
+  }
+}
+
+/// Settings section for background tasks (BuddyScheduler).
+class _SchedulerSection extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final scheduler = context.watch<BuddyScheduler>();
+    if (!scheduler.isInitialized) return const SizedBox.shrink();
+
+    return _GlassCard(children: [
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+        child: Row(children: [
+          Icon(Icons.schedule_outlined, size: 20, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text('Hintergrund-Tasks',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
+        ]),
+      ),
+      const SizedBox(height: 4),
+      for (final entry in scheduler.tasks.entries) ...[
+        _SchedulerTaskTile(
+          taskId: entry.key,
+          config: entry.value,
+          lastRun: scheduler.getLastRun(entry.key),
+          onToggle: (enabled) => scheduler.setTaskEnabled(entry.key, enabled),
+          onRunNow: () => scheduler.runTaskNow(entry.key),
+        ),
+        if (entry.key != scheduler.tasks.keys.last) const _Divider(),
+      ],
+    ]);
+  }
+}
+
+class _SchedulerTaskTile extends StatelessWidget {
+  final String taskId;
+  final BuddyTaskConfig config;
+  final String? lastRun;
+  final ValueChanged<bool> onToggle;
+  final VoidCallback onRunNow;
+
+  const _SchedulerTaskTile({
+    required this.taskId,
+    required this.config,
+    this.lastRun,
+    required this.onToggle,
+    required this.onRunNow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      leading: Icon(
+        taskId == 'self_optimization' ? Icons.auto_fix_high_outlined : Icons.wb_sunny_outlined,
+        color: config.enabled ? AppColors.primary : AppColors.textSecondary,
+        size: 22,
+      ),
+      title: Text(config.name, style: TextStyle(
+        fontSize: 14, fontWeight: FontWeight.w600,
+        color: config.enabled ? Colors.white : AppColors.textSecondary,
+      )),
+      subtitle: Text(
+        '${config.description}\nAlle ${config.frequency.inMinutes} Min${lastRun != null ? " · Letztmals ${_formatLastRun(lastRun!)}" : ""}',
+        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+      ),
+      isThreeLine: true,
+      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
+        IconButton(
+          icon: const Icon(Icons.play_circle_outline, size: 20),
+          color: AppColors.primary,
+          onPressed: onRunNow,
+          tooltip: 'Jetzt ausführen',
+        ),
+        Switch(
+          value: config.enabled,
+          onChanged: onToggle,
+          activeColor: AppColors.primary,
+        ),
+      ]),
+    );
+  }
+
+  String _formatLastRun(String iso) {
+    try {
+      final dt = DateTime.parse(iso);
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 1) return 'gerade eben';
+      if (diff.inMinutes < 60) return 'vor ${diff.inMinutes} Min';
+      if (diff.inHours < 24) return 'vor ${diff.inHours}h';
+      return 'vor ${diff.inDays}d';
+    } catch (_) {
+      return iso;
+    }
   }
 }
