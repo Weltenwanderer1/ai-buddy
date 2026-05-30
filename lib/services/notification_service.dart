@@ -124,8 +124,10 @@ class NotificationService {
 
     const notificationDetails = NotificationDetails(android: androidDetails);
 
-    // Generate a unique ID based on time
-    final id = scheduledTime.millisecondsSinceEpoch ~/ 1000 % 100000;
+    // Generate a unique ID based on time + hash of title to avoid collisions
+    // when multiple reminders are scheduled within the same second.
+    final titleHash = title.hashCode.abs() % 1000;
+    final id = (scheduledTime.millisecondsSinceEpoch ~/ 1000 % 100000) * 1000 + titleHash;
 
     try {
       final tzDateTime = tz.TZDateTime.from(scheduledTime, tz.local);

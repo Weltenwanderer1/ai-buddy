@@ -145,9 +145,6 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         fallbackModel: _secureConfig.activeFallbackModel,
       );
 
-      // Register capabilities tool
-      _toolRegistry.registerBuddyCapabilities(_buddyCapabilities);
-
       SetReminderTool.scheduleCallback = ({required title, required body, required scheduledTime}) {
         return _notificationService.scheduleNotification(title: title, body: body, scheduledTime: scheduledTime);
       };

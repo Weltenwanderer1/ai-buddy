@@ -73,7 +73,7 @@ class SecureConfigService {
   String get ollamaBaseUrl =>
       _cache[keyOllamaBaseUrl] ?? _env(keyOllamaBaseUrl) ?? 'https://ollama.com/api';
   String get ollamaApiKey =>
-      _cache[keyOllamaApiKey] ?? _env(keyOllamaApiKey) ?? 'b8ddca52fce64596b6e075c5537222a6.hbKSd4qQklkZQs6PQLwc4uBU';
+      _cache[keyOllamaApiKey] ?? _env(keyOllamaApiKey) ?? '';
   String get ollamaModel =>
       _cache[keyOllamaModel] ?? _env(keyOllamaModel) ?? 'kimi-k2.6:cloud';
   String get ollamaFallbackModel =>
@@ -81,7 +81,7 @@ class SecureConfigService {
   String get openRouterBaseUrl =>
       _cache[keyOpenRouterBaseUrl] ?? _env(keyOpenRouterBaseUrl) ?? 'https://openrouter.ai/api';
   String get openRouterApiKey =>
-      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? 'sk-or-...1477';
+      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '';
   String get openRouterModel =>
       _cache[keyOpenRouterModel] ?? _env(keyOpenRouterModel) ?? 'anthropic/claude-3.5-sonnet';
   String get openRouterFallbackModel =>

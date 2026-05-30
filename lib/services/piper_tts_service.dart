@@ -110,26 +110,29 @@ class PiperTtsService extends ChangeNotifier {
       final modelFile = File('${dir.path}/${voice.id}.onnx');
       final configFile = File('${dir.path}/${voice.id}.onnx.json');
 
-      // Download model with progress
-      debugPrint('PiperTts: Downloading model ${voice.id}...');
-      final modelResponse = await http.Client().send(http.Request('GET', Uri.parse(voice.modelUrl)));
-      final modelTotal = modelResponse.contentLength ?? 1;
-      int modelDownloaded = 0;
-      final modelSink = modelFile.openWrite();
-      await for (final chunk in modelResponse.stream) {
-        modelSink.add(chunk);
-        modelDownloaded += chunk.length;
-        _downloadProgress = (modelDownloaded / modelTotal) * 0.9;
-        notifyListeners();
-        onProgress?.call(_downloadProgress);
-      }
-      await modelSink.close();
-      debugPrint('PiperTts: Model downloaded ($modelDownloaded bytes)');
+      final client = http.Client();
+      try {
+        final modelResponse = await client.send(http.Request('GET', Uri.parse(voice.modelUrl)));
+        final modelTotal = modelResponse.contentLength ?? 1;
+        int modelDownloaded = 0;
+        final modelSink = modelFile.openWrite();
+        await for (final chunk in modelResponse.stream) {
+          modelSink.add(chunk);
+          modelDownloaded += chunk.length;
+          _downloadProgress = (modelDownloaded / modelTotal) * 0.9;
+          notifyListeners();
+          onProgress?.call(_downloadProgress);
+        }
+        await modelSink.close();
+        debugPrint('PiperTts: Model downloaded ($modelDownloaded bytes)');
 
-      // Download config
-      debugPrint('PiperTts: Downloading config...');
-      final configResponse = await http.get(Uri.parse(voice.configUrl));
-      await configFile.writeAsBytes(configResponse.bodyBytes);
+        // Download config
+        debugPrint('PiperTts: Downloading config...');
+        final configResponse = await http.get(Uri.parse(voice.configUrl));
+        await configFile.writeAsBytes(configResponse.bodyBytes);
+      } finally {
+        client.close();
+      }
       _downloadProgress = 1.0;
       notifyListeners();
       onProgress?.call(1.0);

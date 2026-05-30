@@ -13,11 +13,7 @@ import '../services/location_service.dart';
 import '../services/buddy_capabilities_service.dart';
 import '../tools/tool_registry.dart';
 
-/// Callback signature for tool execution — kept for backward compat in tool calls.
-typedef ToolExecutionCallback = Future<String> Function(String toolName, Map<String, dynamic> arguments);
-
 typedef ToolDisplayCallback = void Function(ChatMessage toolMessage);
-typedef StreamingCallback = void Function(String partialText);
 
 /// Result from sendMessage — carries the reply text and optional metadata
 /// from tool calls (e.g. route data for navigation, location coordinates).

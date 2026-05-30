@@ -7,7 +7,6 @@ import '../widgets/message_input.dart';
 import '../services/chat_service.dart';
 import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
-import '../services/buddy_notes_service.dart';
 import '../services/buddy_capabilities_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
@@ -16,10 +15,7 @@ import '../services/stt_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/location_service.dart';
-
 import '../services/ollama_cloud_service.dart';
-
-
 import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
 import 'settings_screen.dart';
@@ -66,7 +62,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
     _initToolRegistry();
-    _loadWelcome();
     _initProactiveEngine();
   }
 
@@ -128,26 +123,13 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   void _initToolRegistry() {
     try {
-      final secureConfig = context.read<SecureConfigService>();
-      final memory = context.read<MemoryService>();
-      final selfIdentity = context.read<SelfIdentityService>();
-      final buddyNotes = context.read<BuddyNotesService>();
-      final buddyCapabilities = context.read<BuddyCapabilitiesService>();
-      final tavilyKey = secureConfig.tavilyApiKey;
-      _toolRegistry = ToolRegistry.createDefault(tavilyApiKey: tavilyKey.isNotEmpty ? tavilyKey : null);
-      _toolRegistry!.registerSearchMemories(memory);
-      _toolRegistry!.registerSelfIdentity(selfIdentity);
-      _toolRegistry!.registerSaveMemory(memory);
-      _toolRegistry!.registerBuddyNotes(buddyNotes);
-      _toolRegistry!.registerBuddyCapabilities(buddyCapabilities);
+      // Reuse the fully-configured ToolRegistry from Provider (set up in main.dart)
+      // rather than creating a duplicate with fewer tools registered.
+      _toolRegistry = context.read<ToolRegistry>();
     } catch (e) {
+      debugPrint('_initToolRegistry fallback: $e');
       _toolRegistry = ToolRegistry.createDefault();
     }
-  }
-
-  Future<void> _loadWelcome() async {
-    // Chat startet leer - keine automatische Begrüßung.
-    // User kann direkt schreiben.
   }
 
   // ── Multi-Select ──
@@ -369,7 +351,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   LiveVoiceService _createLiveVoiceService(BuildContext context) {
-    final stt = SttService();
+    final stt = _sttService;
     final tts = context.read<TtsPlaybackService>();
     final chatService = ChatService(
       cloudService: context.read<OllamaCloudService>(),

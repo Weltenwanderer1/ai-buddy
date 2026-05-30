@@ -48,12 +48,13 @@ class PersonaEvolutionService extends ChangeNotifier {
   @visibleForTesting
   set testLearnedStyle(Map<String, dynamic> v) => _learnedStyle = v;
 
-    Future<void> clear() async {
+  Future<void> clear() async {
     _learnedStyle = {};
     _learnedTraits = [];
     _avoidTopics = [];
     _preferredStyle = [];
     notifyListeners();
+    await _save();
   }
 
   Map<String, dynamic> exportData() => {
@@ -118,6 +119,7 @@ class PersonaEvolutionService extends ChangeNotifier {
       }
     }
     notifyListeners();
+    _save();
   }
 
   Future<void> _load() async {

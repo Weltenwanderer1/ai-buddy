@@ -105,12 +105,7 @@ class OllamaCloudService extends ChangeNotifier {
   /// The native Ollama chat endpoint URL (for simple non-tool requests).
   /// e.g. https://ollama.com/api → https://ollama.com/api/chat
   String get _nativeChatPath {
-    final base = _normalizedBase;
-    if (base.endsWith('/v1')) {
-      // Unusual but handle: https://host/v1 → https://host/v1/chat
-      return '$base/chat';
-    }
-    return '$base/chat';
+    return '${_normalizedBase}/chat';
   }
 
   /// Build the correct OpenAI-compatible chat completions URL.
@@ -495,44 +490,6 @@ class OllamaCloudService extends ChangeNotifier {
         'Expected {message:{content}} or {choices:[{message:{content}}]}. '
         'Got: ${response.body.length > 200 ? response.body.substring(0, 200) : response.body}',
       );
-    } else {
-      throw OllamaApiException(
-        response.statusCode,
-        'Ollama native API error (${response.statusCode}): ${response.body}',
-      );
-    }
-  }
-
-  /// Ollama native with tools support.
-  // ignore: unused_element
-  Future<ChatResponse> _doOllamaNativeRequestWithTools(
-    String base,
-    List<Map<String, dynamic>> messages,
-    String model,
-    List<Map<String, dynamic>>? tools,
-  ) async {
-    final url = Uri.parse(_nativeChatPath);
-
-    final body = <String, dynamic>{
-      'model': model,
-      'messages': messages,
-      'stream': false,
-    };
-    if (tools != null && tools.isNotEmpty) {
-      body['tools'] = tools;
-    }
-
-    final response = await _client
-        .post(
-          url,
-          headers: _baseHeaders,
-          body: jsonEncode(body),
-        )
-        .timeout(_timeout);
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body) as Map<String, dynamic>;
-      return _parseResponse(data);
     } else {
       throw OllamaApiException(
         response.statusCode,

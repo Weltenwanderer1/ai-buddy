@@ -31,7 +31,8 @@ Future<bool> _runSelfOptimization(Map<String, dynamic>? input) async {
     // 1. Clean up old fired-once markers (proactive engine)
     final keys = prefs.getKeys().where((k) => k.startsWith('proactive_')).toList();
     int cleaned = 0;
-    final today = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+    final nowDate = DateTime.now();
+    final today = '${nowDate.year}-${nowDate.month.toString().padLeft(2, '0')}-${nowDate.day.toString().padLeft(2, '0')}';
     for (final key in keys) {
       final val = prefs.getString(key);
       if (val != null && val != today) {
@@ -114,7 +115,8 @@ Future<bool> _runProactiveCheck(Map<String, dynamic>? input) async {
 
     // Evening recap (20-22h)
     if (hour >= 20 && hour < 23) {
-      final today = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+      final nowDate = DateTime.now();
+      final today = '${nowDate.year}-${nowDate.month.toString().padLeft(2, '0')}-${nowDate.day.toString().padLeft(2, '0')}';
       final alreadyFired = prefs.getString('proactive_evening_recap') == today;
       if (!alreadyFired) {
         await prefs.setString('proactive_evening_recap', today);
@@ -128,7 +130,8 @@ Future<bool> _runProactiveCheck(Map<String, dynamic>? input) async {
 
     // Morning check (7-9h)
     if (hour >= 7 && hour < 9) {
-      final today = '${DateTime.now().year}-${DateTime.now().month}-${DateTime.now().day}';
+      final nowDate = DateTime.now();
+      final today = '${nowDate.year}-${nowDate.month.toString().padLeft(2, '0')}-${nowDate.day.toString().padLeft(2, '0')}';
       final alreadyFired = prefs.getString('proactive_morning') == today;
       if (!alreadyFired) {
         await prefs.setString('proactive_morning', today);
