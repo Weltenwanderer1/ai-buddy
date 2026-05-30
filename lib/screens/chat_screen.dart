@@ -405,7 +405,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final liveState = _liveVoice?.state ?? LiveVoiceState.idle;
 
     return Scaffold(
-      backgroundColor: AppColors.bgDarkest,
+      backgroundColor: Colors.transparent,
       resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
@@ -467,9 +467,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               _StreamingBubble(text: _streamingText),
 
             // ─── Input + Scroll-to-Bottom ───
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+            SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
                 // Scroll-to-bottom button — above input
                 if (_showScrollToBottom)
                   Padding(
@@ -506,6 +508,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                   sttService: _sttService,
                 ),
               ],
+            ),
             ),
 
             // ─── Proactive Card ───

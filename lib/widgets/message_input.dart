@@ -133,9 +133,7 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: widget.isLiveModeActive ? _buildLiveModeInput() : _buildNormalInput(),
-    );
+    return widget.isLiveModeActive ? _buildLiveModeInput() : _buildNormalInput();
   }
 
   Widget _buildNormalInput() {
