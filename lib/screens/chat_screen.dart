@@ -50,6 +50,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   ProactiveEngine? _proactive;
   ProactiveSuggestion? _proactiveSuggestion;
   bool _isAppInBackground = false;
+  final SttService _sttService = SttService();
+  bool _showScrollToBottom = false;
 
   // Multi-select for message copying
   final Set<int> _selectedIndices = <int>{};
@@ -79,6 +81,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   void _onScroll() {
     _scrollOffsetNotifier.value = _scrollController.offset;
+    // Show scroll-to-bottom button when not at bottom
+    if (_scrollController.hasClients) {
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.offset;
+      final atBottom = maxScroll - currentScroll < 100;
+      if (_showScrollToBottom != !atBottom) {
+        setState(() => _showScrollToBottom = !atBottom);
+      }
+    }
   }
 
   @override
@@ -473,13 +484,46 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             if (_isStreaming && _streamingText.isNotEmpty)
               _StreamingBubble(text: _streamingText),
 
-            // ─── Input ───
-            MessageInput(
-              onSend: _sendMessage,
-              isSending: _isSending,
-              isLiveModeActive: isLiveActive,
-              onToggleLiveMode: _toggleLiveVoice,
-              liveVoiceState: liveState,
+            // ─── Input + Scroll-to-Bottom ───
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                MessageInput(
+                  onSend: _sendMessage,
+                  isSending: _isSending,
+                  isLiveModeActive: isLiveActive,
+                  onToggleLiveMode: _toggleLiveVoice,
+                  liveVoiceState: liveState,
+                  sttService: _sttService,
+                ),
+                // Scroll-to-bottom floating button
+                if (_showScrollToBottom)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 24, bottom: 4),
+                    child: Align(
+                      alignment: Alignment.centerRight,
+                      child: GestureDetector(
+                        onTap: _scrollToBottom,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: AppColors.bgCard.withValues(alpha: 0.9),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: AppColors.glassBorder),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
+                              const SizedBox(width: 3),
+                              Text('Neueste', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             ),
 
             // ─── Proactive Card ───

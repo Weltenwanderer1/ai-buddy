@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import '../services/live_voice_service.dart';
+import '../services/stt_service.dart';
 import '../core/theme/app_colors.dart';
 
-/// Messaging Input Bar — Live-Voice-first Design.
+/// Messaging Input Bar — Live-Voice + Dictation + Send.
 /// - Links: Menü-Button
 /// - Mitte: Textfeld
-/// - Rechts: Live-Voice-Button (Mic = Live starten/stoppen)
+/// - Rechts daneben: Diktier-Button (Mic → Text ins Feld)
+/// - Ganz rechts: Live-Sprech-Modus (AI-Sterne) ODER Senden-Button
 class MessageInput extends StatefulWidget {
   final void Function(String text) onSend;
   final bool isLiveModeActive;
   final VoidCallback? onToggleLiveMode;
   final LiveVoiceState liveVoiceState;
   final bool isSending;
+  final SttService? sttService;
 
   const MessageInput({
     super.key,
@@ -20,6 +23,7 @@ class MessageInput extends StatefulWidget {
     this.onToggleLiveMode,
     this.liveVoiceState = LiveVoiceState.idle,
     this.isSending = false,
+    this.sttService,
   });
 
   @override
@@ -29,6 +33,7 @@ class MessageInput extends StatefulWidget {
 class _MessageInputState extends State<MessageInput> {
   final _controller = TextEditingController();
   bool _hasText = false;
+  bool _isDictating = false;
 
   @override
   void initState() {
@@ -64,6 +69,46 @@ class _MessageInputState extends State<MessageInput> {
     widget.onSend(text);
   }
 
+  /// Start dictation: STT listens → recognized text goes into text field.
+  Future<void> _startDictation() async {
+    if (_isDictating) return;
+    final stt = widget.sttService;
+    if (stt == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Spracherkennung nicht verfügbar')),
+      );
+      return;
+    }
+
+    setState(() => _isDictating = true);
+    try {
+      // Initialize if needed
+      if (!stt.isAvailable) {
+        final ok = await stt.init();
+        if (!ok) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Mikrofon-Berechtigung benötigt')),
+            );
+          }
+          return;
+        }
+      }
+
+      // Add placeholder while listening
+      final currentText = _controller.text;
+      final result = await stt.listenonce(localeId: 'de_DE');
+      if (result != null && result.isNotEmpty) {
+        final separator = currentText.isNotEmpty ? ' ' : '';
+        _controller.text = currentText + separator + result;
+        // Move cursor to end
+        _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+      }
+    } finally {
+      if (mounted) setState(() => _isDictating = false);
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
@@ -83,24 +128,6 @@ class _MessageInputState extends State<MessageInput> {
         return AppColors.error;
       case LiveVoiceState.idle:
         return const Color(0xFF6B8DD6); // Periwinkle
-    }
-  }
-
-  IconData _liveButtonIcon() {
-    if (!widget.isLiveModeActive) {
-      return Icons.mic_rounded;
-    }
-    switch (widget.liveVoiceState) {
-      case LiveVoiceState.listening:
-        return Icons.hearing_rounded;
-      case LiveVoiceState.thinking:
-        return Icons.psychology_rounded;
-      case LiveVoiceState.speaking:
-        return Icons.volume_up_rounded;
-      case LiveVoiceState.error:
-        return Icons.error_outline_rounded;
-      case LiveVoiceState.idle:
-        return Icons.mic_rounded;
     }
   }
 
@@ -161,26 +188,32 @@ class _MessageInputState extends State<MessageInput> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          // Rechts: Senden oder Live-Voice starten
+          const SizedBox(width: 4),
+          // Diktier-Button (Mic → Text ins Feld)
+          _CircleButton(
+            icon: _isDictating ? Icons.hearing_rounded : Icons.mic_rounded,
+            onTap: _isDictating ? null : _startDictation,
+            color: _isDictating ? AppColors.success : AppColors.textTertiary.withValues(alpha: 0.7),
+            size: 36,
+          ),
+          const SizedBox(width: 4),
+          // Ganz rechts: Live-Sprech-Modus ODER Senden
           _hasText
               ? _CircleButton(
                   icon: Icons.arrow_upward_rounded,
                   onTap: _submit,
                 )
               : _CircleButton(
-                  icon: _liveButtonIcon(),
+                  icon: Icons.auto_awesome_rounded, // AI-Sterne
                   onTap: widget.onToggleLiveMode ?? () {},
                   color: _liveButtonColor(),
-                  size: _isPulsing() ? 44 : 40,
-                  glow: !widget.isLiveModeActive, // subtle glow hint
+                  size: 40,
+                  glow: true,
                 ),
         ],
       ),
     );
   }
-
-  bool _isPulsing() => false; // Could animate later
 
   Widget _buildLiveModeInput() {
     final state = widget.liveVoiceState;
@@ -284,7 +317,7 @@ class _CircleButton extends StatelessWidget {
           child: Icon(
             icon,
             color: Colors.white,
-            size: 20,
+            size: (size * 0.5).clamp(16, 22).toDouble(),
           ),
         ),
       ),
