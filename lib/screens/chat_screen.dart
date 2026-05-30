@@ -488,18 +488,10 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                MessageInput(
-                  onSend: _sendMessage,
-                  isSending: _isSending,
-                  isLiveModeActive: isLiveActive,
-                  onToggleLiveMode: _toggleLiveVoice,
-                  liveVoiceState: liveState,
-                  sttService: _sttService,
-                ),
-                // Scroll-to-bottom floating button
+                // Scroll-to-bottom button — above input
                 if (_showScrollToBottom)
                   Padding(
-                    padding: const EdgeInsets.only(right: 24, bottom: 4),
+                    padding: const EdgeInsets.only(right: 24, bottom: 2),
                     child: Align(
                       alignment: Alignment.centerRight,
                       child: GestureDetector(
@@ -523,6 +515,14 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                       ),
                     ),
                   ),
+                MessageInput(
+                  onSend: _sendMessage,
+                  isSending: _isSending,
+                  isLiveModeActive: isLiveActive,
+                  onToggleLiveMode: _toggleLiveVoice,
+                  liveVoiceState: liveState,
+                  sttService: _sttService,
+                ),
               ],
             ),
 

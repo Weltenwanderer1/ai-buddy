@@ -139,24 +139,11 @@ class _MessageInputState extends State<MessageInput> {
   }
 
   Widget _buildNormalInput() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF24242A),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          // Links: Menü
-          _CircleButton(
-            icon: Icons.menu_rounded,
-            onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Menü kommt bald')),
-            ),
-          ),
-          const SizedBox(width: 8),
           // Textfeld
           Expanded(
             child: Padding(
@@ -232,13 +219,8 @@ class _MessageInputState extends State<MessageInput> {
       LiveVoiceState.error => AppColors.error,
     };
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFF24242A),
-        borderRadius: BorderRadius.circular(28),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
       child: Row(
         children: [
           // Pulsierender Punkt
