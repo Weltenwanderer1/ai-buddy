@@ -24,15 +24,18 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.bgDarkest,
       fontFamily: 'Inter',
 
-      // ── AppBar ──
+      // ── System UI (Status + Navigation Bar) ──
       appBarTheme: AppBarTheme(
         backgroundColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         elevation: 0,
         centerTitle: false,
-        systemOverlayStyle: SystemUiOverlayStyle(
-          statusBarColor: AppColors.bgDarkest,
+        systemOverlayStyle: const SystemUiOverlayStyle(
+          statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
+          systemNavigationBarColor: AppColors.bgDarkest,
+          systemNavigationBarIconBrightness: Brightness.light,
+          systemNavigationBarDividerColor: Colors.transparent,
         ),
         titleTextStyle: TextStyle(
           fontSize: 20,

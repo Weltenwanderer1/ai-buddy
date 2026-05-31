@@ -472,28 +472,28 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                // Scroll-to-bottom button — above input
+                // Scroll-to-bottom button — Kreis mit Pfeil nach unten
                 if (_showScrollToBottom)
                   Padding(
-                    padding: const EdgeInsets.only(right: 24, bottom: 2),
-                    child: Align(
-                      alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Center(
                       child: GestureDetector(
                         onTap: _scrollToBottom,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          width: 36,
+                          height: 36,
                           decoration: BoxDecoration(
-                            color: AppColors.bgCard.withValues(alpha: 0.9),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: AppColors.glassBorder),
+                            color: const Color(0xFF2A2A32),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.12),
+                              width: 1,
+                            ),
                           ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary, size: 16),
-                              const SizedBox(width: 3),
-                              Text('Neueste', style: TextStyle(color: AppColors.primary, fontSize: 12, fontWeight: FontWeight.w500)),
-                            ],
+                          child: const Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            color: AppColors.textSecondary,
+                            size: 20,
                           ),
                         ),
                       ),

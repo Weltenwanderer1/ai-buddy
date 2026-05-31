@@ -139,13 +139,22 @@ class _MessageInputState extends State<MessageInput> {
   Widget _buildNormalInput() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Textfeld
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A2A32),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Textfeld
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
               child: TextField(
                 controller: _controller,
                 enabled: !widget.isSending && !widget.isLiveModeActive,
@@ -196,6 +205,7 @@ class _MessageInputState extends State<MessageInput> {
                   glow: true,
                 ),
         ],
+        ),
       ),
     );
   }
