@@ -53,7 +53,7 @@ class BuddyCapabilitiesService extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _defaultCapabilities() => """Verfuegbare Tools: open_app, open_navigation, get_location (liefert auch Adresse!), get_weather, get_current_time, get_device_info, get_battery_info, get_clipboard, web_search, get_webpage, set_reminder, open_url, share_text, read_config, update_config, add_calendar_event, get_calendar_events, list_files, read_file, write_file, save_memory, search_memories, update_self_identity, buddy_notes, update_capabilities, send_sms, send_whatsapp, send_email, search_contacts, send_message_to_contact, manage_shopping_list, music_intent.
+  String _defaultCapabilities() => """Verfuegbare Tools: open_app, open_navigation, get_location (liefert auch Adresse!), get_weather, get_current_time, get_device_info, get_battery_info, get_clipboard, web_search, get_webpage, set_reminder, set_timer, manage_apps, open_file, list_files, open_url, share_text, read_config, update_config, add_calendar_event, get_calendar_events, update_calendar_event, delete_calendar_event, read_file, write_file, save_memory, search_memories, update_self_identity, buddy_notes, update_capabilities, send_sms, send_whatsapp, send_email, search_contacts, send_message_to_contact, manage_contacts, manage_shopping_list, music_intent, phone_call, record_voice_memo, toggle_wifi, toggle_bluetooth, set_volume, toggle_do_not_disturb, device_settings, check_update, analyze_image, automation_rules, offline_stt.
 
 WICHTIG: get_location liefert Strasse+Bezirk+Stadt+Koordinaten — KEIN web_search fuer Adressen noetig!""";
 }

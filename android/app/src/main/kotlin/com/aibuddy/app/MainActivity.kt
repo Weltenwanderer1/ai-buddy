@@ -19,6 +19,8 @@ import java.util.Locale
 class MainActivity : FlutterActivity() {
     private val appLauncherChannel = "ai_buddy/app_launcher"
     private val contactsChannel = "com.ai-buddy.app/contacts"
+    private val appsChannel = "com.aibuddy.app/apps"
+    private lateinit var appManagerModule: AppManagerModule
     private val volumeChannel = "com.aibuddy.app/volume"
     private val wifiChannel = "com.aibuddy.app/wifi"
     private val bluetoothChannel = "com.aibuddy.app/bluetooth"
@@ -223,6 +225,10 @@ class MainActivity : FlutterActivity() {
                 else -> result.notImplemented()
             }
         }
+
+        // App Manager module
+        appManagerModule = AppManagerModule(this)
+        appManagerModule.register(flutterEngine)
 
         // File open channel
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, filesChannel).setMethodCallHandler { call, result ->
