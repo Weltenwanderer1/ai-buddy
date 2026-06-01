@@ -54,6 +54,7 @@ import 'record_voice_memo_tool.dart';
 import 'automation_rule_tool.dart';
 import '../services/tool_learning_service.dart';
 import 'offline_stt_tool.dart';
+import 'device_settings_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -186,6 +187,7 @@ class ToolRegistry {
     r.register(RecordVoiceMemoTool());
     r.register(AutomationRuleTool());
     r.register(OfflineSttTool());
+    r.register(DeviceSettingsTool());
     return r;
   }
 }

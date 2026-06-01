@@ -24,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private val bluetoothChannel = "com.aibuddy.app/bluetooth"
     private val voiceRecorderChannel = "com.aibuddy.app/voice_recorder"
     private val offlineSttChannel = "com.aibuddy.app/offline_stt"
+    private val settingsChannel = "com.aibuddy.app/settings"
     private var mediaRecorder: MediaRecorder? = null
     private var speechRecognizer: android.speech.SpeechRecognizer? = null
     private var sttResult: String? = null
@@ -185,6 +186,38 @@ class MainActivity : FlutterActivity() {
                 "downloadOfflineLanguage" -> {
                     openOfflineSpeechSettings()
                     result.success(true)
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Device Settings channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, settingsChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setBrightness" -> {
+                    val level = call.argument<Double>("level") ?: 0.5
+                    result.success(setBrightness(level))
+                }
+                "getBrightness" -> {
+                    result.success(getBrightness())
+                }
+                "setScreenTimeout" -> {
+                    val seconds = call.argument<Int>("seconds") ?: 30
+                    result.success(setScreenTimeout(seconds))
+                }
+                "getScreenTimeout" -> {
+                    result.success(getScreenTimeout())
+                }
+                "setDoNotDisturb" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    result.success(setDoNotDisturb(enabled))
+                }
+                "getDoNotDisturb" -> {
+                    result.success(getDoNotDisturb())
+                }
+                "openSettings" -> {
+                    val page = call.argument<String>("page") ?: ""
+                    result.success(openSystemSettings(page))
                 }
                 else -> result.notImplemented()
             }
@@ -749,6 +782,156 @@ class MainActivity : FlutterActivity() {
             true
         } catch (e: Exception) {
             Log.e("BluetoothControl", "setBluetoothEnabled error: $e")
+            false
+        }
+    }
+
+    // ── Device Settings (Brightness, Timeout, DND) ──
+
+    @Suppress("DEPRECATION")
+    private fun setBrightness(level: Double): Boolean {
+        return try {
+            if (android.provider.Settings.System.canWrite(applicationContext)) {
+                val lp = window.attributes
+                lp.screenBrightness = level.toFloat()
+                window.attributes = lp
+                true
+            } else {
+                // Open settings to request WRITE_SETTINGS
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("Settings", "setBrightness error: $e")
+            false
+        }
+    }
+
+    private fun getBrightness(): Double {
+        return try {
+            val lp = window.attributes
+            val brightness = lp.screenBrightness
+            if (brightness < 0) {
+                // Negative means using system brightness; get actual value
+                android.provider.Settings.System.getInt(
+                    contentResolver,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS
+                ).toDouble() / 255.0
+            } else {
+                brightness.toDouble()
+            }
+        } catch (e: Exception) {
+            Log.e("Settings", "getBrightness error: $e")
+            0.5
+        }
+    }
+
+    private fun setScreenTimeout(seconds: Int): Boolean {
+        return try {
+            if (android.provider.Settings.System.canWrite(applicationContext)) {
+                android.provider.Settings.System.putInt(
+                    contentResolver,
+                    android.provider.Settings.System.SCREEN_OFF_TIMEOUT,
+                    seconds * 1000
+                )
+                true
+            } else {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS).apply {
+                    data = android.net.Uri.parse("package:$packageName")
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                startActivity(intent)
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("Settings", "setScreenTimeout error: $e")
+            false
+        }
+    }
+
+    private fun getScreenTimeout(): Int {
+        return try {
+            android.provider.Settings.System.getInt(
+                contentResolver,
+                android.provider.Settings.System.SCREEN_OFF_TIMEOUT
+            ) / 1000
+        } catch (e: Exception) {
+            Log.e("Settings", "getScreenTimeout error: $e")
+            30
+        }
+    }
+
+    private fun setDoNotDisturb(enabled: Boolean): Boolean {
+        return try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                val notificationManager = getSystemService(NOTIFICATION_SERVICE) as android.app.NotificationManager
+                if (notificationManager.isNotificationPolicyAccessGranted) {
+                    if (enabled) {
+                        audioManager.ringerMode = AudioManager.RINGER_MODE_SILENT
+                    } else {
+                        audioManager.ringerMode = AudioManager.RINGER_MODE_NORMAL
+                    }
+                    true
+                } else {
+                    val intent = Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    startActivity(intent)
+                    false
+                }
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.interruptionFilter = if (enabled) {
+                    android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+                } else {
+                    android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+                }
+                true
+            }
+        } catch (e: Exception) {
+            Log.e("Settings", "setDoNotDisturb error: $e")
+            false
+        }
+    }
+
+    private fun getDoNotDisturb(): Boolean {
+        return try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            when (audioManager.ringerMode) {
+                AudioManager.RINGER_MODE_SILENT, AudioManager.RINGER_MODE_VIBRATE -> true
+                else -> false
+            }
+        } catch (e: Exception) {
+            Log.e("Settings", "getDoNotDisturb error: $e")
+            false
+        }
+    }
+
+    private fun openSystemSettings(page: String): Boolean {
+        return try {
+            val intent = when (page) {
+                "display" -> Intent(android.provider.Settings.ACTION_DISPLAY_SETTINGS)
+                "sound" -> Intent(android.provider.Settings.ACTION_SOUND_SETTINGS)
+                "wifi" -> Intent(android.provider.Settings.ACTION_WIFI_SETTINGS)
+                "bluetooth" -> Intent(android.provider.Settings.ACTION_BLUETOOTH_SETTINGS)
+                "battery" -> Intent(android.provider.Settings.ACTION_BATTERY_SAVER_SETTINGS)
+                "notifications" -> Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS)
+                "apps" -> Intent(android.provider.Settings.ACTION_APPLICATION_SETTINGS)
+                "security" -> Intent(android.provider.Settings.ACTION_SECURITY_SETTINGS)
+                "storage" -> Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS)
+                "developer" -> Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS)
+                else -> Intent(android.provider.Settings.ACTION_SETTINGS)
+            }
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e("Settings", "openSystemSettings error: $e")
             false
         }
     }
