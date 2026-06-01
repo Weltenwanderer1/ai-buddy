@@ -127,7 +127,7 @@ class BackupService {
     archive.addFile(ArchiveFile('backup.json', encodedBytes.length, encodedBytes));
 
     final zipData = ZipEncoder().encode(archive);
-    if (zipData == null) throw Exception('Failed to create zip archive');
+    if (zipData.isEmpty) throw Exception('Failed to create zip archive (empty result)');
 
     final dir = await getTemporaryDirectory();
     final ts = DateTime.now().toIso8601String().replaceAll(':', '-').substring(0, 19);

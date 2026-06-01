@@ -106,7 +106,7 @@ void main() {
       final zipData = ZipEncoder().encode(archive);
 
       expect(zipData, isNotNull);
-      expect(zipData!.isNotEmpty, isTrue);
+      expect(zipData.isNotEmpty, isTrue);
 
       // Verify we can decode it back
       final decoded = ZipDecoder().decodeBytes(zipData);
@@ -167,7 +167,7 @@ void main() {
       final zipData = ZipEncoder().encode(archive);
       expect(zipData, isNotNull);
 
-      final decoded = ZipDecoder().decodeBytes(zipData!);
+      final decoded = ZipDecoder().decodeBytes(zipData);
       final jsonFile = decoded.findFile('backup.json');
       expect(jsonFile, isNull);
     });

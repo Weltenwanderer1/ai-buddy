@@ -102,7 +102,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _persona = PersonaService(); await _persona.init();
       // Use buddy name from config if persona has no name
       if (_persona.name.isEmpty) {
-        _persona.testName = _secureConfig.buddyName;
+        _persona.name = _secureConfig.buddyName;
       }
       _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
       _buddyNotes = BuddyNotesService(); await _buddyNotes.init();

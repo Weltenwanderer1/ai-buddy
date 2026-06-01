@@ -20,7 +20,7 @@ class ToolCallParser {
 
     final matchedSpans = <({int start, int end})>[];
 
-    bool _overlaps(int s, int e) =>
+    bool overlaps(int s, int e) =>
         matchedSpans.any((ms) => (ms.start < e && s < ms.end));
 
     // 1. Parse XML-style tool calls: <tool_call>call:open_app{app_name: "..."}</tool_call>
@@ -30,7 +30,7 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in xmlCallPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final argsStr = match.group(2);
@@ -46,7 +46,7 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in xmlPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final jsonStr = match.group(2)?.trim();
@@ -69,7 +69,7 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in plainCallPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       matchedSpans.add((start: match.start, end: match.end));
       final name = match.group(1)?.trim();
       final argsStr = match.group(2);
@@ -84,7 +84,7 @@ class ToolCallParser {
       caseSensitive: false,
     );
     for (final match in jsonBlockPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       matchedSpans.add((start: match.start, end: match.end));
       final jsonStr = match.group(1);
       if (jsonStr == null) continue;
@@ -107,7 +107,7 @@ class ToolCallParser {
       dotAll: true,
     );
     for (final match in rawJsonToolPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       final name = match.group(1)?.trim();
       final argsStr = match.group(2);
       if (name == null || name.isEmpty) continue;
@@ -129,7 +129,7 @@ class ToolCallParser {
       r'\{[\s\S]*?(?:"tool"|"name"|"function")[\s\S]*?\}',
     );
     for (final match in looseJsonPattern.allMatches(content)) {
-      if (_overlaps(match.start, match.end)) continue;
+      if (overlaps(match.start, match.end)) continue;
       // Only try if no other patterns matched yet
       if (calls.isNotEmpty) continue;
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/app_colors.dart';
+import '../core/version.dart';
 import '../services/secure_config_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/piper_tts_service.dart';
@@ -751,12 +752,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                       piper: piper,
                       isCurrent: piper.currentVoice == voice,
                       onLoad: () async {
-                        await piper.loadVoice(voice);
+                        // Capture context-dependent services BEFORE await
                         final config = context.read<SecureConfigService>();
-                        await config.setPiperVoice(voice.id);
                         final tts = context.read<TtsPlaybackService>();
+                        await piper.loadVoice(voice);
+                        await config.setPiperVoice(voice.id);
                         tts.engine = TtsEngine.piper;
-                        setState(() {});
+                        if (mounted) setState(() {});
                       },
                       onDelete: () async {
                         await piper.deleteVoice(voice);
@@ -812,7 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           }),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
+                            children: const [
                               Text('langsam', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
                               Text('schnell', style: TextStyle(color: AppColors.textTertiary, fontSize: 11)),
                             ],
@@ -898,8 +900,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v1.00.0',
-              trailing: _Badge('v1.00.0', color: AppColors.secondary),
+              subtitle: 'v$appVersion',
+              trailing: _Badge('v$appVersion', color: AppColors.secondary),
               onTap: () {},
             ),
           ])),
@@ -953,7 +955,7 @@ class _ModelDropdownState extends State<_ModelDropdown> {
       child: Focus(
         onFocusChange: (f) => setState(() => _focused = f),
         child: DropdownButtonFormField<String>(
-          value: isCustom ? '__custom__' : currentId,
+          initialValue: isCustom ? '__custom__' : currentId,
           icon: Icon(Icons.arrow_drop_down_rounded, color: AppColors.textTertiary),
           decoration: InputDecoration(
             hintText: widget.label,
@@ -1561,9 +1563,9 @@ class _SchedulerSection extends StatelessWidget {
     return _GlassCard(children: [
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Row(children: [
+        child: Row(children: const [
           Icon(Icons.schedule_outlined, size: 20, color: AppColors.primary),
-          const SizedBox(width: 8),
+          SizedBox(width: 8),
           Text('Hintergrund-Tasks',
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary)),
         ]),
@@ -1625,7 +1627,7 @@ class _SchedulerTaskTile extends StatelessWidget {
         Switch(
           value: config.enabled,
           onChanged: onToggle,
-          activeColor: AppColors.primary,
+          activeThumbColor: AppColors.primary,
         ),
       ]),
     );

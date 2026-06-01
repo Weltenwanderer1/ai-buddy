@@ -75,26 +75,6 @@ class MessageBubble extends StatelessWidget {
     );
   }
 
-  void _showCopyMenu(BuildContext context, Offset position) {
-    final overlay = Overlay.of(context);
-    late OverlayEntry entry;
-
-    entry = OverlayEntry(
-      builder: (context) => _CopyMenuOverlay(
-        position: position,
-        onCopySelection: () {
-          entry.remove();
-          Clipboard.setData(ClipboardData(text: message.text));
-          HapticFeedback.mediumImpact();
-          _showCopiedSnackBar(context, 'Kopiert');
-        },
-        onDismiss: () => entry.remove(),
-      ),
-    );
-
-    overlay.insert(entry);
-  }
-
   void _showCopiedSnackBar(BuildContext context, String text) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
@@ -626,90 +606,6 @@ class _TtsPlayButtonState extends State<_TtsPlayButton> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ── Copy Menu Overlay ──
-class _CopyMenuOverlay extends StatelessWidget {
-  final Offset position;
-  final VoidCallback onCopySelection;
-  final VoidCallback onDismiss;
-
-  const _CopyMenuOverlay({
-    required this.position,
-    required this.onCopySelection,
-    required this.onDismiss,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onDismiss,
-      child: Container(
-        color: Colors.transparent,
-        child: Stack(
-          children: [
-            Positioned(
-              left: position.dx - 60,
-              top: position.dy - 50,
-              child: Material(
-                color: AppColors.bgElevated,
-                borderRadius: BorderRadius.circular(12),
-                elevation: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.glassBorder),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      _MenuItem(
-                        icon: Icons.copy,
-                        label: 'Kopieren',
-                        onTap: onCopySelection,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _MenuItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _MenuItem({required this.icon, required this.label, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: AppColors.textPrimary),
-              const SizedBox(width: 8),
-              Text(label, style: const TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-            ],
-          ),
-        ),
       ),
     );
   }

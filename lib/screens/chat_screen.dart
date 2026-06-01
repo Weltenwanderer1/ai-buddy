@@ -20,7 +20,6 @@ import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
 import 'settings_screen.dart';
 
-import '../widgets/proactive_card.dart';
 import '../services/proactive_engine.dart';
 import '../services/self_identity_service.dart';
 import '../services/buddy_notifier.dart';
@@ -44,7 +43,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   LiveVoiceService? _liveVoice;
   ToolRegistry? _toolRegistry;
   ProactiveEngine? _proactive;
-  ProactiveSuggestion? _proactiveSuggestion;
   bool _isAppInBackground = false;
   final SttService _sttService = SttService();
   bool _showScrollToBottom = false;
@@ -61,6 +59,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _scrollController.addListener(_onScroll);
+    // Ensure nav bar is transparent (no AppBar → theme overlay doesn't apply).
+    // Done once in initState — calling in build() would re-run on every rebuild.
+    SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.transparent,
+      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ));
     _initToolRegistry();
     _initProactiveEngine();
   }
@@ -107,11 +114,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         llm: null,
         memory: memory,
         persona: persona,
-        onSuggestion: (s) {
-          if (mounted) {
-            setState(() => _proactiveSuggestion = s);
-          }
-        },
       );
       _proactive!.init().then((_) {
         if (mounted) _proactive!.start();
@@ -183,6 +185,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final selfIdentity = context.read<SelfIdentityService>();
     final persona = context.read<PersonaService>();
     final locationService = context.read<LocationService>();
+    // Capture all context-dependent services BEFORE any await — using `context`
+    // after an async gap is unsafe (widget may be unmounted).
+    final cloudService = context.read<OllamaCloudService>();
+    final configService = context.read<SecureConfigService>();
+    final buddyCapabilities = context.read<BuddyCapabilitiesService>();
+    final buddyName = configService.buddyName;
 
     setState(() => _isThinking = true);
 
@@ -192,7 +200,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(cloudService: context.read<OllamaCloudService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
+      final chatService = ChatService(cloudService: cloudService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
       // Use sendMessage (with tool support) as primary path
       final result = await chatService.sendMessage(
         userMessage: text,
@@ -217,7 +225,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
       // Notify in taskbar if app is in background
       if (_isAppInBackground) {
-        final buddyName = context.read<SecureConfigService>().buddyName;
         await BuddyNotifier.notifyBuddyReply(
           buddyName: buddyName,
           message: result.text,
@@ -227,8 +234,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     } catch (e) {
       debugPrint('sendMessage failed: $e, falling back to streaming');
       try {
-        final chatService = ChatService(cloudService: context.read<OllamaCloudService>(), configService: context.read<SecureConfigService>(), toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: context.read<BuddyCapabilitiesService>());
-        await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution);
+        final chatService = ChatService(cloudService: cloudService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
+        await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution, buddyName);
       } catch (e2) {
         debugPrint('Non-streaming fallback also failed: $e2');
         final errorMsg = e2.toString().contains('Timeout')
@@ -258,6 +265,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     MemoryService memory,
     ChatHistoryService chatHistory,
     PersonaEvolutionService? personaEvolution,
+    String buddyName,
   ) async {
     setState(() {
       _isThinking = true;
@@ -305,7 +313,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
       // Notify in taskbar if app is in background
       if (_isAppInBackground) {
-        final buddyName = context.read<SecureConfigService>().buddyName;
         await BuddyNotifier.notifyBuddyReply(
           buddyName: buddyName,
           message: fullReply,
@@ -420,37 +427,37 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         ),
         child: Column(
           children: [
-            // ─── Custom Header (Telegram style) ───
-            _isMultiSelectMode
-              ? _buildMultiSelectHeader()
-              : _buildHeader(persona, isLiveActive),
-            // ─── Messages ───
-            Expanded(
-              child: ListView.builder(
-                controller: _scrollController,
-                physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
-                itemCount: chatHistory.messages.length,
-                itemBuilder: (context, index) {
-                  final message = chatHistory.messages[index];
-                  final isSelected = _selectedIndices.contains(index);
-                  return GestureDetector(
-                    onTap: _isMultiSelectMode
+          // ─── Custom Header (Telegram style) ───
+          _isMultiSelectMode
+            ? _buildMultiSelectHeader()
+            : _buildHeader(persona, isLiveActive),
+          // ─── Messages ───
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(0, 4, 0, 4),
+              itemCount: chatHistory.messages.length,
+              itemBuilder: (context, index) {
+                final message = chatHistory.messages[index];
+                final isSelected = _selectedIndices.contains(index);
+                return GestureDetector(
+                  onTap: _isMultiSelectMode
+                    ? () => _toggleSelection(index)
+                    : null,
+                  child: MessageBubble(
+                    message: message,
+                    index: index,
+                    scrollOffsetNotifier: _scrollOffsetNotifier,
+                    isSelected: isSelected,
+                    onToggleSelection: _isMultiSelectMode || _selectedIndices.isEmpty
                       ? () => _toggleSelection(index)
                       : null,
-                    child: MessageBubble(
-                      message: message,
-                      index: index,
-                      scrollOffsetNotifier: _scrollOffsetNotifier,
-                      isSelected: isSelected,
-                      onToggleSelection: _isMultiSelectMode || _selectedIndices.isEmpty
-                        ? () => _toggleSelection(index)
-                        : null,
-                    ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
+          ),
 
             // ─── Live Status Bar ───
             if (isLiveActive) _LiveStatusBar(
@@ -510,18 +517,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               ],
             ),
             ),
-
-            // ─── Proactive Card ───
-            if (_proactiveSuggestion != null && !isLiveActive)
-              ProactiveCard(
-                suggestion: _proactiveSuggestion!,
-                onSend: (text) {
-                  setState(() => _proactiveSuggestion = null);
-                  _sendMessage(text);
-                },
-              ),
-
-            // ─── Quick Actions ───
 
           ],
         ),

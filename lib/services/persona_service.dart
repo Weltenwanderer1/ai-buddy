@@ -17,6 +17,13 @@ class PersonaService extends ChangeNotifier {
   String get backstory => _backstory;
   bool get isComplete => _isComplete;
 
+  /// Public setter for the persona name. Used by bootstrap and settings.
+  set name(String v) {
+    if (_name == v) return;
+    _name = v;
+    notifyListeners();
+  }
+
   @visibleForTesting
   set testName(String v) => _name = v;
   @visibleForTesting

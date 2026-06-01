@@ -48,8 +48,8 @@ Future<bool> _runSelfOptimization(Map<String, dynamic>? input) async {
       try {
         final List<dynamic> messages = jsonDecode(historyJson);
         if (messages.length > 200) {
-          final trimmed_msgs = messages.sublist(messages.length - 200);
-          await prefs.setString('chat_messages', jsonEncode(trimmed_msgs));
+          final trimmedMsgs = messages.sublist(messages.length - 200);
+          await prefs.setString('chat_messages', jsonEncode(trimmedMsgs));
           trimmed = messages.length - 200;
         }
       } catch (_) {}

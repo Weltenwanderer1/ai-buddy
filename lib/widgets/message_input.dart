@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../services/live_voice_service.dart';
 import '../services/stt_service.dart';
@@ -139,72 +140,78 @@ class _MessageInputState extends State<MessageInput> {
   Widget _buildNormalInput() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color(0xFF2A2A32),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            // Textfeld
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: TextField(
-                controller: _controller,
-                enabled: !widget.isSending && !widget.isLiveModeActive,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  height: 1.35,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Nachricht',
-                  hintStyle: TextStyle(
-                    color: AppColors.textTertiary.withValues(alpha: 0.6),
-                    fontSize: 15,
-                  ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
-                  isDense: true,
-                  isCollapsed: true,
-                ),
-                textInputAction: TextInputAction.newline,
-                maxLines: 6,
-                minLines: 1,
-                textCapitalization: TextCapitalization.sentences,
-                onSubmitted: (_) => _submit(),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: const Color(0xFF2A2A32).withValues(alpha: 0.45),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.12),
+                width: 1,
               ),
             ),
-          ),
-          const SizedBox(width: 4),
-          // Diktier-Button (Mic → Text ins Feld)
-          _CircleButton(
-            icon: _isDictating ? Icons.hearing_rounded : Icons.mic_rounded,
-            onTap: _isDictating ? null : _startDictation,
-            color: _isDictating ? AppColors.success : AppColors.textTertiary.withValues(alpha: 0.7),
-            size: 36,
-          ),
-          const SizedBox(width: 4),
-          // Ganz rechts: Live-Sprech-Modus ODER Senden
-          _hasText
-              ? _CircleButton(
-                  icon: Icons.arrow_upward_rounded,
-                  onTap: _submit,
-                )
-              : _CircleButton(
-                  icon: Icons.auto_awesome_rounded, // AI-Sterne
-                  onTap: widget.onToggleLiveMode ?? () {},
-                  color: _liveButtonColor(),
-                  size: 40,
-                  glow: true,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Textfeld
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: TextField(
+                      controller: _controller,
+                      enabled: !widget.isSending && !widget.isLiveModeActive,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        height: 1.35,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Nachricht',
+                        hintStyle: TextStyle(
+                          color: AppColors.textTertiary.withValues(alpha: 0.6),
+                          fontSize: 15,
+                        ),
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.fromLTRB(0, 10, 0, 10),
+                        isDense: true,
+                        isCollapsed: true,
+                      ),
+                      textInputAction: TextInputAction.newline,
+                      maxLines: 6,
+                      minLines: 1,
+                      textCapitalization: TextCapitalization.sentences,
+                      onSubmitted: (_) => _submit(),
+                    ),
+                  ),
                 ),
-        ],
+                const SizedBox(width: 4),
+                // Diktier-Button (Mic → Text ins Feld)
+                _CircleButton(
+                  icon: _isDictating ? Icons.hearing_rounded : Icons.mic_rounded,
+                  onTap: _isDictating ? null : _startDictation,
+                  color: _isDictating ? AppColors.success : AppColors.textTertiary.withValues(alpha: 0.7),
+                  size: 36,
+                ),
+                const SizedBox(width: 4),
+                // Ganz rechts: Live-Sprech-Modus ODER Senden
+                _hasText
+                    ? _CircleButton(
+                        icon: Icons.arrow_upward_rounded,
+                        onTap: _submit,
+                      )
+                    : _CircleButton(
+                        icon: Icons.auto_awesome_rounded, // AI-Sterne
+                        onTap: widget.onToggleLiveMode ?? () {},
+                        color: _liveButtonColor(),
+                        size: 40,
+                        glow: true,
+                      ),
+              ],
+            ),
+          ),
         ),
       ),
     );

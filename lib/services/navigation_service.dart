@@ -213,7 +213,7 @@ class NavigationService {
         result = (result ?? 0) | ((b & 0x1F) << shift);
         shift += 5;
       } while (b >= 0x20);
-      lat += ((result! & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lat += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
 
       result = null;
       shift = 0;
@@ -224,7 +224,7 @@ class NavigationService {
         result = (result ?? 0) | ((b & 0x1F) << shift);
         shift += 5;
       } while (b >= 0x20);
-      lng += ((result! & 1) != 0 ? ~(result >> 1) : (result >> 1));
+      lng += ((result & 1) != 0 ? ~(result >> 1) : (result >> 1));
 
       points.add(LatLng(lat / 1e6, lng / 1e6));
     }

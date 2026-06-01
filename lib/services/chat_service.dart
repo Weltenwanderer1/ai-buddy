@@ -71,7 +71,7 @@ class ChatService {
   }) {
     final controller = StreamController<String>();
 
-    Future<void> _run() async {
+    Future<void> run() async {
       try {
         final evolutionContext = personaEvolution?.buildEvolutionContext();
         var systemPrompt = await _buildSystemPrompt(
@@ -141,7 +141,7 @@ class ChatService {
       }
     }
 
-    _run();
+    run();
     return controller.stream;
   }
 
@@ -226,7 +226,8 @@ class ChatService {
     } catch (e) {
       debugPrint('Provider failed: $e');
       final errStr = e.toString();
-      return ChatResult('KI-Problem: ${errStr.length > 100 ? errStr.substring(0, 100) + '...' : errStr}');
+      final truncated = errStr.length > 100 ? '${errStr.substring(0, 100)}...' : errStr;
+      return ChatResult('KI-Problem: $truncated');
     }
   }
 

@@ -20,8 +20,6 @@ class PersonaEvolutionService extends ChangeNotifier {
   List<String> _avoidTopics = [];
   List<String> _preferredStyle = [];
 
-  static const int _maxEvolutionCalls = 3; // don't evolve every single message
-
   File? _file;
 
   PersonaEvolutionService();

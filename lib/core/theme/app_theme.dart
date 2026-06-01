@@ -33,7 +33,7 @@ class AppTheme {
         systemOverlayStyle: const SystemUiOverlayStyle(
           statusBarColor: Colors.transparent,
           statusBarIconBrightness: Brightness.light,
-          systemNavigationBarColor: AppColors.bgDarkest,
+          systemNavigationBarColor: Colors.transparent,
           systemNavigationBarIconBrightness: Brightness.light,
           systemNavigationBarDividerColor: Colors.transparent,
         ),

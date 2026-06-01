@@ -105,7 +105,7 @@ class OllamaCloudService extends ChangeNotifier {
   /// The native Ollama chat endpoint URL (for simple non-tool requests).
   /// e.g. https://ollama.com/api → https://ollama.com/api/chat
   String get _nativeChatPath {
-    return '${_normalizedBase}/chat';
+    return '$_normalizedBase/chat';
   }
 
   /// Build the correct OpenAI-compatible chat completions URL.
