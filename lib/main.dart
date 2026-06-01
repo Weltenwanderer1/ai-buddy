@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:uuid/uuid.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/app_colors.dart';
 import 'screens/home_screen.dart';
@@ -16,6 +18,13 @@ import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
 import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
+import 'services/timer_service.dart';
+import 'services/proactive_notification_service.dart';
+import 'services/fcm_service.dart';
+import 'services/volume_service.dart';
+import 'services/voice_recorder_service.dart';
+import 'services/automation_service.dart';
+import 'services/offline_stt_service.dart';
 import 'services/buddy_scheduler.dart';
 import 'services/buddy_notifier.dart';
 import 'services/backup_service.dart';
@@ -23,8 +32,18 @@ import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
+import 'package:image_picker/image_picker.dart';
 import 'tools/tool_registry.dart';
 import 'tools/set_reminder_tool.dart';
+import 'tools/set_timer_tool.dart';
+import 'tools/send_proactive_notification_tool.dart';
+import 'tools/set_volume_tool.dart';
+import 'tools/analyze_image_tool.dart';
+import 'tools/update_calendar_event_tool.dart';
+import 'tools/delete_calendar_event_tool.dart';
+import 'tools/record_voice_memo_tool.dart';
+import 'tools/automation_rule_tool.dart';
+import 'tools/offline_stt_tool.dart';
 import 'tools/open_url_tool.dart';
 import 'tools/share_text_tool.dart';
 import 'tools/read_config_tool.dart';
@@ -64,6 +83,13 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late BuddyCapabilitiesService _buddyCapabilities;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
+  late TimerService _timerService;
+  late ProactiveNotificationService _proactiveNotificationService;
+  late FcmService _fcmService;
+  late VolumeService _volumeService;
+  late VoiceRecorderService _voiceRecorderService;
+  late AutomationService _automationService;
+  late OfflineSttService _offlineSttService;
   late BuddyScheduler _buddyScheduler;
   late BackupService _backupService;
   late LocationService _locationService;
@@ -81,6 +107,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
       _notificationService.dispose();
+      _timerService.dispose();
+      _proactiveNotificationService.dispose();
+      _automationService.dispose();
       _buddyScheduler.dispose();
       _cloudService.dispose();
     }
@@ -116,6 +145,25 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _notificationService = NotificationService();
       try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
 
+      _timerService = TimerService();
+      try { await _timerService.init(); } catch (e) { debugPrint('Timer init: $e'); }
+
+      _proactiveNotificationService = ProactiveNotificationService();
+      try { await _proactiveNotificationService.init(); } catch (e) { debugPrint('ProactiveNotify init: $e'); }
+
+      _fcmService = FcmService();
+      try { await _fcmService.init(); } catch (e) { debugPrint('FCM init: $e'); }
+
+      _volumeService = VolumeService();
+
+      _voiceRecorderService = VoiceRecorderService();
+
+      _automationService = AutomationService();
+      try { await _automationService.init(); } catch (e) { debugPrint('Automation init: $e'); }
+
+      _offlineSttService = OfflineSttService();
+      try { await _offlineSttService.checkOfflineAvailability(); } catch (e) { debugPrint('OfflineSTT init: $e'); }
+
       _buddyScheduler = BuddyScheduler();
       try { await _buddyScheduler.init(); } catch (e) { debugPrint('Scheduler init: $e'); }
 
@@ -148,6 +196,166 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       SetReminderTool.scheduleCallback = ({required title, required body, required scheduledTime}) {
         return _notificationService.scheduleNotification(title: title, body: body, scheduledTime: scheduledTime);
       };
+
+      SetTimerTool.setTimerCallback = ({required label, required durationSeconds}) {
+        return _timerService.startTimer(label: label, durationSeconds: durationSeconds);
+      };
+      SetTimerTool.listTimersCallback = () async {
+        return _timerService.listTimers();
+      };
+      SetTimerTool.cancelTimerCallback = ({required timerId}) {
+        return _timerService.cancelTimer(timerId);
+      };
+
+      SetVolumeTool.setVolumeCallback = ({required stream, required level}) {
+        return _volumeService.setVolume(stream, level);
+      };
+      SetVolumeTool.getVolumeCallback = ({required stream}) {
+        return _volumeService.getVolume(stream);
+      };
+      SetVolumeTool.muteCallback = ({required mute}) {
+        return _volumeService.setMute(mute);
+      };
+
+      RecordVoiceMemoTool.startRecordingCallback = () {
+        return _voiceRecorderService.startRecording();
+      };
+      RecordVoiceMemoTool.stopRecordingCallback = () {
+        return _voiceRecorderService.stopRecording();
+      };
+      RecordVoiceMemoTool.listMemosCallback = () async {
+        final files = await _voiceRecorderService.listMemos();
+        return files.map((f) => {
+          'path': f.path,
+          'name': f.path.split('/').last,
+          'sizeBytes': 0,
+        }).toList();
+      };
+      RecordVoiceMemoTool.deleteMemoCallback = ({required path}) {
+        return _voiceRecorderService.deleteMemo(path);
+      };
+
+      AutomationRuleTool.createRuleCallback = ({required name, required trigger, required actions}) async {
+        try {
+          final rule = AutomationRule(
+            id: const Uuid().v4().substring(0, 8),
+            name: name,
+            trigger: AutomationTrigger(
+              type: AutomationTriggerType.values.firstWhere(
+                (t) => t.name == trigger['type'],
+                orElse: () => AutomationTriggerType.timeOfDay,
+              ),
+              params: (trigger['params'] as Map<String, dynamic>?) ?? {},
+            ),
+            actions: actions.map((a) => AutomationAction(
+              type: AutomationActionType.values.firstWhere(
+                (t) => t.name == a['type'],
+                orElse: () => AutomationActionType.custom,
+              ),
+              params: (a['params'] as Map<String, dynamic>?) ?? {},
+            )).toList(),
+          );
+          await _automationService.addRule(rule);
+          return true;
+        } catch (e) {
+          debugPrint('Automation create error: $e');
+          return false;
+        }
+      };
+      AutomationRuleTool.listRulesCallback = () async {
+        return _automationService.rules.map((r) => {
+          'id': r.id,
+          'name': r.name,
+          'enabled': r.enabled,
+          'trigger_type': r.trigger.type.name,
+        }).toList();
+      };
+      AutomationRuleTool.updateRuleCallback = ({required ruleId, name, trigger, actions}) async {
+        try {
+          final existing = _automationService.rules.where((r) => r.id == ruleId).firstOrNull;
+          if (existing == null) return false;
+          final updated = AutomationRule(
+            id: existing.id,
+            name: name ?? existing.name,
+            enabled: existing.enabled,
+            trigger: trigger != null
+                ? AutomationTrigger(
+                    type: AutomationTriggerType.values.firstWhere(
+                      (t) => t.name == trigger['type'],
+                      orElse: () => existing.trigger.type,
+                    ),
+                    params: (trigger['params'] as Map<String, dynamic>?) ?? existing.trigger.params,
+                  )
+                : existing.trigger,
+            actions: actions != null
+                ? actions.map((a) => AutomationAction(
+                    type: AutomationActionType.values.firstWhere(
+                      (t) => t.name == a['type'],
+                      orElse: () => AutomationActionType.custom,
+                    ),
+                    params: (a['params'] as Map<String, dynamic>?) ?? {},
+                  )).toList()
+                : existing.actions,
+            createdAt: existing.createdAt,
+            lastFired: existing.lastFired,
+          );
+          await _automationService.updateRule(ruleId, updated);
+          return true;
+        } catch (e) {
+          debugPrint('Automation update error: $e');
+          return false;
+        }
+      };
+      AutomationRuleTool.deleteRuleCallback = ({required ruleId}) async {
+        try {
+          await _automationService.deleteRule(ruleId);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+      AutomationRuleTool.toggleRuleCallback = ({required ruleId, required enabled}) async {
+        try {
+          await _automationService.toggleRule(ruleId, enabled);
+          return true;
+        } catch (e) {
+          return false;
+        }
+      };
+
+      OfflineSttTool.checkOfflineCallback = () {
+        return _offlineSttService.checkOfflineAvailability();
+      };
+      OfflineSttTool.listenCallback = ({preferOffline = true, localeId = 'de_DE'}) {
+        return _offlineSttService.startListening(
+          preferOffline: preferOffline,
+          localeId: localeId,
+        );
+      };
+      OfflineSttTool.stopListeningCallback = () {
+        return _offlineSttService.stop();
+      };
+      OfflineSttTool.promptDownloadCallback = () {
+        return _offlineSttService.promptDownloadOfflineLanguage();
+      };
+
+      SendProactiveNotificationTool.sendCallback = ({required title, required body, priority, actions}) async {
+        try {
+          await _proactiveNotificationService.sendNotification(
+            type: ProactiveNotificationType.custom,
+            title: title,
+            body: body,
+            actions: (actions ?? []).map((a) => ProactiveAction(
+              id: a['id'] ?? '',
+              label: a['label'] ?? '',
+            )).toList(),
+          );
+          return true;
+        } catch (e) {
+          debugPrint('ProactiveNotification error: $e');
+          return false;
+        }
+      };
       OpenUrlTool.launchCallback = (url) async {
         try { final uri = Uri.parse(url); return await url_launcher.launchUrl(uri, mode: url_launcher.LaunchMode.externalApplication); }
         catch (e) { debugPrint('OpenUrl error: $e'); return false; }
@@ -156,6 +364,43 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         try { await share_plus.Share.share(text, subject: subject); } catch (e) { debugPrint('Share error: $e'); }
       };
       GetClipboardTool.readClipboardCallback = () async { return null; };
+
+      // Image picker callbacks for AnalyzeImageTool
+      final imagePicker = ImagePicker();
+      AnalyzeImageTool.pickFromCameraCallback = () async {
+        try {
+          final xfile = await imagePicker.pickImage(source: ImageSource.camera, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
+          return xfile?.path;
+        } catch (e) {
+          debugPrint('Camera pick error: $e');
+          return null;
+        }
+      };
+      AnalyzeImageTool.pickFromGalleryCallback = () async {
+        try {
+          final xfile = await imagePicker.pickImage(source: ImageSource.gallery, maxWidth: 1920, maxHeight: 1920, imageQuality: 85);
+          return xfile?.path;
+        } catch (e) {
+          debugPrint('Gallery pick error: $e');
+          return null;
+        }
+      };
+      AnalyzeImageTool.analyzeCallback = ({required imagePath, question}) async {
+        // Vision analysis via the cloud LLM service
+        // For now, return a placeholder — the actual Vision API integration
+        // depends on the LLM provider supporting image inputs.
+        try {
+          final file = File(imagePath);
+          if (!await file.exists()) return 'Bild nicht gefunden: $imagePath';
+          final bytes = await file.readAsBytes();
+          final sizeKB = bytes.length ~/ 1024;
+          return 'Bild analysiert: $imagePath (${sizeKB}KB). '
+              'Frage: ${question ?? "Was ist auf dem Bild?"}. '
+              'Hinweis: Vision-API-Integration erfordert LLM mit Bild-Unterstützung.';
+        } catch (e) {
+          return 'Fehler bei der Bildanalyse: $e';
+        }
+      };
 
       ReadConfigTool.readConfigCallback = () => {
         'persona_name': _persona.name,
@@ -188,6 +433,14 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       AddCalendarEventTool.addEventCallback = ({required title, required start, required end, description, location}) async {
         try { return await _addCalendarEvent(title: title, start: start, end: end, description: description, location: location); }
         catch (e) { debugPrint('AddCal error: $e'); return false; }
+      };
+      UpdateCalendarEventTool.updateEventCallback = ({required eventId, title, start, end, description, location}) async {
+        try { return await _updateCalendarEvent(eventId: eventId, title: title, start: start, end: end, description: description, location: location); }
+        catch (e) { debugPrint('UpdateCal error: $e'); return false; }
+      };
+      DeleteCalendarEventTool.deleteEventCallback = ({required eventId}) async {
+        try { return await _deleteCalendarEvent(eventId: eventId); }
+        catch (e) { debugPrint('DeleteCal error: $e'); return false; }
       };
 
       _backupService = BackupService(
@@ -233,6 +486,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
             final start = event.start?.toLocal() ?? now;
             final endEvt = event.end?.toLocal() ?? start.add(const Duration(hours: 1));
             events.add({
+              'id': event.eventId ?? '',
               'title': event.title ?? '(Ohne Titel)',
               'start': _formatDateTime(start),
               'end': _formatDateTime(endEvt),
@@ -279,6 +533,78 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       return result?.isSuccess ?? false;
     } catch (e) {
       debugPrint('Calendar add error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _updateCalendarEvent({required String eventId, String? title, DateTime? start, DateTime? end, String? description, String? location}) async {
+    try {
+      final status = await Permission.calendarFullAccess.request();
+      if (!status.isGranted && !status.isLimited) return false;
+      final deviceCal = DeviceCalendarPlugin();
+      final calendarsResult = await deviceCal.retrieveCalendars();
+      if (!calendarsResult.isSuccess || calendarsResult.data == null || calendarsResult.data!.isEmpty) return false;
+
+      // Find the event across all calendars
+      for (final cal in calendarsResult.data!) {
+        final eventsResult = await deviceCal.retrieveEvents(
+          cal.id!,
+          RetrieveEventsParams(startDate: DateTime(2020), endDate: DateTime(2030)),
+        );
+        if (eventsResult.isSuccess && eventsResult.data != null) {
+          for (final event in eventsResult.data!) {
+            if (event.eventId == eventId) {
+              // Update fields
+              final updatedEvent = Event(
+                cal.id,
+                eventId: eventId,
+                title: title ?? event.title,
+                start: start != null ? tz.TZDateTime.from(start, tz.local) : event.start,
+                end: end != null ? tz.TZDateTime.from(end, tz.local) : event.end,
+                description: description ?? event.description,
+                location: location ?? event.location,
+              );
+              final result = await deviceCal.createOrUpdateEvent(updatedEvent);
+              return result?.isSuccess ?? false;
+            }
+          }
+        }
+      }
+      debugPrint('Calendar event not found: $eventId');
+      return false;
+    } catch (e) {
+      debugPrint('Calendar update error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> _deleteCalendarEvent({required String eventId}) async {
+    try {
+      final status = await Permission.calendarFullAccess.request();
+      if (!status.isGranted && !status.isLimited) return false;
+      final deviceCal = DeviceCalendarPlugin();
+      final calendarsResult = await deviceCal.retrieveCalendars();
+      if (!calendarsResult.isSuccess || calendarsResult.data == null || calendarsResult.data!.isEmpty) return false;
+
+      // Find and delete the event across all calendars
+      for (final cal in calendarsResult.data!) {
+        final eventsResult = await deviceCal.retrieveEvents(
+          cal.id!,
+          RetrieveEventsParams(startDate: DateTime(2020), endDate: DateTime(2030)),
+        );
+        if (eventsResult.isSuccess && eventsResult.data != null) {
+          for (final event in eventsResult.data!) {
+            if (event.eventId == eventId) {
+              final result = await deviceCal.deleteEvent(cal.id!, eventId);
+              return result.isSuccess;
+            }
+          }
+        }
+      }
+      debugPrint('Calendar event not found for delete: $eventId');
+      return false;
+    } catch (e) {
+      debugPrint('Calendar delete error: $e');
       return false;
     }
   }

@@ -4,8 +4,13 @@ import android.content.Intent
 import android.content.pm.ResolveInfo
 import android.Manifest
 import android.content.pm.PackageManager
+import android.media.AudioManager
+import android.media.MediaRecorder
+import android.os.Bundle
 import android.provider.ContactsContract
 import android.util.Log
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.runBlocking
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +19,15 @@ import java.util.Locale
 class MainActivity : FlutterActivity() {
     private val appLauncherChannel = "ai_buddy/app_launcher"
     private val contactsChannel = "com.ai-buddy.app/contacts"
+    private val volumeChannel = "com.aibuddy.app/volume"
+    private val wifiChannel = "com.aibuddy.app/wifi"
+    private val bluetoothChannel = "com.aibuddy.app/bluetooth"
+    private val voiceRecorderChannel = "com.aibuddy.app/voice_recorder"
+    private val offlineSttChannel = "com.aibuddy.app/offline_stt"
+    private var mediaRecorder: MediaRecorder? = null
+    private var speechRecognizer: android.speech.SpeechRecognizer? = null
+    private var sttResult: String? = null
+    private var sttCompleter: CompletableDeferred<String?>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -42,6 +56,93 @@ class MainActivity : FlutterActivity() {
                     } else {
                         result.error("PERMISSION_DENIED", "Contacts permission not granted", null)
                     }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Volume control channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, volumeChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "setVolume" -> {
+                    val stream = call.argument<String>("stream") ?: "music"
+                    val level = call.argument<Double>("level") ?: 0.5
+                    result.success(setVolume(stream, level))
+                }
+                "getVolume" -> {
+                    val stream = call.argument<String>("stream") ?: "music"
+                    result.success(getVolume(stream))
+                }
+                "setMute" -> {
+                    val mute = call.argument<Boolean>("mute") ?: false
+                    result.success(setMute(mute))
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // WiFi control channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, wifiChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getWifiState" -> {
+                    result.success(getWifiState())
+                }
+                "setWifiEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    result.success(setWifiEnabled(enabled))
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Bluetooth control channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, bluetoothChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "getBluetoothState" -> {
+                    result.success(getBluetoothState())
+                }
+                "setBluetoothEnabled" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    result.success(setBluetoothEnabled(enabled))
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Voice recorder channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, voiceRecorderChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "startRecording" -> {
+                    val outputPath = call.argument<String>("outputPath") ?: ""
+                    result.success(startRecording(outputPath))
+                }
+                "stopRecording" -> {
+                    result.success(stopRecording())
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Offline STT channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, offlineSttChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "isOfflineAvailable" -> {
+                    result.success(isOfflineSttAvailable())
+                }
+                "startListening" -> {
+                    val preferOffline = call.argument<Boolean>("preferOffline") ?: true
+                    val locale = call.argument<String>("locale") ?: "de_DE"
+                    startOfflineListening(preferOffline, locale) { text ->
+                        result.success(text)
+                    }
+                }
+                "stopListening" -> {
+                    stopOfflineListening()
+                    result.success(true)
+                }
+                "downloadOfflineLanguage" -> {
+                    openOfflineSpeechSettings()
+                    result.success(true)
                 }
                 else -> result.notImplemented()
             }
@@ -195,5 +296,253 @@ class MainActivity : FlutterActivity() {
             .replace(Regex("[^a-z0-9.]+"), " ")
             .replace(Regex("\\s+"), " ")
             .trim()
+    }
+
+    // ── Offline Speech-to-Text ──
+
+    private fun isOfflineSttAvailable(): Boolean {
+        return try {
+            val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
+            val activities = packageManager.queryIntentActivities(intent, 0)
+            activities.isNotEmpty()
+        } catch (e: Exception) {
+            Log.e("OfflineSTT", "check error: $e")
+            false
+        }
+    }
+
+    private fun startOfflineListening(preferOffline: Boolean, locale: String, callback: (String?) -> Unit) {
+        try {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("OfflineSTT", "RECORD_AUDIO permission not granted")
+                callback(null)
+                return
+            }
+
+            runOnUiThread {
+                speechRecognizer?.destroy()
+                speechRecognizer = android.speech.SpeechRecognizer.createSpeechRecognizer(this)
+
+                val intent = android.content.Intent(android.speech.RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_MODEL, android.speech.RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE, locale)
+                    putExtra(android.speech.RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, locale)
+                    putExtra(android.speech.RecognizerIntent.EXTRA_MAX_RESULTS, 1)
+                    if (preferOffline) {
+                        putExtra(android.speech.RecognizerIntent.EXTRA_PREFER_OFFLINE, true)
+                    }
+                }
+
+                speechRecognizer?.setRecognitionListener(object : android.speech.RecognitionListener {
+                    override fun onReadyForSpeech(params: Bundle?) {}
+                    override fun onBeginningOfSpeech() {}
+                    override fun onRmsChanged(rmsdB: Float) {}
+                    override fun onBufferReceived(buffer: ByteArray?) {}
+                    override fun onEndOfSpeech() {}
+                    override fun onError(error: Int) {
+                        Log.e("OfflineSTT", "Recognition error: $error")
+                        if (error == android.speech.SpeechRecognizer.ERROR_NO_MATCH && preferOffline) {
+                            // Fallback to online
+                            startOfflineListening(false, locale, callback)
+                        } else {
+                            callback(null)
+                        }
+                    }
+                    override fun onResults(results: Bundle?) {
+                        val matches = results?.getStringArrayList(android.speech.SpeechRecognizer.RESULTS_RECOGNITION)
+                        val text = matches?.firstOrNull()
+                        Log.d("OfflineSTT", "Result: $text")
+                        callback(text)
+                    }
+                    override fun onPartialResults(partialResults: Bundle?) {}
+                    override fun onEvent(eventType: Int, params: Bundle?) {}
+                })
+
+                speechRecognizer?.startListening(intent)
+            }
+        } catch (e: Exception) {
+            Log.e("OfflineSTT", "startListening error: $e")
+            callback(null)
+        }
+    }
+
+    private fun stopOfflineListening() {
+        try {
+            speechRecognizer?.stopListening()
+        } catch (e: Exception) {
+            Log.e("OfflineSTT", "stop error: $e")
+        }
+    }
+
+    private fun openOfflineSpeechSettings() {
+        try {
+            val intent = android.content.Intent("com.google.android.settings.speech.EXTRA_DOWNLOAD_ENTRIES").apply {
+                data = android.net.Uri.parse("package:com.google.android.googlequicksearchbox")
+            }
+            startActivity(intent)
+        } catch (e: Exception) {
+            Log.e("OfflineSTT", "openSettings error: $e")
+            // Fallback to general speech settings
+            try {
+                val intent = android.content.Intent(android.provider.Settings.ACTION_VOICE_INPUT_SETTINGS)
+                startActivity(intent)
+            } catch (e2: Exception) {
+                Log.e("OfflineSTT", "fallback settings error: $e2")
+            }
+        }
+    }
+
+    // ── Voice Recorder ──
+
+    @Suppress("DEPRECATION")
+    private fun startRecording(outputPath: String): Boolean {
+        return try {
+            if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                Log.e("VoiceRecorder", "RECORD_AUDIO permission not granted")
+                return false
+            }
+            mediaRecorder = MediaRecorder().apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setAudioSamplingRate(44100)
+                setAudioEncodingBitRate(128000)
+                setOutputFile(outputPath)
+                prepare()
+                start()
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("VoiceRecorder", "startRecording error: $e")
+            mediaRecorder?.release()
+            mediaRecorder = null
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun stopRecording(): Boolean {
+        return try {
+            mediaRecorder?.apply {
+                stop()
+                release()
+            }
+            mediaRecorder = null
+            true
+        } catch (e: Exception) {
+            Log.e("VoiceRecorder", "stopRecording error: $e")
+            mediaRecorder?.release()
+            mediaRecorder = null
+            false
+        }
+    }
+
+    // ── Volume Control ──
+
+    private fun getStreamType(stream: String): Int = when (stream) {
+        "music" -> AudioManager.STREAM_MUSIC
+        "alarm" -> AudioManager.STREAM_ALARM
+        "notification" -> AudioManager.STREAM_NOTIFICATION
+        "system" -> AudioManager.STREAM_SYSTEM
+        "ring" -> AudioManager.STREAM_RING
+        "voice_call" -> AudioManager.STREAM_VOICE_CALL
+        else -> AudioManager.STREAM_MUSIC
+    }
+
+    private fun setVolume(stream: String, level: Double): Boolean {
+        return try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            val streamType = getStreamType(stream)
+            val maxVolume = audioManager.getStreamMaxVolume(streamType)
+            val targetVolume = (level * maxVolume).toInt().coerceIn(0, maxVolume)
+            audioManager.setStreamVolume(streamType, targetVolume, 0)
+            true
+        } catch (e: Exception) {
+            Log.e("VolumeControl", "setVolume error: $e")
+            false
+        }
+    }
+
+    private fun getVolume(stream: String): Double {
+        return try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            val streamType = getStreamType(stream)
+            val current = audioManager.getStreamVolume(streamType)
+            val max = audioManager.getStreamMaxVolume(streamType)
+            if (max > 0) current.toDouble() / max.toDouble() else 0.0
+        } catch (e: Exception) {
+            Log.e("VolumeControl", "getVolume error: $e")
+            0.0
+        }
+    }
+
+    private fun setMute(mute: Boolean): Boolean {
+        return try {
+            val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+            @Suppress("DEPRECATION")
+            audioManager.isStreamMute(AudioManager.STREAM_MUSIC)
+            // On newer APIs, use adjustVolume
+            if (mute) {
+                @Suppress("DEPRECATION")
+                audioManager.setStreamMute(AudioManager.STREAM_MUSIC, true)
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager.setStreamMute(AudioManager.STREAM_MUSIC, false)
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("VolumeControl", "setMute error: $e")
+            false
+        }
+    }
+
+    // ── WiFi Control ──
+
+    @Suppress("DEPRECATION")
+    private fun getWifiState(): Boolean {
+        return try {
+            val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
+            wifiManager.isWifiEnabled
+        } catch (e: Exception) {
+            Log.e("WifiControl", "getWifiState error: $e")
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun setWifiEnabled(enabled: Boolean): Boolean {
+        return try {
+            val wifiManager = applicationContext.getSystemService(WIFI_SERVICE) as android.net.wifi.WifiManager
+            wifiManager.isWifiEnabled = enabled
+            true
+        } catch (e: Exception) {
+            Log.e("WifiControl", "setWifiEnabled error: $e")
+            false
+        }
+    }
+
+    // ── Bluetooth Control ──
+
+    private fun getBluetoothState(): Boolean {
+        return try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            bluetoothAdapter?.isEnabled ?: false
+        } catch (e: Exception) {
+            Log.e("BluetoothControl", "getBluetoothState error: $e")
+            false
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun setBluetoothEnabled(enabled: Boolean): Boolean {
+        return try {
+            val bluetoothAdapter = android.bluetooth.BluetoothAdapter.getDefaultAdapter()
+            if (bluetoothAdapter == null) return false
+            if (enabled) bluetoothAdapter.enable() else bluetoothAdapter.disable()
+            true
+        } catch (e: Exception) {
+            Log.e("BluetoothControl", "setBluetoothEnabled error: $e")
+            false
+        }
     }
 }

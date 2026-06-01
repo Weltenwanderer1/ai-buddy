@@ -38,6 +38,19 @@ import 'get_location_tool.dart';
 import '../services/location_service.dart';
 import 'send_email_tool.dart';
 import 'manage_shopping_list_tool.dart';
+import 'set_timer_tool.dart';
+import 'send_proactive_notification_tool.dart';
+import 'delete_file_tool.dart';
+import 'rename_file_tool.dart';
+import 'analyze_image_tool.dart';
+import 'set_volume_tool.dart';
+import 'toggle_wifi_tool.dart';
+import 'toggle_bluetooth_tool.dart';
+import 'update_calendar_event_tool.dart';
+import 'delete_calendar_event_tool.dart';
+import 'record_voice_memo_tool.dart';
+import 'automation_rule_tool.dart';
+import 'offline_stt_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -132,6 +145,19 @@ class ToolRegistry {
     r.register(SendMessageToContactTool());
     r.register(SendEmailTool());
     r.register(ManageShoppingListTool());
+    r.register(SetTimerTool());
+    r.register(SendProactiveNotificationTool());
+    r.register(DeleteFileTool(getRootPath: rootPathProvider));
+    r.register(RenameFileTool(getRootPath: rootPathProvider));
+    r.register(AnalyzeImageTool(getRootPath: rootPathProvider));
+    r.register(SetVolumeTool());
+    r.register(ToggleWifiTool());
+    r.register(ToggleBluetoothTool());
+    r.register(UpdateCalendarEventTool());
+    r.register(DeleteCalendarEventTool());
+    r.register(RecordVoiceMemoTool());
+    r.register(AutomationRuleTool());
+    r.register(OfflineSttTool());
     return r;
   }
 }
