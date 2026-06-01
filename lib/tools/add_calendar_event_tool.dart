@@ -7,7 +7,8 @@ import 'get_calendar_events_tool.dart';
 class AddCalendarEventTool implements ToolInterface {
   static const _definition = ToolDefinition(
     name: 'add_calendar_event',
-    description: 'Termin zum Kalender hinzufuegen.',
+    description:
+        'Termin zum Kalender hinzufuegen. Unterstuetzt Einzel- UND Serientermine.',
     parametersSchema: {
       'type': 'object',
       'properties': {
@@ -18,12 +19,29 @@ class AddCalendarEventTool implements ToolInterface {
         'start': {
           'type': 'string',
           'description':
-              'Startzeit im ISO-8601 Format (z.B. "2026-04-29T15:00:00") oder "in X Minuten"',
+              'Startzeit im ISO-8601 Format oder "in X Minuten"',
         },
         'end': {
           'type': 'string',
           'description':
-              'Endzeit im ISO-8601 Format oder Dauer in Minuten (z.B. "60")',
+              'Endzeit im ISO-8601 Format oder Dauer in Minuten',
+        },
+        'recurrence': {
+          'type': 'string',
+          'description': 'Serie: "daily", "weekly", "biweekly", "weekday", "monthly", "yearly", oder "every_2nd_monday". Nur angeben wenn es wiederholt.',
+        },
+        'recurrence_count': {
+          'type': 'integer',
+          'description': 'Optional: Anzahl Wiederholungen z.B. 10. Anstatt von Enddatum.',
+        },
+        'recurrence_end': {
+          'type': 'string',
+          'description': 'Optional: Letztes Datum im ISO-8601 Format. Anstatt von count.',
+        },
+        'excluded_dates': {
+          'type': 'array',
+          'description': 'Optional: Feiertage/Ferien als ISO-Datum Strings, die uebersprungen werden.',
+          'items': {'type': 'string'},
         },
         'description': {
           'type': 'string',
@@ -52,6 +70,10 @@ class AddCalendarEventTool implements ToolInterface {
     required DateTime end,
     String? description,
     String? location,
+    String? recurrence,
+    int? recurrenceCount,
+    DateTime? recurrenceEnd,
+    List<DateTime>? excludedDates,
   })? addEventCallback;
 
   @override
@@ -62,6 +84,19 @@ class AddCalendarEventTool implements ToolInterface {
     final description = parameters['description'] as String?;
     final location = parameters['location'] as String?;
     final ignoreConflict = parameters['ignore_conflict'] as bool? ?? false;
+
+    // Recurrence params
+    final recurrence = parameters['recurrence'] as String?;
+    final recurrenceEndParam = parameters['recurrence_end'];
+    final recurrenceCount = (parameters['recurrence_count'] as int?) ?? 
+        ((recurrence != null && recurrenceEndParam == null) ? 52 : null);
+    final recurrenceEndStr = parameters['recurrence_end'] as String?;
+    final recurrenceEnd = recurrenceEndStr != null ? DateTime.tryParse(recurrenceEndStr) : null;
+    final excludedRaw = parameters['excluded_dates'] as List<dynamic>?;
+    final excludedDates = excludedRaw
+        ?.map((e) => DateTime.tryParse(e.toString()))
+        .whereType<DateTime>()
+        .toList();
 
     if (title.isEmpty || startStr.isEmpty || endStr.isEmpty) {
       return ToolResult(
@@ -170,9 +205,23 @@ class AddCalendarEventTool implements ToolInterface {
         end: endTime,
         description: description,
         location: location,
+        recurrence: recurrence,
+        recurrenceCount: recurrenceCount,
+        recurrenceEnd: recurrenceEnd,
+        excludedDates: excludedDates,
       );
 
       if (success) {
+        String extra = '';
+        if (recurrence != null) {
+          extra = ' (Serie: $recurrence';
+          if (recurrenceCount != null) extra += ', ${recurrenceCount}x';
+          if (recurrenceEnd != null) extra += ', bis ${_fmt(recurrenceEnd)}';
+          if (excludedDates != null && excludedDates.isNotEmpty) {
+            extra += ', ausgenommen ${excludedDates.length} Tage';
+          }
+          extra += ')';
+        }
         final startFormatted =
             '${startTime.hour.toString().padLeft(2, '0')}:${startTime.minute.toString().padLeft(2, '0')}';
         final endFormatted =
@@ -181,7 +230,7 @@ class AddCalendarEventTool implements ToolInterface {
           toolName: definition.name,
           parameters: parameters,
           result:
-              'Termin "$title" hinzugefügt: $startFormatted - $endFormatted',
+              'Termin "$title" hinzugefügt: $startFormatted - $endFormatted$extra',
           displayText: '📅 Termin: $title',
         );
       } else {

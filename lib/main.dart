@@ -437,8 +437,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       GetCalendarEventsTool.getEventsCallback = ({daysAhead = 7}) async {
         try { return await _getCalendarEvents(daysAhead); } catch (e) { debugPrint('Cal error: $e'); return []; }
       };
-      AddCalendarEventTool.addEventCallback = ({required title, required start, required end, description, location}) async {
-        try { return await _addCalendarEvent(title: title, start: start, end: end, description: description, location: location); }
+      AddCalendarEventTool.addEventCallback = ({required String title, required DateTime start, required DateTime end, String? description, String? location, String? recurrence, int? recurrenceCount, DateTime? recurrenceEnd, List<DateTime>? excludedDates}) async {
+        try { return await _addCalendarEvent(title: title, start: start, end: end, description: description, location: location, recurrence: recurrence, recurrenceCount: recurrenceCount, recurrenceEnd: recurrenceEnd, excludedDates: excludedDates); }
         catch (e) { debugPrint('AddCal error: $e'); return false; }
       };
       UpdateCalendarEventTool.updateEventCallback = ({required eventId, title, start, end, description, location}) async {
@@ -511,7 +511,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
     }
   }
 
-  Future<bool> _addCalendarEvent({required String title, required DateTime start, required DateTime end, String? description, String? location}) async {
+  Future<bool> _addCalendarEvent({required String title, required DateTime start, required DateTime end, String? description, String? location, String? recurrence, int? recurrenceCount, DateTime? recurrenceEnd, List<DateTime>? excludedDates}) async {
     try {
       final status = await Permission.calendarFullAccess.request();
       if (!status.isGranted && !status.isLimited) {
@@ -528,6 +528,53 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       final cal = calendarsResult.data!.first;
       final tzStart = tz.TZDateTime.from(start, tz.local);
       final tzEnd = tz.TZDateTime.from(end, tz.local);
+
+      // Build recurrence rule if requested
+      RecurrenceRule? rrule;
+      if (recurrence != null && recurrence.isNotEmpty) {
+        RecurrenceFrequency freq;
+        int interval = 1;
+
+        switch (recurrence) {
+          case 'daily':
+            freq = RecurrenceFrequency.Daily;
+          case 'weekly':
+            freq = RecurrenceFrequency.Weekly;
+          case 'biweekly':
+            freq = RecurrenceFrequency.Weekly;
+            interval = 2;
+          case 'weekday':
+            freq = RecurrenceFrequency.Weekly;
+          case 'monthly':
+            freq = RecurrenceFrequency.Monthly;
+          case 'yearly':
+            freq = RecurrenceFrequency.Yearly;
+          case 'every_2nd_monday':
+            freq = RecurrenceFrequency.Weekly;
+            interval = 2;
+          default:
+            freq = RecurrenceFrequency.Daily;
+        }
+
+        rrule = RecurrenceRule(
+          freq,
+          interval: interval,
+          endDate: recurrenceEnd != null ? tz.TZDateTime.from(recurrenceEnd, tz.local) : null,
+          totalOccurrences: recurrenceCount,
+        );
+
+        // For "weekday" only, only Mon-Fri
+        if (recurrence == 'weekday') {
+          rrule.daysOfWeek = [
+            DayOfWeek.Monday,
+            DayOfWeek.Tuesday,
+            DayOfWeek.Wednesday,
+            DayOfWeek.Thursday,
+            DayOfWeek.Friday,
+          ];
+        }
+      }
+
       final event = Event(
         cal.id,
         title: title,
@@ -536,6 +583,10 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         description: description,
         location: location,
       );
+      if (rrule != null) {
+        event.recurrenceRule = rrule;
+      }
+
       final result = await deviceCal.createOrUpdateEvent(event);
       return result?.isSuccess ?? false;
     } catch (e) {

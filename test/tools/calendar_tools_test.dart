@@ -164,6 +164,10 @@ void main() {
         required DateTime end,
         String? description,
         String? location,
+        String? recurrence,
+        int? recurrenceCount,
+        DateTime? recurrenceEnd,
+        List<DateTime>? excludedDates,
       }) async {
         return true;
       };
