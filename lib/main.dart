@@ -48,6 +48,7 @@ import 'tools/open_url_tool.dart';
 import 'tools/share_text_tool.dart';
 import 'tools/read_config_tool.dart';
 import 'tools/update_config_tool.dart';
+import 'services/tool_learning_service.dart';
 import 'tools/get_calendar_events_tool.dart';
 import 'tools/add_calendar_event_tool.dart';
 import 'tools/get_clipboard_tool.dart';
@@ -94,6 +95,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late BackupService _backupService;
   late LocationService _locationService;
   late OllamaCloudService _cloudService;
+  late ToolLearningService _toolLearning;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -112,6 +114,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _automationService.dispose();
       _buddyScheduler.dispose();
       _cloudService.dispose();
+      _toolLearning.dispose();
     }
     super.dispose();
   }
@@ -164,6 +167,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _offlineSttService = OfflineSttService();
       try { await _offlineSttService.checkOfflineAvailability(); } catch (e) { debugPrint('OfflineSTT init: $e'); }
 
+      _toolLearning = ToolLearningService();
+      try { await _toolLearning.init(); } catch (e) { debugPrint('ToolLearning init: $e'); }
+
       _buddyScheduler = BuddyScheduler();
       try { await _buddyScheduler.init(); } catch (e) { debugPrint('Scheduler init: $e'); }
 
@@ -185,6 +191,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _toolRegistry.registerSelfIdentity(_selfIdentity);
       _toolRegistry.registerBuddyNotes(_buddyNotes);
       _toolRegistry.registerSaveMemory(_memory);
+      _toolRegistry.registerLearningService(_toolLearning);
 
       _cloudService = OllamaCloudService(
         baseUrl: _secureConfig.activeBaseUrl,

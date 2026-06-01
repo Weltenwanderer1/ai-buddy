@@ -369,6 +369,12 @@ class ChatService {
     // Tool-Hinweis — kompakt
     parts.add('\nNutze update_self_identity, save_memory, search_memories aktiv.');
 
+    // Gelernte Fehler-Tipps fuer Tools (durch ToolRegistry)
+    final toolHints = _toolRegistry?.getToolHints() ?? '';
+    if (toolHints.isNotEmpty) {
+      parts.add(toolHints);
+    }
+
     // Standort — nur wenn wirklich da
     final locService = _locationService;
     if (locService != null) {

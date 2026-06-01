@@ -50,6 +50,7 @@ import 'update_calendar_event_tool.dart';
 import 'delete_calendar_event_tool.dart';
 import 'record_voice_memo_tool.dart';
 import 'automation_rule_tool.dart';
+import '../services/tool_learning_service.dart';
 import 'offline_stt_tool.dart';
 
 class ToolRegistry {
@@ -64,19 +65,42 @@ class ToolRegistry {
   List<String> get toolNames => _tools.keys.toList();
   bool hasTool(String name) => _tools.containsKey(name);
 
+  ToolLearningService? _learningService;
+
+  void registerLearningService(ToolLearningService service) {
+    _learningService = service;
+  }
+
+  /// Build a system-prompt extension that gives the LLM hints about
+  /// tools it should avoid misusing. Returns empty string if nothing to say.
+  String getToolHints() {
+    final toolNames = _tools.keys.toList();
+    return _learningService?.buildHintSection(toolNames) ?? '';
+  }
+
   Future<ToolResult> execute(
       String name, Map<String, dynamic> parameters) async {
     final tool = _tools[name];
     if (tool == null) {
-      return ToolResult(
+      final result = ToolResult(
           toolName: name,
           parameters: parameters,
           result: 'Unbekanntes Tool: $name',
           isError: true);
+      _learningService?.recordFailure(name, 'unbekanntes Tool');
+      return result;
     }
     try {
-      return await tool.execute(parameters);
+      final result = await tool.execute(parameters);
+      if (result.isError) {
+        _learningService?.recordFailure(
+            name, result.result, usedParameters: parameters);
+      } else {
+        _learningService?.recordSuccess(name);
+      }
+      return result;
     } catch (e) {
+      _learningService?.recordFailure(name, e.toString(), usedParameters: parameters);
       return ToolResult(
           toolName: name,
           parameters: parameters,
