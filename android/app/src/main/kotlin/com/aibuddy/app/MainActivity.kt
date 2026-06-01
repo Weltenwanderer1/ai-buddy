@@ -346,8 +346,8 @@ class MainActivity : FlutterActivity() {
     private fun addContact(name: String, phone: String, email: String): Boolean {
         return try {
             val values = arrayListOf(android.content.ContentValues().apply {
-                put(android.provider.ContactsContract.RawContacts.ACCOUNT_TYPE, null)
-                put(android.provider.ContactsContract.RawContacts.ACCOUNT_NAME, null)
+                put(android.provider.ContactsContract.RawContacts.ACCOUNT_TYPE, null as String?)
+                put(android.provider.ContactsContract.RawContacts.ACCOUNT_NAME, null as String?)
             })
             val rawUri = contentResolver.bulkInsert(
                 android.provider.ContactsContract.RawContacts.CONTENT_URI,
@@ -459,20 +459,22 @@ class MainActivity : FlutterActivity() {
             val rows = contentResolver.delete(uri,
                 "${android.provider.ContactsContract.RawContacts.CONTACT_ID} = ?",
                 arrayOf(id.toString()))
-            if (rows <= 0) {
-                // Fallback: delete via lookup URI
-                val lookupUri = android.provider.ContactsContract.Contacts.getLookupUri(
-                    id,
-                    android.provider.ContactsContract.Contacts.getLookupKey(contentResolver, id)
-                )
-                if (lookupUri != null) {
-                    contentResolver.delete(
-                        android.provider.ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri),
-                        null, null
+            if (rows > 0) {
+                true
+            } else {
+                // Fallback: delete via contact ID URI
+                try {
+                    val contactUri = android.net.Uri.withAppendedPath(
+                        android.provider.ContactsContract.Contacts.CONTENT_URI,
+                        id.toString()
                     )
+                    contentResolver.delete(contactUri, null, null)
+                    true
+                } catch (e: Exception) {
+                    Log.e("Contacts", "deleteContact fallback error: $e")
+                    false
                 }
             }
-            true
         } catch (e: Exception) {
             Log.e("Contacts", "deleteContact error: $e")
             false
@@ -904,11 +906,12 @@ class MainActivity : FlutterActivity() {
                     false
                 }
             } else {
+                // API < 23: only AudioManager ringerMode available
                 @Suppress("DEPRECATION")
-                audioManager.interruptionFilter = if (enabled) {
-                    android.app.NotificationManager.INTERRUPTION_FILTER_NONE
+                audioManager.ringerMode = if (enabled) {
+                    AudioManager.RINGER_MODE_SILENT
                 } else {
-                    android.app.NotificationManager.INTERRUPTION_FILTER_ALL
+                    AudioManager.RINGER_MODE_NORMAL
                 }
                 true
             }

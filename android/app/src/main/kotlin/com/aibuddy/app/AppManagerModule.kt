@@ -57,11 +57,13 @@ class AppManagerModule(private val activity: MainActivity) {
                 pm.getPackageInfo(packageName, 0).versionName ?: "unknown"
             } catch (e: Exception) { "unknown" }
 
+            val isSystem = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
             apps.add(mapOf(
                 "packageName" to packageName,
                 "name" to label,
                 "version" to version,
-                "isSystem" to (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                "isSystem" to isSystem,
                 "isEnabled" to appInfo.enabled,
             ))
         }
@@ -79,6 +81,8 @@ class AppManagerModule(private val activity: MainActivity) {
             val pkgInfo = pm.getPackageInfo(packageName, 0)
             val label = pm.getApplicationLabel(appInfo).toString()
 
+            val isSystemDetail = (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
+
             mapOf(
                 "packageName" to packageName,
                 "name" to label,
@@ -91,7 +95,7 @@ class AppManagerModule(private val activity: MainActivity) {
                 },
                 "firstInstallTime" to pkgInfo.firstInstallTime,
                 "lastUpdateTime" to pkgInfo.lastUpdateTime,
-                "isSystem" to (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0,
+                "isSystem" to isSystemDetail,
                 "isEnabled" to appInfo.enabled,
                 "dataDir" to (appInfo.dataDir ?: ""),
                 "targetSdk" to if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
