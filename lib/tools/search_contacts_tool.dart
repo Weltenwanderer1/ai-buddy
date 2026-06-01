@@ -75,10 +75,12 @@ class SearchContactsTool implements ToolInterface {
 
       // Format results for the LLM
       final buffer = StringBuffer();
-      buffer.writeln('Gefunden: ${contacts.length} Kontakt(e) fuer "$query":');
+      buffer.writeln('Gefunden: ${contacts.length} Kontakt(e) fuer "\$query":');
+      buffer.writeln('(Verwende die ID (z.B. ID: 42) fuer Bearbeiten oder Loeschen)');
+      buffer.writeln('');
       for (final contact in contacts) {
         final Map<String, dynamic> c = Map<String, dynamic>.from(contact);
-        buffer.writeln('- ${c['name'] ?? 'Unbekannt'}');
+        buffer.writeln('- ${c['name'] ?? 'Unbekannt'} (ID: ${c['id']})');
         final phones = c['phones'] as List? ?? [];
         for (final p in phones) {
           final Map<String, dynamic> phone = Map<String, dynamic>.from(p);

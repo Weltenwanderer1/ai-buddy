@@ -24,6 +24,8 @@ import 'send_sms_tool.dart';
 import 'send_whatsapp_tool.dart';
 import 'search_contacts_tool.dart';
 import 'send_message_to_contact_tool.dart';
+import 'manage_contacts_tool.dart';
+import 'phone_call_tool.dart';
 import 'search_memories_tool.dart';
 import '../services/memory_service.dart';
 import 'update_self_identity_tool.dart';
@@ -167,6 +169,8 @@ class ToolRegistry {
     r.register(SendWhatsAppTool());
     r.register(SearchContactsTool());
     r.register(SendMessageToContactTool());
+    r.register(ManageContactsTool());
+    r.register(PhoneCallTool());
     r.register(SendEmailTool());
     r.register(ManageShoppingListTool());
     r.register(SetTimerTool());

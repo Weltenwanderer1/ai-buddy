@@ -57,6 +57,48 @@ class MainActivity : FlutterActivity() {
                         result.error("PERMISSION_DENIED", "Contacts permission not granted", null)
                     }
                 }
+                "addContact" -> {
+                    if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                        val name  = call.argument<String>("name")?.trim().orEmpty()
+                        val phone = call.argument<String>("phone")?.trim().orEmpty()
+                        val email = call.argument<String>("email")?.trim().orEmpty()
+                        result.success(addContact(name, phone, email))
+                    } else {
+                        result.error("PERMISSION_DENIED", "WRITE_CONTACTS permission not granted", null)
+                    }
+                }
+                "editContact" -> {
+                    if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                        val contactId = call.argument<String>("contactId")?.trim().orEmpty()
+                        val phone     = call.argument<String>("phone")?.trim().orEmpty()
+                        val email     = call.argument<String>("email")?.trim().orEmpty()
+                        result.success(updateContact(contactId, phone, email))
+                    } else {
+                        result.error("PERMISSION_DENIED", "WRITE_CONTACTS permission not granted", null)
+                    }
+                }
+                "deleteContact" -> {
+                    if (checkSelfPermission(Manifest.permission.WRITE_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+                        val contactId = call.argument<String>("contactId")?.trim().orEmpty()
+                        result.success(deleteContact(contactId))
+                    } else {
+                        result.error("PERMISSION_DENIED", "WRITE_CONTACTS permission not granted", null)
+                    }
+                }
+                "makePhoneCall" -> {
+                    val number = call.argument<String>("number")?.trim().orEmpty()
+                    if (number.isEmpty()) {
+                        result.success(false)
+                    } else if (checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+                        result.success(makePhoneCall(number))
+                    } else {
+                        result.error("PERMISSION_DENIED", "CALL_PHONE permission not granted", null)
+                    }
+                }
+                "openDialer" -> {
+                    val number = call.argument<String>("number")?.trim().orEmpty()
+                    result.success(openDialer(number))
+                }
                 else -> result.notImplemented()
             }
         }
@@ -174,6 +216,7 @@ class MainActivity : FlutterActivity() {
                     if (name.lowercase(Locale.ROOT).contains(normalizedQuery) || 
                         phones.any { it["number"].toString().replace(Regex("[\\s\\-()]"), "").contains(normalizedQuery.replace(Regex("[\\s\\-()]"), "")) }) {
                         results.add(mapOf(
+                            "id" to id,
                             "name" to name,
                             "phones" to phones,
                             "emails" to emails
@@ -244,6 +287,170 @@ class MainActivity : FlutterActivity() {
         ContactsContract.CommonDataKinds.Email.TYPE_MOBILE -> "Mobil"
         ContactsContract.CommonDataKinds.Email.TYPE_OTHER -> "Sonstige"
         else -> "E-Mail"
+    }
+
+    // ── Contact Management (add/edit/delete) ──
+
+    private fun addContact(name: String, phone: String, email: String): Boolean {
+        return try {
+            val values = arrayListOf(android.content.ContentValues().apply {
+                put(android.provider.ContactsContract.RawContacts.ACCOUNT_TYPE, null)
+                put(android.provider.ContactsContract.RawContacts.ACCOUNT_NAME, null)
+            })
+            val rawUri = contentResolver.bulkInsert(
+                android.provider.ContactsContract.RawContacts.CONTENT_URI,
+                values.toTypedArray()
+            )
+            if (rawUri <= 0) return false
+            val rawId = rawUri.toLong()
+
+            val ops = arrayListOf(
+                android.content.ContentProviderOperation.newInsert(
+                    android.provider.ContactsContract.Data.CONTENT_URI
+                ).withValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawId)
+                    .withValue(android.provider.ContactsContract.Data.MIMETYPE,
+                        android.provider.ContactsContract.CommonDataKinds.StructuredName.CONTENT_ITEM_TYPE)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.StructuredName.DISPLAY_NAME, name)
+                    .build()
+            )
+            if (phone.isNotEmpty()) {
+                ops.add(android.content.ContentProviderOperation.newInsert(
+                    android.provider.ContactsContract.Data.CONTENT_URI
+                ).withValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawId)
+                    .withValue(android.provider.ContactsContract.Data.MIMETYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Phone.TYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                    .build())
+            }
+            if (email.isNotEmpty()) {
+                ops.add(android.content.ContentProviderOperation.newInsert(
+                    android.provider.ContactsContract.Data.CONTENT_URI
+                ).withValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawId)
+                    .withValue(android.provider.ContactsContract.Data.MIMETYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Email.ADDRESS, email)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Email.TYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Email.TYPE_HOME)
+                    .build())
+            }
+            contentResolver.applyBatch(android.provider.ContactsContract.AUTHORITY, ops)
+            true
+        } catch (e: Exception) {
+            Log.e("Contacts", "addContact error: $e")
+            false
+        }
+    }
+
+    private fun updateContact(contactId: String, phone: String, email: String): Boolean {
+        if (contactId.isEmpty()) return false
+        val id = contactId.toLongOrNull() ?: return false
+        return try {
+            val ops = arrayListOf<android.content.ContentProviderOperation>()
+            // Find RAW_CONTACT_ID
+            var rawContactId: Long = -1
+            contentResolver.query(
+                android.provider.ContactsContract.RawContacts.CONTENT_URI,
+                arrayOf(android.provider.ContactsContract.RawContacts._ID),
+                "${android.provider.ContactsContract.RawContacts.CONTACT_ID} = ?",
+                arrayOf(id.toString()), null
+            )?.use { c ->
+                if (c.moveToFirst()) {
+                    rawContactId = c.getLong(c.getColumnIndexOrThrow(android.provider.ContactsContract.RawContacts._ID))
+                }
+            }
+            if (rawContactId < 0) return false
+
+            if (phone.isNotEmpty()) {
+                ops.add(android.content.ContentProviderOperation.newInsert(
+                    android.provider.ContactsContract.Data.CONTENT_URI
+                ).withValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(android.provider.ContactsContract.Data.MIMETYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Phone.NUMBER, phone)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Phone.TYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Phone.TYPE_MOBILE)
+                    .build())
+            }
+            if (email.isNotEmpty()) {
+                ops.add(android.content.ContentProviderOperation.newInsert(
+                    android.provider.ContactsContract.Data.CONTENT_URI
+                ).withValue(android.provider.ContactsContract.Data.RAW_CONTACT_ID, rawContactId)
+                    .withValue(android.provider.ContactsContract.Data.MIMETYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Email.ADDRESS, email)
+                    .withValue(android.provider.ContactsContract.CommonDataKinds.Email.TYPE,
+                        android.provider.ContactsContract.CommonDataKinds.Email.TYPE_HOME)
+                    .build())
+            }
+            if (ops.isNotEmpty()) {
+                contentResolver.applyBatch(android.provider.ContactsContract.AUTHORITY, ops)
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("Contacts", "updateContact error: $e")
+            false
+        }
+    }
+
+    private fun deleteContact(contactId: String): Boolean {
+        if (contactId.isEmpty()) return false
+        return try {
+            val uri = android.provider.ContactsContract.RawContacts.CONTENT_URI
+                .buildUpon()
+                .appendQueryParameter(
+                    android.provider.ContactsContract.CALLER_IS_SYNCADAPTER, "true"
+                )
+                .build()
+            val id = contactId.toLongOrNull() ?: return false
+            val rows = contentResolver.delete(uri,
+                "${android.provider.ContactsContract.RawContacts.CONTACT_ID} = ?",
+                arrayOf(id.toString()))
+            if (rows <= 0) {
+                // Fallback: delete via lookup URI
+                val lookupUri = android.provider.ContactsContract.Contacts.getLookupUri(
+                    id,
+                    android.provider.ContactsContract.Contacts.getLookupKey(contentResolver, id)
+                )
+                if (lookupUri != null) {
+                    contentResolver.delete(
+                        android.provider.ContactsContract.Contacts.getLookupUri(contentResolver, lookupUri),
+                        null, null
+                    )
+                }
+            }
+            true
+        } catch (e: Exception) {
+            Log.e("Contacts", "deleteContact error: $e")
+            false
+        }
+    }
+
+    // ── Phone Call ──
+
+    private fun makePhoneCall(number: String): Boolean {
+        return try {
+            val intent = Intent(Intent.ACTION_CALL, android.net.Uri.parse("tel:$number"))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e("PhoneCall", "makePhoneCall error: $e")
+            false
+        }
+    }
+
+    private fun openDialer(number: String): Boolean {
+        return try {
+            val intent = Intent(Intent.ACTION_DIAL, android.net.Uri.parse("tel:$number"))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Log.e("PhoneCall", "openDialer error: $e")
+            false
+        }
     }
 
     private fun launchPackage(packageName: String): Boolean {
