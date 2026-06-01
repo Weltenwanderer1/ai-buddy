@@ -9,6 +9,7 @@ import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
+import '../services/contextual_memory_extractor.dart';
 import '../services/location_service.dart';
 import '../services/buddy_capabilities_service.dart';
 import '../tools/tool_registry.dart';
@@ -220,7 +221,7 @@ class ChatService {
         maxToolRounds: 5,
       );
 
-      await _saveMemory(memory, userMessage, reply);
+      _saveMemory(memory, userMessage, reply);
       _maybeEvolve(personaEvolution, history, userMessage, reply);
       return ChatResult(reply, metadata: lastToolExtraData);
     } catch (e) {
@@ -274,18 +275,46 @@ class ChatService {
     });
   }
 
-  /// Save memory entries (user + assistant) and promote if important.
-  Future<void> _saveMemory(MemoryService memory, String userMessage, String reply) async {
-    await Future.wait([
+  /// Save memory entries with auto-extraction + promotion pipeline.
+  /// Runs contextual extraction on the combined turn, stores in
+  /// short-term, and promotes important ones to long-term automatically.
+  void _saveMemory(MemoryService memory, String userMessage, String reply) {
+    // Store both messages in short-term (preserves conversation flow)
+    Future.wait([
       memory.addShortTerm(userMessage, source: 'user'),
       memory.addShortTerm(reply, source: 'assistant'),
     ]);
-    try {
-      await memory.promoteIfImportant(userMessage, 'auto-assess: content from conversation');
-      await memory.promoteIfImportant(reply, 'auto-assess: response from conversation');
-    } catch (e) {
-      debugPrint('Memory promotion error: $e');
-    }
+
+    // Auto-extract memories from the conversation turn
+    // Runs locally — no extra LLM call, instant
+    Future.microtask(() async {
+      try {
+        final extractor = ContextualMemoryExtractor();
+        final extracted = extractor.extract(userMessage, reply);
+        if (extracted.isEmpty) return;
+
+        for (final mem in extracted) {
+          if (mem.isCore) {
+            // Highest importance → core identity
+            await memory.addCore(mem.content, source: 'auto-extracted', metadata: {
+              'category': mem.category.name,
+              'tier': mem.tier,
+            });
+          } else if (mem.isImportant) {
+            // Standard importance → long-term memory
+            await memory.addLongTerm(mem.content, source: 'auto-extracted', metadata: {
+              'category': mem.category.name,
+              'tier': mem.tier,
+            });
+          }
+          // Tier < 6 → stays in short-term (will expire via TTL)
+        }
+
+        debugPrint('Auto-extracted ${extracted.length} memories from turn');
+      } catch (e) {
+        debugPrint('Auto-extraction error: $e');
+      }
+    });
   }
 
   /// Trigger persona evolution if interval reached.
