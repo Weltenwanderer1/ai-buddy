@@ -30,6 +30,7 @@ import 'services/buddy_notifier.dart';
 import 'services/backup_service.dart';
 import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
+import 'services/clipboard_history_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:image_picker/image_picker.dart';
@@ -96,6 +97,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late LocationService _locationService;
   late OllamaCloudService _cloudService;
   late ToolLearningService _toolLearning;
+  late ClipboardHistoryService _clipboardHistory;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -169,6 +171,10 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
       _toolLearning = ToolLearningService();
       try { await _toolLearning.init(); } catch (e) { debugPrint('ToolLearning init: $e'); }
+
+      _clipboardHistory = ClipboardHistoryService();
+      try { await _clipboardHistory.init(); } catch (e) { debugPrint('ClipboardHistory init: $e'); }
+      try { await _clipboardHistory.capture(); } catch (e) { debugPrint('Clipboard capture: $e'); }
 
       _buddyScheduler = BuddyScheduler();
       try { await _buddyScheduler.init(); } catch (e) { debugPrint('Scheduler init: $e'); }
@@ -370,7 +376,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       ShareTextTool.shareCallback = (text, subject) async {
         try { await share_plus.Share.share(text, subject: subject); } catch (e) { debugPrint('Share error: $e'); }
       };
-      GetClipboardTool.readClipboardCallback = () async { return null; };
+      GetClipboardTool.readClipboardCallback = () async {
+        return _clipboardHistory.readCurrent();
+      };
+      GetClipboardTool.getHistoryCallback = ({int limit = 10}) {
+        return _clipboardHistory.getHistoryForLLM(limit: limit);
+      };
 
       // Image picker callbacks for AnalyzeImageTool
       final imagePicker = ImagePicker();
