@@ -55,6 +55,7 @@ import 'automation_rule_tool.dart';
 import '../services/tool_learning_service.dart';
 import 'offline_stt_tool.dart';
 import 'device_settings_tool.dart';
+import 'open_file_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -188,6 +189,7 @@ class ToolRegistry {
     r.register(AutomationRuleTool());
     r.register(OfflineSttTool());
     r.register(DeviceSettingsTool());
+    r.register(OpenFileTool());
     return r;
   }
 }

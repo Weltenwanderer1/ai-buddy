@@ -25,6 +25,7 @@ class MainActivity : FlutterActivity() {
     private val voiceRecorderChannel = "com.aibuddy.app/voice_recorder"
     private val offlineSttChannel = "com.aibuddy.app/offline_stt"
     private val settingsChannel = "com.aibuddy.app/settings"
+    private val filesChannel = "com.aibuddy.app/files"
     private var mediaRecorder: MediaRecorder? = null
     private var speechRecognizer: android.speech.SpeechRecognizer? = null
     private var sttResult: String? = null
@@ -218,6 +219,18 @@ class MainActivity : FlutterActivity() {
                 "openSettings" -> {
                     val page = call.argument<String>("page") ?: ""
                     result.success(openSystemSettings(page))
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // File open channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, filesChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "openFileWithMime" -> {
+                    val filePath = call.argument<String>("filePath") ?: ""
+                    val mimeType = call.argument<String>("mimeType") ?: "*/*"
+                    result.success(openFileWithMime(filePath, mimeType))
                 }
                 else -> result.notImplemented()
             }
@@ -932,6 +945,52 @@ class MainActivity : FlutterActivity() {
             true
         } catch (e: Exception) {
             Log.e("Settings", "openSystemSettings error: $e")
+            false
+        }
+    }
+
+    // ── Open File (PDF, Office, Images, etc.) ──
+
+    private fun openFileWithMime(filePath: String, mimeType: String): Boolean {
+        return try {
+            val file = java.io.File(filePath)
+            if (!file.exists()) return false
+
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                applicationContext,
+                "${packageName}.fileprovider",
+                file
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            // Find app that can handle it
+            val resolveInfo = packageManager.queryIntentActivities(intent, 0)
+            if (resolveInfo.isNotEmpty()) {
+                startActivity(intent)
+                true
+            } else {
+                // Try with generic type
+                val genericIntent = Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(uri, "*/*")
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                val genericResolve = packageManager.queryIntentActivities(genericIntent, 0)
+                if (genericResolve.isNotEmpty()) {
+                    startActivity(genericIntent)
+                    true
+                } else {
+                    Log.e("OpenFile", "No app found to open $mimeType")
+                    false
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("OpenFile", "openFile error: $e")
             false
         }
     }
