@@ -57,6 +57,7 @@ import 'offline_stt_tool.dart';
 import 'device_settings_tool.dart';
 import 'open_file_tool.dart';
 import 'manage_password_tool.dart';
+import 'check_update_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -192,6 +193,7 @@ class ToolRegistry {
     r.register(DeviceSettingsTool());
     r.register(OpenFileTool());
     r.register(ManagePasswordTool());
+    r.register(CheckUpdateTool());
     return r;
   }
 }

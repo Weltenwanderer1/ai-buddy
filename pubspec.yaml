@@ -1,7 +1,7 @@
 name: ai_buddy
 description: AI Companion App with Chat, Voice, Memory, Persona & Tool System
 publish_to: 'none'
-version: 1.12.0+150
+version: 1.13.0+151
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -32,6 +32,7 @@ dependencies:
   url_launcher: ^6.3.1
   share_plus: ^10.1.4
   device_info_plus: ^11.2.0
+  package_info_plus: ^8.3.0
   device_calendar: ^4.3.3
   permission_handler: ^11.3.1
   timezone: ^0.9.4

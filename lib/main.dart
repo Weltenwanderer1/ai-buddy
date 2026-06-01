@@ -32,6 +32,7 @@ import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
 import 'services/clipboard_history_service.dart';
 import 'services/password_service.dart';
+import 'services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:image_picker/image_picker.dart';
@@ -47,6 +48,7 @@ import 'tools/record_voice_memo_tool.dart';
 import 'tools/automation_rule_tool.dart';
 import 'tools/offline_stt_tool.dart';
 import 'tools/manage_password_tool.dart';
+import 'tools/check_update_tool.dart';
 import 'tools/open_url_tool.dart';
 import 'tools/share_text_tool.dart';
 import 'tools/read_config_tool.dart';
@@ -225,6 +227,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
       _passwordService = PasswordService();
       ManagePasswordTool.passwordService = _passwordService;
+
+      final updateService = UpdateService();
+      CheckUpdateTool.updateService = updateService;
 
       SetVolumeTool.setVolumeCallback = ({required stream, required level}) {
         return _volumeService.setVolume(stream, level);
