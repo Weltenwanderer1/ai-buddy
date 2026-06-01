@@ -1,6 +1,7 @@
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import 'get_calendar_events_tool.dart';
 
 /// Adds a calendar event.
 class AddCalendarEventTool implements ToolInterface {
@@ -32,6 +33,10 @@ class AddCalendarEventTool implements ToolInterface {
           'type': 'string',
           'description': 'Optionaler Ort',
         },
+        'ignore_conflict': {
+          'type': 'boolean',
+          'description': 'Falls true, wird ein doppelter Termin trotzdem erstellt.',
+        },
       },
       'required': ['title', 'start', 'end'],
     },
@@ -56,6 +61,7 @@ class AddCalendarEventTool implements ToolInterface {
     final endStr = parameters['end'] as String? ?? '';
     final description = parameters['description'] as String?;
     final location = parameters['location'] as String?;
+    final ignoreConflict = parameters['ignore_conflict'] as bool? ?? false;
 
     if (title.isEmpty || startStr.isEmpty || endStr.isEmpty) {
       return ToolResult(
@@ -103,6 +109,60 @@ class AddCalendarEventTool implements ToolInterface {
       );
     }
 
+    // ====== CONFLICT DETECTION ======
+    if (!ignoreConflict) {
+      final conflict = await _findConflict(startTime, endTime);
+      if (conflict != null) {
+        // Generate suggestions
+        final suggestions = <Map<String, dynamic>>[];
+        
+        // Suggest 1: +1 hour
+        var s1 = startTime.add(const Duration(hours: 1));
+        var e1 = endTime.add(const Duration(hours: 1));
+        if (await _isFree(s1, e1)) {
+          suggestions.add({
+            'label': '1 Stunde später',
+            'start': s1,
+            'end': e1,
+          });
+        }
+
+        // Suggest 2: +2 hours
+        var s2 = startTime.add(const Duration(hours: 2));
+        var e2 = endTime.add(const Duration(hours: 2));
+        if (await _isFree(s2, e2)) {
+          suggestions.add({
+            'label': '2 Stunden später',
+            'start': s2,
+            'end': e2,
+          });
+        }
+
+        // Suggest 3: Next day same time
+        var s3 = startTime.add(const Duration(days: 1));
+        var e3 = endTime.add(const Duration(days: 1));
+        if (await _isFree(s3, e3)) {
+          suggestions.add({
+            'label': 'Nächster Tag',
+            'start': s3,
+            'end': e3,
+          });
+        }
+
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result: _buildConflictMessage(
+            title: title,
+            conflict: conflict,
+            suggestions: suggestions,
+          ),
+          isError: false, // Not an error, it's a blocking hint
+          displayText: '⚠️ Termin kollidiert: ${conflict['title']}',
+        );
+      }
+    }
+
     try {
       final success = await addEventCallback!(
         title: title,
@@ -143,6 +203,82 @@ class AddCalendarEventTool implements ToolInterface {
       );
     }
   }
+
+  /// Find overlapping event between start-end range.
+  /// Returns null if free.
+  Future<Map<String, dynamic>?> _findConflict(DateTime start, DateTime end) async {
+    if (GetCalendarEventsTool.getEventsCallback == null) return null;
+    
+    final events = await GetCalendarEventsTool.getEventsCallback!(daysAhead: 14);
+    for (final event in events) {
+      final eStart = _parseEventDate(event['start']);
+      final eEnd = _parseEventDate(event['end']);
+      if (eStart == null || eEnd == null) continue;
+      
+      // Check overlap: (start < eEnd) && (end > eStart)
+      if (start.isBefore(eEnd) && end.isAfter(eStart)) {
+        return event;
+      }
+    }
+    return null;
+  }
+
+  /// Check if a time slot is free
+  Future<bool> _isFree(DateTime start, DateTime end) async {
+    return (await _findConflict(start, end)) == null;
+  }
+
+  /// Parse event date from string (ISO or whatever format calendar returns)
+  DateTime? _parseEventDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      final dt = DateTime.tryParse(value);
+      if (dt != null) return dt;
+      // Try common formats
+      final patterns = [
+        RegExp(r'\d{2}\.\d{2}\.\d{4} \d{2}:\d{2}'), // German format
+        RegExp(r'\d{2}/\d{2}/\d{4} \d{2}:\d{2}'),   // US format
+        RegExp(r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}'), // ISO-ish
+      ];
+      for (final p in patterns) {
+        if (p.hasMatch(value)) {
+          // Can't easily parse all with regex, default to tryParse
+          break;
+        }
+      }
+    }
+    return null;
+  }
+
+  /// Build human-readable conflict message with suggestions
+  String _buildConflictMessage({
+    required String title,
+    required Map<String, dynamic> conflict,
+    required List<Map<String, dynamic>> suggestions,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln('Termin-KONFLIKT erkannt!');
+    buffer.writeln('Neuer Termin: "$title"');
+    buffer.writeln('Überschneidung mit: "${conflict['title']}"');
+    if (conflict['start'] != null) buffer.writeln('  (${conflict['start']} - ${conflict['end']})');
+    
+    if (suggestions.isNotEmpty) {
+      buffer.writeln('\nAlternative Zeiten:');
+      for (final s in suggestions) {
+        final start = s['start'] as DateTime;
+        final end = s['end'] as DateTime;
+        final label = s['label'] as String;
+        buffer.writeln('  • $label: ${_fmt(start)} - ${_fmt(end)}');
+      }
+    }
+    
+    buffer.writeln('\nZum Erzwingen: "ignore_conflict": true mitgeben.');
+    return buffer.toString();
+  }
+
+  String _fmt(DateTime dt) =>
+      '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}. ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
 
   DateTime? _parseDateTime(String input) {
     // Handle "in X Minuten" format
