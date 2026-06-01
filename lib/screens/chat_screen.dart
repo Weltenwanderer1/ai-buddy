@@ -23,8 +23,10 @@ import 'settings_screen.dart';
 import '../services/proactive_engine.dart';
 import '../services/self_identity_service.dart';
 import '../services/buddy_notifier.dart';
+import '../services/timer_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/version.dart';
+import '../widgets/active_timer_bar.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -483,7 +485,14 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             if (_isStreaming && _streamingText.isNotEmpty)
               _StreamingBubble(text: _streamingText),
 
-            // ─── Input + Scroll-to-Bottom ───
+            // ─── Timer Overlay ───
+            Consumer<TimerService>(
+              builder: (context, timerService, child) {
+                final timers = timerService.activeTimers;
+                if (timers.isEmpty) return const SizedBox.shrink();
+                return ActiveTimerBar(timers: timers);
+              },
+            ),
             SafeArea(
               top: false,
               child: Column(

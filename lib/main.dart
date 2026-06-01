@@ -714,6 +714,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _locationService),
         ChangeNotifierProvider.value(value: _buddyScheduler),
+        ChangeNotifierProvider.value(value: _timerService),
       ],
       child: MaterialApp(title: 'AI-Buddy', theme: _theme(), darkTheme: _theme(),
         home: const HomeScreen(),
