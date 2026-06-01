@@ -1,275 +1,213 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import '../services/context_service.dart';
-import '../services/memory_service.dart';
-import '../services/persona_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'memory_service.dart';
+import '../tools/get_calendar_events_tool.dart';
 
-/// Events the ProactiveEngine can fire.
-enum ProactiveEventType {
-  calendarHeadsup,
-  batteryLow,
-  eveningRecap,
-  contextualSuggestion,
-}
-
-/// A proactive suggestion the engine wants to surface to the user.
-class ProactiveSuggestion {
-  final ProactiveEventType type;
-  final String title;
-  final String body;
-  final String? quickAction; // e.g. "navigiere zu Arbeit"
-  final DateTime timestamp;
-
-  ProactiveSuggestion({
-    required this.type,
-    required this.title,
-    required this.body,
-    this.quickAction,
-    DateTime? timestamp,
-  }) : timestamp = timestamp ?? DateTime.now();
-}
-
-typedef ProactiveCallback = void Function(ProactiveSuggestion suggestion);
-
-/// Background engine that checks device state and context periodically,
-/// then fires proactive suggestions BEFORE the user asks.
+/// Intelligent pro-active thinking engine v2.
+/// Runs locally (zero API tokens), generates contextual hints based on
+/// calendar, time-of-day, learned patterns and core memories.
 ///
-/// Checks: calendar heads-up, battery guardian, evening recap.
-class ProactiveEngine extends ChangeNotifier {
-  final dynamic _llm;
+/// API compatible with ChatScreen (expects .init()/.start()/.stop()).
+class ProactiveEngine {
   final MemoryService _memory;
-  final PersonaService _persona;
-  final ContextService _context;
-  final FlutterLocalNotificationsPlugin _notifications;
 
-  Timer? _ticker;
+  SharedPreferences? _prefs;
+  Timer? _timer;
   bool _running = false;
   bool _initialized = false;
 
-  /// Latest suggestion, if any. Consumed by the UI.
-  ProactiveSuggestion? currentSuggestion;
-
-  /// Callback for when a new suggestion is generated.
-  ProactiveCallback? onSuggestion;
-
-  /// Configuration
-  final bool enableCalendarHeadsup;
-  final bool enableBatteryGuardian;
-  final bool enableEveningRecap;
-  final int checkIntervalMinutes;
-
-  /// Time windows (hour of day, local time)
-  static const _eveningWindow = (20, 23); // 20:00-22:59
-  static const _batteryThreshold = 20; // warn below 20%
+  // Callback injected after init
+  void Function(String message)? _onMessage;
 
   ProactiveEngine({
-    required dynamic llm,
     required MemoryService memory,
-    required PersonaService persona,
-    FlutterLocalNotificationsPlugin? notifications,
-    ContextService? context,
-    this.enableCalendarHeadsup = true,
-    this.enableBatteryGuardian = true,
-    this.enableEveningRecap = true,
-    this.checkIntervalMinutes = 15,
-    this.onSuggestion,
-  })  : _llm = llm,
-        _memory = memory,
-        _persona = persona,
-        _context = context ?? ContextService(),
-        _notifications = notifications ?? FlutterLocalNotificationsPlugin();
+  })  : _memory = memory;
 
-  bool get isRunning => _running;
-
-  /// Initialize notification channel and start the ticker.
+  /// Initialize shared prefs and dependencies.
   Future<void> init() async {
     if (_initialized) return;
-
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const iosSettings = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(
-      android: androidSettings,
-      iOS: iosSettings,
-    );
-    await _notifications.initialize(initSettings);
+    _prefs = await SharedPreferences.getInstance();
     _initialized = true;
+    debugPrint('ProactiveEngine v2 initialized');
   }
 
-  /// Start periodic checks.
-  void start() {
+  /// Start periodic checks (every 30 min + once immediately).
+  void start({void Function(String message)? onMessage}) {
+    if (!_initialized) {
+      debugPrint('ProactiveEngine: start() called before init()');
+      return;
+    }
     if (_running) return;
     _running = true;
-    _scheduleNextCheck();
-    // Also run immediately on start
-    _runCheck();
+    _onMessage = onMessage;
+
+    // Immediate first check
+    _check();
+
+    // Periodic every 30 minutes
+    _timer = Timer.periodic(const Duration(minutes: 30), (_) => _check());
+    debugPrint('ProactiveEngine v2 started');
   }
 
-  /// Stop periodic checks cleanly.
+  /// Stop the periodic timer.
   void stop() {
     _running = false;
-    _ticker?.cancel();
-    _ticker = null;
+    _timer?.cancel();
+    _timer = null;
+    debugPrint('ProactiveEngine v2 stopped');
   }
 
-  void _scheduleNextCheck() {
-    _ticker?.cancel();
-    if (!_running) return;
-    _ticker = Timer(Duration(minutes: checkIntervalMinutes), () {
-      if (_running) {
-        _runCheck();
-        _scheduleNextCheck();
-      }
-    });
-  }
+  // ─── Core Logic ───────────────────────────────────────────
 
-  Future<void> _runCheck() async {
-    final now = DateTime.now();
-    final hour = now.hour;
-    final context = _context.currentContext();
+  static const _lastKey = 'proactive_last_trigger_v2';
+  static const _lastTextKey = 'proactive_last_text_v2';
+  static const _minHours = 4;
 
-    // ── Evening Recap ──
-    if (enableEveningRecap &&
-        hour >= _eveningWindow.$1 &&
-        hour < _eveningWindow.$2) {
-      final alreadyFiredToday = await _alreadyFired('evening_recap', now);
-      if (!alreadyFiredToday) {
-        await _fireEveningRecap(context, now);
-        return;
-      }
-    }
-
-    // ── Contextual Suggestion (general, any time) ──
-    final suggestion = await _buildContextualSuggestion(context, now);
-    if (suggestion != null) {
-      _dispatchSuggestion(suggestion);
-    }
-  }
-
-  // ─── Evening Recap ────────────────────────────────────────────────
-
-  Future<void> _fireEveningRecap(ContextSnapshot ctx, DateTime now) async {
+  Future<void> _check() async {
+    if (!_running || _prefs == null) return;
     try {
-      final recentMemories =
-          _memory.shortTermMemories.take(10).map((m) => m.content).toList();
-      final memoryBlock = recentMemories.isNotEmpty
-          ? 'Heutige Aktivitäten: ${recentMemories.join("; ")}'
-          : '';
+      // Debounce
+      final lastStr = _prefs!.getString(_lastKey);
+      if (lastStr != null) {
+        final last = DateTime.tryParse(lastStr);
+        if (last != null &&
+            DateTime.now().difference(last) < const Duration(hours: _minHours)) {
+          return;
+        }
+      }
 
-      final recap = await _llm.chat(
-        systemPrompt:
-            'Du bist ${_persona.name}, ein freundlicher KI-Assistent. '
-            'Erstelle einen kurzen Tagesrückblick (max 3 Sätze). '
-            'Sei warm und ermutigend.',
-        messages: [
-          {
-            'role': 'user',
-            'content': 'Der Tag neigt sich dem Ende. '
-                'Fasse kurz zusammen und gib einen Ausblick auf morgen. '
-                '$memoryBlock'
+      final now = DateTime.now();
+      final hour = now.hour;
+      final msgs = <String>[];
+      final events = await _fetchCalendarEvents();
+
+      // ── 1. Calendar checks ──
+      if (events.isNotEmpty) {
+        final upcoming = events.where((e) {
+          final s = _parseDate(e['start']);
+          if (s == null) return false;
+          final d = s.difference(now);
+          return d.inHours >= 0 && d.inHours <= 24;
+        }).toList();
+
+        if (upcoming.isNotEmpty) {
+          upcoming.sort((a, b) {
+            final sa = _parseDate(a['start']) ?? now;
+            final sb = _parseDate(b['start']) ?? now;
+            return sa.compareTo(sb);
+          });
+
+          final next = upcoming.first;
+          final s = _parseDate(next['start'])!;
+          final diff = s.difference(now);
+          final title = next['title'] as String? ?? 'Termin';
+
+          if (diff.inMinutes <= 30 && diff.inMinutes > 0) {
+            msgs.add('⏰ "$title" in ${diff.inMinutes} Minuten!');
+          } else if (diff.inHours <= 2) {
+            msgs.add('📅 "$title" in ${diff.inHours}h ${diff.inMinutes % 60}min.');
+          } else if (hour >= 7 && hour <= 10) {
+            msgs.add('📅 Heute: ${upcoming.map((e) => e['title']).join(", ")}');
           }
-        ],
-      );
+        }
+      }
 
-      final suggestion = ProactiveSuggestion(
-        type: ProactiveEventType.eveningRecap,
-        title: '🌙 Tagesrückblick',
-        body: recap,
-        quickAction: 'erinnere mich morgen an...',
-      );
-      await _markFired('evening_recap', now);
-      _dispatchSuggestion(suggestion);
+      // ── 2. Time-of-day greetings ──
+      if (hour >= 7 && hour <= 9) {
+        final greeting = _morningGreeting();
+        if (greeting != null) msgs.add(greeting);
+      } else if (hour >= 20 && hour <= 22) {
+        final recap = await _eveningRecap(events);
+        if (recap != null) msgs.add(recap);
+      } else if (hour >= 12 && hour <= 13) {
+        msgs.add('🍕 Mittagszeit — sollen wir kurz den Tag checken?');
+      }
+
+      // ── 3. Core-memory hints ──
+      for (final mem in _memory.coreMemories) {
+        final text = mem.content;
+        final lower = text.toLowerCase();
+        if (lower.contains('morgen') && hour < 10) msgs.add('🧠 Erinnerung: $text');
+        if (lower.contains('abend') && hour >= 18) msgs.add('🧠 Erinnerung: $text');
+      }
+
+      if (msgs.isEmpty) return;
+
+      final chosen = _pickBest(msgs);
+      final lastText = _prefs!.getString(_lastTextKey);
+      if (lastText == chosen) return;
+
+      await _prefs!.setString(_lastKey, now.toIso8601String());
+      await _prefs!.setString(_lastTextKey, chosen);
+      _onMessage?.call(chosen);
     } catch (e) {
-      debugPrint('ProactiveEngine: evening recap failed: $e');
+      debugPrint('ProactiveEngine v2 check error: $e');
     }
   }
 
-  // ─── Contextual Suggestion ────────────────────────────────────────
+  /// Pick the most urgent/relevant message.
+  String _pickBest(List<String> msgs) {
+    for (final m in msgs) {
+      if (m.startsWith('⏰')) return m;
+    }
+    for (final m in msgs) {
+      if (m.startsWith('📅')) return m;
+    }
+    return msgs.first;
+  }
 
-  Future<ProactiveSuggestion?> _buildContextualSuggestion(
-      ContextSnapshot ctx, DateTime now) async {
-    // Morning suggestion: suggest checking calendar
-    if (ctx.timeOfDay == TimeOfDay.morning && now.hour >= 10) {
-      final alreadyToday = await _alreadyFired('morning_suggestion', now);
-      if (!alreadyToday) {
-        await _markFired('morning_suggestion', now);
-        return ProactiveSuggestion(
-          type: ProactiveEventType.contextualSuggestion,
-          title: 'Bereit für den Tag?',
-          body: 'Soll ich deine Termine für heute checken?',
-          quickAction: 'zeig meine Termine',
+  String? _morningGreeting() {
+    final core = _memory.coreMemories;
+    final hint = core.where((m) => m.content.toLowerCase().contains('name')).firstOrNull;
+    if (hint != null) return '☀️ Guten Morgen! ${hint.content}';
+    return '☀️ Guten Morgen! Soll ich die Termine für heute checken?';
+  }
+
+  Future<String?> _eveningRecap(List<Map<String, dynamic>> events) async {
+    final tomorrow = events.where((e) {
+      final s = _parseDate(e['start']);
+      if (s == null) return false;
+      final n = DateTime.now();
+      final tStart = DateTime(n.year, n.month, n.day + 1);
+      final tEnd = tStart.add(const Duration(days: 1));
+      return s.isAfter(tStart) && s.isBefore(tEnd);
+    }).toList();
+
+    if (tomorrow.isNotEmpty) {
+      final titles = tomorrow.map((e) => '"${e['title']}"').join(', ');
+      return '🌙 Heads-up für morgen: $titles';
+    }
+    return '🌙 Der Tag neigt sich dem Ende — noch was offen?';
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchCalendarEvents() async {
+    if (GetCalendarEventsTool.getEventsCallback == null) return [];
+    try {
+      return await GetCalendarEventsTool.getEventsCallback!(daysAhead: 2);
+    } catch (e) {
+      debugPrint('ProactiveEngine calendar fetch error: $e');
+      return [];
+    }
+  }
+
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is DateTime) return value;
+    if (value is String) {
+      final dt = DateTime.tryParse(value);
+      if (dt != null) return dt;
+      final match = RegExp(r'(\d{2})\.(\d{2})\.(\d{4}) (\d{2}):(\d{2})').firstMatch(value);
+      if (match != null) {
+        return DateTime(
+          int.parse(match.group(3)!),
+          int.parse(match.group(2)!),
+          int.parse(match.group(1)!),
+          int.parse(match.group(4)!),
+          int.parse(match.group(5)!),
         );
       }
     }
-
     return null;
-  }
-
-  // ─── Battery Guardian (called from external battery events) ───────
-
-  /// Call this from your battery info tool or a platform channel when
-  /// battery drops below threshold.
-  Future<void> checkBattery(int percentage, bool isCharging) async {
-    if (!enableBatteryGuardian) return;
-    if (isCharging) return;
-    if (percentage > _batteryThreshold) return;
-    // Don't spam — only fire once per low-battery session
-    final already = await _alreadyFired('battery_low', DateTime.now());
-    if (already) return;
-
-    await _markFired('battery_low', DateTime.now());
-    _dispatchSuggestion(ProactiveSuggestion(
-      type: ProactiveEventType.batteryLow,
-      title: '🔋 Akku niedrig ($percentage%)',
-      body: 'Dein Akku ist bald leer. Soll ich Energiesparmodus aktivieren?',
-      quickAction: 'oeffne Einstellungen',
-    ));
-  }
-
-  // ─── Helpers ──────────────────────────────────────────────────────
-
-  void _dispatchSuggestion(ProactiveSuggestion suggestion) {
-    currentSuggestion = suggestion;
-    onSuggestion?.call(suggestion);
-
-    // Fire native notification
-    _notifications.show(
-      suggestion.type.index,
-      suggestion.title,
-      suggestion.body,
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'proactive_engine',
-          'AI-Buddy Proaktiv',
-          channelDescription: 'Proaktive Vorschläge und Erinnerungen',
-          importance: Importance.defaultImportance,
-          priority: Priority.defaultPriority,
-        ),
-        iOS: DarwinNotificationDetails(),
-      ),
-    );
-
-    notifyListeners();
-  }
-
-  /// Track what we've already fired today to avoid duplicates.
-  Future<bool> _alreadyFired(String key, DateTime now) async {
-    final today = '${now.year}-${now.month}-${now.day}';
-    final memories = _memory.longTermMemories;
-    final match = memories.where((m) =>
-        m.metadata['key'] == 'proactive:$key' && m.content == today);
-    return match.isNotEmpty;
-  }
-
-  Future<void> _markFired(String key, DateTime now) async {
-    final today = '${now.year}-${now.month}-${now.day}';
-    await _memory.addLongTerm(today,
-        metadata: {'key': 'proactive:$key'}, source: 'system');
-  }
-
-  @override
-  void dispose() {
-    stop();
-    super.dispose();
   }
 }

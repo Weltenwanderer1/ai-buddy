@@ -108,15 +108,25 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   void _initProactiveEngine() {
     try {
-        final memory = context.read<MemoryService>();
-      final persona = context.read<PersonaService>();
-        _proactive = ProactiveEngine(
-        llm: null,
+      final memory = context.read<MemoryService>();
+      _proactive = ProactiveEngine(
         memory: memory,
-        persona: persona,
       );
       _proactive!.init().then((_) {
-        if (mounted) _proactive!.start();
+        if (mounted) {
+          _proactive!.start(
+            onMessage: (msg) {
+              if (!mounted) return;
+              // Inject as a system-like proactive message into chat
+              final chatHistory = context.read<ChatHistoryService>();
+              chatHistory.add(ChatMessage(
+                text: msg,
+                isUser: false,
+                type: MessageType.system,
+              ));
+            },
+          );
+        }
       });
     } catch (e) {
       debugPrint('ProactiveEngine init failed: $e');
