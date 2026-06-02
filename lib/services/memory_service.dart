@@ -119,6 +119,8 @@ class MemoryService extends ChangeNotifier {
 
   // ── Core Tier ──
 
+  static const _maxCore = 50;
+
   Future<void> addCore(String content, {String source = 'system', Map<String, dynamic>? metadata}) async {
     _core.add(MemoryItem(
       id: _uuid.v4(),
@@ -126,6 +128,9 @@ class MemoryService extends ChangeNotifier {
       source: source,
       metadata: metadata ?? {},
     ));
+    if (_core.length > _maxCore) {
+      _core.removeRange(0, _core.length - _maxCore);
+    }
     notifyListeners();
     await _saveCore();
   }
@@ -145,6 +150,8 @@ class MemoryService extends ChangeNotifier {
 
   // ── Long-Term Tier ──
 
+  static const _maxLongTerm = 500;
+
   Future<void> addLongTerm(String content, {String source = 'system', Map<String, dynamic>? metadata}) async {
     _longTerm.add(MemoryItem(
       id: _uuid.v4(),
@@ -152,6 +159,9 @@ class MemoryService extends ChangeNotifier {
       source: source,
       metadata: metadata ?? {},
     ));
+    if (_longTerm.length > _maxLongTerm) {
+      _longTerm.removeRange(0, _longTerm.length - _maxLongTerm);
+    }
     notifyListeners();
     await _saveLongTerm();
     _generateEmbeddingForLatest(content);

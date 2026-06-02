@@ -190,10 +190,11 @@ class ChatService {
       Future<String> Function(String, Map<String, dynamic>)? onToolCall;
       void Function(String)? onToolActivityWrapper;
 
-      if (_toolRegistry != null && _toolRegistry!.getToolDefinitions().isNotEmpty) {
+      final registry = _toolRegistry;
+      if (registry != null && registry.getToolDefinitions().isNotEmpty) {
         onToolCall = (String toolName, Map<String, dynamic> args) async {
           debugPrint('ChatService tool: $toolName');
-          final result = await _toolRegistry!.execute(toolName, args);
+          final result = await registry.execute(toolName, args);
           if (result.extraData != null && result.extraData!.isNotEmpty) {
             lastToolExtraData = result.extraData;
           }

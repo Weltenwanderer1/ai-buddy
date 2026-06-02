@@ -40,7 +40,10 @@ class NavigationService {
           );
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('Geocoding error: $e');
+      return null;
+    }
     return null;
   }
 
@@ -89,7 +92,10 @@ class NavigationService {
       final geometry = route['geometry'] as Map<String, dynamic>;
       final coords = (geometry['coordinates'] as List).map((c) {
         final list = c as List;
-        return LatLng(list[1] as double, list[0] as double);
+        return LatLng(
+          (list[1] as num).toDouble(),
+          (list[0] as num).toDouble(),
+        );
       }).toList();
       final steps = ((route['legs'] as List).first['steps'] as List).map((s) {
         final step = s as Map<String, dynamic>;
@@ -100,7 +106,10 @@ class NavigationService {
               m['type'] as String, step['name'] as String? ?? ''),
           distance: (step['distance'] as num).toDouble(),
           duration: (step['duration'] as num).toDouble(),
-          location: LatLng(loc[1] as double, loc[0] as double),
+          location: LatLng(
+            (loc[1] as num).toDouble(),
+            (loc[0] as num).toDouble(),
+          ),
         );
       }).toList();
 
