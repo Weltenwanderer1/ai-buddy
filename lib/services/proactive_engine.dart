@@ -66,9 +66,12 @@ class ProactiveEngine {
 
   Future<void> _check() async {
     if (!_running || _prefs == null) return;
+    final prefs = _prefs;
+    if (prefs == null) return;
+
     try {
       // Debounce
-      final lastStr = _prefs!.getString(_lastKey);
+      final lastStr = prefs.getString(_lastKey);
       if (lastStr != null) {
         final last = DateTime.tryParse(lastStr);
         if (last != null &&
@@ -83,33 +86,32 @@ class ProactiveEngine {
       final events = await _fetchCalendarEvents();
 
       // ── 1. Calendar checks ──
-      if (events.isNotEmpty) {
-        final upcoming = events.where((e) {
-          final s = _parseDate(e['start']);
-          if (s == null) return false;
-          final d = s.difference(now);
-          return d.inHours >= 0 && d.inHours <= 24;
-        }).toList();
+      final upcoming = events.where((e) {
+        final s = _parseDate(e['start']);
+        if (s == null) return false;
+        final d = s.difference(now);
+        return d.inHours >= 0 && d.inHours <= 24;
+      }).toList();
 
-        if (upcoming.isNotEmpty) {
-          upcoming.sort((a, b) {
-            final sa = _parseDate(a['start']) ?? now;
-            final sb = _parseDate(b['start']) ?? now;
-            return sa.compareTo(sb);
-          });
+      if (upcoming.isNotEmpty) {
+        upcoming.sort((a, b) {
+          final sa = _parseDate(a['start']) ?? now;
+          final sb = _parseDate(b['start']) ?? now;
+          return sa.compareTo(sb);
+        });
 
-          final next = upcoming.first;
-          final s = _parseDate(next['start'])!;
-          final diff = s.difference(now);
-          final title = next['title'] as String? ?? 'Termin';
+        final next = upcoming.first;
+        final start = _parseDate(next['start']);
+        if (start == null) return;
+        final diff = start.difference(now);
+        final title = next['title'] as String? ?? 'Termin';
 
-          if (diff.inMinutes <= 30 && diff.inMinutes > 0) {
-            msgs.add('⏰ "$title" in ${diff.inMinutes} Minuten!');
-          } else if (diff.inHours <= 2) {
-            msgs.add('📅 "$title" in ${diff.inHours}h ${diff.inMinutes % 60}min.');
-          } else if (hour >= 7 && hour <= 10) {
-            msgs.add('📅 Heute: ${upcoming.map((e) => e['title']).join(", ")}');
-          }
+        if (diff.inMinutes <= 30 && diff.inMinutes > 0) {
+          msgs.add('⏰ "$title" in ${diff.inMinutes} Minuten!');
+        } else if (diff.inHours <= 2) {
+          msgs.add('📅 "$title" in ${diff.inHours}h ${diff.inMinutes % 60}min.');
+        } else if (hour >= 7 && hour <= 10) {
+          msgs.add('📅 Heute: ${upcoming.map((e) => e['title']).join(", ")}');
         }
       }
 
@@ -135,11 +137,11 @@ class ProactiveEngine {
       if (msgs.isEmpty) return;
 
       final chosen = _pickBest(msgs);
-      final lastText = _prefs!.getString(_lastTextKey);
+      final lastText = prefs.getString(_lastTextKey);
       if (lastText == chosen) return;
 
-      await _prefs!.setString(_lastKey, now.toIso8601String());
-      await _prefs!.setString(_lastTextKey, chosen);
+      await prefs.setString(_lastKey, now.toIso8601String());
+      await prefs.setString(_lastTextKey, chosen);
       _onMessage?.call(chosen);
     } catch (e) {
       debugPrint('ProactiveEngine v2 check error: $e');

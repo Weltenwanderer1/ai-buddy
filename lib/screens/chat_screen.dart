@@ -261,12 +261,14 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
         _scrollToBottom();
       }
     } finally {
-      setState(() {
-        _isStreaming = false;
-        _isThinking = false;
-        _streamingText = '';
-        _isSending = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isStreaming = false;
+          _isThinking = false;
+          _streamingText = '';
+          _isSending = false;
+        });
+      }
     }
   }
 
