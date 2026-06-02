@@ -48,10 +48,10 @@ class ChatService {
     final config = _configService;
     final provider = config?.llmProvider ?? 'ollama';
 
-    if ((provider == 'ollama' || provider == 'openrouter') && _cloudService != null) {
+    if ((provider == 'ollama' || provider == 'openrouter') && _cloudService != null && config != null) {
       // Update cloud config from SecureConfigService
       _cloudService!.updateConfig(
-        baseUrl: config!.activeBaseUrl,
+        baseUrl: config.activeBaseUrl,
         apiKey: config.activeApiKey,
         defaultModel: config.activeModel,
         fallbackModel: config.activeFallbackModel,

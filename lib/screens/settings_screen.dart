@@ -762,11 +762,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                       },
                       onDelete: () async {
                         await piper.deleteVoice(voice);
-                        setState(() {});
+                        if (mounted) setState(() {});
                       },
                       onDownload: () async {
-                        await piper.downloadVoice(voice, onProgress: (p) => setState(() {}));
-                        setState(() {});
+                        await piper.downloadVoice(voice, onProgress: (p) {
+                          if (mounted) setState(() {});
+                        });
+                        if (mounted) setState(() {});
                       },
                     )),
                     const SizedBox(height: 8),

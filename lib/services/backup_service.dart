@@ -207,22 +207,35 @@ class BackupService {
     if (version < 1) throw Exception('Nicht unterstützte Backup-Version: $version');
 
     if (bundle['memory'] != null) {
-      await memory.importAll(bundle['memory'] as Map<String, dynamic>);
+      final mem = bundle['memory'];
+      if (mem is Map<String, dynamic>) {
+        await memory.importAll(mem);
+      }
     }
     if (bundle['persona'] != null) {
-      await persona.importData(bundle['persona'] as Map<String, dynamic>);
+      final per = bundle['persona'];
+      if (per is Map<String, dynamic>) {
+        await persona.importData(per);
+      }
     }
     if (bundle['settings'] != null) {
-      final safeSettings = stripRedactedSecrets(
-        bundle['settings'] as Map<String, dynamic>,
-      );
-      await settings.importData(safeSettings);
+      final set = bundle['settings'];
+      if (set is Map<String, dynamic>) {
+        final safeSettings = stripRedactedSecrets(set);
+        await settings.importData(safeSettings);
+      }
     }
     if (bundle['chat_history'] != null && chatHistory != null) {
-      await chatHistory!.importData(bundle['chat_history'] as Map<String, dynamic>);
+      final ch = bundle['chat_history'];
+      if (ch is Map<String, dynamic>) {
+        await chatHistory!.importData(ch);
+      }
     }
     if (bundle['persona_evolution'] != null && personaEvolution != null) {
-      await personaEvolution!.importData(bundle['persona_evolution'] as Map<String, dynamic>);
+      final evo = bundle['persona_evolution'];
+      if (evo is Map<String, dynamic>) {
+        await personaEvolution!.importData(evo);
+      }
     }
   }
 }
