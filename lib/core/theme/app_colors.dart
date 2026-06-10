@@ -65,12 +65,11 @@ class AppColors {
     colors: [Color(0xFF34D399), Color(0xFF059669)],
   );
 
-      // ── Message Bubble Colors ──
+  // ── Message Bubble Colors ──
   static const LinearGradient userBubble = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    stops: [0.0, 0.7],
-    colors: [Color(0xFFFF6A1A), Color(0xFFA855F7)],  // Kräftiges Orange → Violett
+    colors: [Color(0xFF6B8DD6), Color(0xFF5B7EC4)],  // Periwinkle — ruhig, passend zum Akzent
   );
 
   static const LinearGradient assistantBubbleBg = LinearGradient(

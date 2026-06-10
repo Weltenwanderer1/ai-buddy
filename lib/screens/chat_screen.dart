@@ -25,7 +25,6 @@ import '../services/self_identity_service.dart';
 import '../services/buddy_notifier.dart';
 import '../services/timer_service.dart';
 import '../core/theme/app_colors.dart';
-import '../core/version.dart';
 import '../widgets/active_timer_bar.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -37,7 +36,6 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMixin, WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
-  final ValueNotifier<double> _scrollOffsetNotifier = ValueNotifier<double>(0.0);
   bool _isStreaming = false;
   bool _isThinking = false;
   bool _isSending = false;
@@ -84,7 +82,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   void _onScroll() {
-    _scrollOffsetNotifier.value = _scrollController.offset;
     // Show scroll-to-bottom button when not at bottom
     if (_scrollController.hasClients) {
       final maxScroll = _scrollController.position.maxScrollExtent;
@@ -101,7 +98,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     WidgetsBinding.instance.removeObserver(this);
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
-    _scrollOffsetNotifier.dispose();
     _liveVoice?.removeListener(_onLiveVoiceUpdate);
     _liveVoice?.stop();
     _proactive?.stop();
@@ -463,8 +459,6 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                     : null,
                   child: MessageBubble(
                     message: message,
-                    index: index,
-                    scrollOffsetNotifier: _scrollOffsetNotifier,
                     isSelected: isSelected,
                     onToggleSelection: _isMultiSelectMode || _selectedIndices.isEmpty
                       ? () => _toggleSelection(index)
@@ -593,15 +587,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                       color: Colors.white,
                     ),
                   ),
-                  Text(
-                    appVersion,
-                    style: TextStyle(
-                      fontSize: 9,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.white.withValues(alpha: 0.4),
-                      height: 1.0,
-                    ),
-                  ),
+                  const SizedBox(height: 2),
                   _StatusLine(
                     isThinking: _isThinking && !_isStreaming,
                     isStreaming: _isStreaming,
@@ -700,47 +686,23 @@ class _ThinkingBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      decoration: BoxDecoration(
-        color: AppColors.bgCard.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.glassBorder.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              gradient: AppColors.primaryGradient,
-              shape: BoxShape.circle,
-            ),
-            child: const Center(child: SizedBox(
-              width: 16, height: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Colors.white),
-              ),
-            )),
+    // Kleine Bubble links — wie eine eingehende Nachricht, statt einer
+    // breiten Status-Box über die volle Breite.
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+        decoration: BoxDecoration(
+          gradient: AppColors.assistantBubbleBg,
+          borderRadius: const BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Text('Denkt nach...',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                SizedBox(height: 4),
-                _AnimatedDots(),
-              ],
-            ),
-          ),
-          Icon(Icons.psychology_alt_rounded, size: 20, color: AppColors.primary.withValues(alpha: 0.6)),
-        ],
+        ),
+        child: const _AnimatedDots(),
       ),
     );
   }
@@ -823,52 +785,27 @@ class _StreamingBubble extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: MediaQuery.of(context).size.width * 0.78,
         ),
-        margin: const EdgeInsets.fromLTRB(16, 2, 16, 6),
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-        decoration: BoxDecoration(
-          color: AppColors.bgCard.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(
-            color: AppColors.primary.withValues(alpha: 0.3),
-            width: 1,
+        margin: const EdgeInsets.fromLTRB(12, 2, 12, 6),
+        padding: const EdgeInsets.fromLTRB(14, 10, 14, 10),
+        // Gleiche Optik wie eine fertige KI-Bubble — kein Stilbruch
+        // zwischen Streaming und finaler Nachricht.
+        decoration: const BoxDecoration(
+          gradient: AppColors.assistantBubbleBg,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(18),
+            topRight: Radius.circular(18),
+            bottomRight: Radius.circular(18),
+            bottomLeft: Radius.circular(4),
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: AppColors.textPrimary,
-                fontSize: 15,
-                height: 1.4,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 6,
-                  height: 6,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.8),
-                    shape: BoxShape.circle,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  'Schreibt',
-                  style: TextStyle(
-                    color: AppColors.primary.withValues(alpha: 0.7),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ],
+        // Kein extra "Schreibt"-Label — der Status steht bereits im Header.
+        child: Text(
+          text,
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 15,
+            height: 1.4,
+          ),
         ),
       ),
     );

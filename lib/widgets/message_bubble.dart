@@ -17,8 +17,6 @@ import 'package:provider/provider.dart';
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
   final Animation<double>? animation;
-  final int? index;
-  final ValueNotifier<double>? scrollOffsetNotifier;
   final bool isSelected;
   final VoidCallback? onToggleSelection;
 
@@ -26,8 +24,6 @@ class MessageBubble extends StatelessWidget {
     super.key,
     required this.message,
     this.animation,
-    this.index,
-    this.scrollOffsetNotifier,
     this.isSelected = false,
     this.onToggleSelection,
   });
@@ -87,63 +83,8 @@ class MessageBubble extends StatelessWidget {
     ));
   }
 
-  // ── User-Bubble: Screen-Space Farbverlauf (kräftiges Orange → Violett → Blau) ──
-  static const _palette = [
-    Color(0xFFFF6A1A), // kräftiges Orange
-    Color(0xFFFF8C42), // warmes Orange
-    Color(0xFFE76F51), // Koralle
-    Color(0xFFD4556B), // Himbeer
-    Color(0xFFA855F7), // Violett
-    Color(0xFF7B68D4), // blau-violett
-    Color(0xFF6B8DD6), // Periwinkle Blau
-    Color(0xFFFF6A1A), // wieder Orange (seamless loop)
-  ];
-
   Widget _userBubble(BuildContext context) {
-    if (scrollOffsetNotifier != null && index != null) {
-      return ValueListenableBuilder<double>(
-        valueListenable: scrollOffsetNotifier!,
-        builder: (context, offset, child) {
-          final gradient = _screenSpaceGradient(offset, index!);
-          return _userBubbleWithGradient(context, gradient);
-        },
-      );
-    }
     return _userBubbleWithGradient(context, AppColors.userBubble);
-  }
-
-  /// Screen-space Palette: Oben Orange → unten Lila/Blau.
-  /// 1 Durchlauf pro Bildschirmhöhe: idx*0.5 = 14 Bubbles = 7 Schritte, scroll*0.009 ≈ 1 Palette/800px.
-  LinearGradient _screenSpaceGradient(double scrollOffset, int idx) {
-    // Virtuelle Position auf der Palette (float = erlaubt Zwischenfarben)
-    final pos = (idx * 0.5 + scrollOffset * 0.009) % (_palette.length - 1);
-    final p0 = pos.floor();
-    final p1 = p0 + 1;
-    final t = pos - p0; // 0.0 .. 1.0 zwischen zwei Palettenfarben
-
-    final c0 = _palette[p0];
-    final c1 = _palette[p1];
-    final c2 = _palette[(p1 + 1) % _palette.length];
-
-    // Top = etwas wärmer, Bottom = etwas kühler (Mini-Slice-Verlauf)
-    final top    = _lerpColor(c0, c1, t);
-    final bottom = _lerpColor(c1, c2, t);
-
-    return LinearGradient(
-      begin: Alignment.topLeft,
-      end:   Alignment.bottomRight,
-      colors: [top, bottom],
-    );
-  }
-
-  Color _lerpColor(Color a, Color b, double t) {
-    final tt = t.clamp(0.0, 1.0);
-    return Color.fromARGB(
-      255,
-      (a.r * 255 + (b.r * 255 - a.r * 255) * tt).round(),
-      (a.g * 255 + (b.g * 255 - a.g * 255) * tt).round(),
-      (a.b * 255 + (b.b * 255 - a.b * 255) * tt).round(),
-    );
   }
 
   Widget _userBubbleWithGradient(BuildContext context, Gradient gradient) {
@@ -588,24 +529,15 @@ class _TtsPlayButtonState extends State<_TtsPlayButton> {
         await tts.speak(widget.message.text);
         if (mounted) setState(() => _isPlaying = false);
       },
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            _isPlaying ? Icons.volume_up : Icons.volume_up_outlined,
-            size: 14,
-            color: AppColors.textTertiary,
-          ),
-          const SizedBox(width: 4),
-          Text(
-            'Vorlesen',
-            style: TextStyle(
-              fontSize: 11,
-              color: AppColors.textTertiary,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
+      // Nur ein dezentes Icon — das Text-Label unter jeder Nachricht
+      // macht den Chat unruhig.
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Icon(
+          _isPlaying ? Icons.volume_up : Icons.volume_up_outlined,
+          size: 15,
+          color: _isPlaying ? AppColors.primary : AppColors.textTertiary,
+        ),
       ),
     );
   }

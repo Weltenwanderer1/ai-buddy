@@ -422,35 +422,22 @@ class _SettingsScreenState extends State<SettingsScreen>
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
         slivers: [
-          // ── Sliver Header ──
+          // ── Header ──
           SliverToBoxAdapter(
-            child: Container(
-              padding: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.15),
-                    AppColors.primary.withValues(alpha: 0.02),
-                    Colors.transparent,
-                  ],
-                ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 60, 20, 8),
+              child: Row(
+                children: const [
+                  Text('Einstellungen',
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary, letterSpacing: -0.5)),
+                ],
               ),
-              child: Column(children: const [
-                SizedBox(height: 60),
-                Text('Einstellungen',
-                  style: TextStyle(fontSize: 32, fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary, letterSpacing: -0.5)),
-                SizedBox(height: 6),
-                Text('Konfiguriere deinen AI-Buddy',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-                SizedBox(height: 16),
-              ]),
             ),
           ),
 
-          // ── Persona ──
+          // ── Buddy ──
+          SliverToBoxAdapter(child: _SectionLabel('Buddy')),
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.face_5_rounded,
@@ -493,7 +480,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const MemoryBrowserScreen()),
               ),
             ),
-            _Divider(),
+          ])),
+
+          // ── Werkzeuge ──
+          SliverToBoxAdapter(child: _SectionLabel('Werkzeuge')),
+          SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.map_rounded,
               title: 'Offline-Karten',
@@ -502,8 +493,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               trailing: FutureBuilder<bool>(
                 future: TileDownloadService.hasOfflineTiles(),
                 builder: (_, snap) => snap.hasData && snap.data == true
-                  ? const Icon(Icons.check_circle, color: Color(0xFF34C759), size: 20)
-                  : const Icon(Icons.download_for_offline, color: Color(0xFF5A5A60), size: 20),
+                  ? const Icon(Icons.check_circle, color: AppColors.success, size: 20)
+                  : const Icon(Icons.download_for_offline, color: AppColors.textTertiary, size: 20),
               ),
               onTap: () => showDialog(context: context, builder: (_) => const OfflineMapDialog()),
             ),
@@ -520,7 +511,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             _Divider(),
             _ListTile(
-              icon: Icons.psychology_rounded,
+              icon: Icons.auto_fix_high_rounded,
               title: 'Meine Fähigkeiten',
               subtitle: 'Was die KI alles kann — editierbar',
               color: AppColors.accent,
@@ -530,6 +521,9 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
             ),
           ])),
+
+          // ── Konfiguration ──
+          SliverToBoxAdapter(child: _SectionLabel('Konfiguration')),
 
           // ── Buddy-Name ──
           SliverToBoxAdapter(child: _ExpandableSection(
@@ -856,21 +850,8 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
 
           // ── Daten ──
+          SliverToBoxAdapter(child: _SectionLabel('Daten')),
           SliverToBoxAdapter(child: _GlassCard(children: [
-            _ListTile(
-              icon: Icons.delete_forever_outlined,
-              title: 'Chat löschen',
-              color: AppColors.error,
-              onTap: _clearChatHistory,
-            ),
-            _Divider(),
-            _ListTile(
-              icon: Icons.memory_outlined,
-              title: 'Erinnerungen löschen',
-              color: AppColors.error,
-              onTap: _clearMemories,
-            ),
-            _Divider(),
             _ListTile(
               icon: Icons.backup_outlined,
               title: 'Backup erstellen',
@@ -886,6 +867,20 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
             _Divider(),
             _ListTile(
+              icon: Icons.delete_forever_outlined,
+              title: 'Chat löschen',
+              color: AppColors.error,
+              onTap: _clearChatHistory,
+            ),
+            _Divider(),
+            _ListTile(
+              icon: Icons.memory_outlined,
+              title: 'Erinnerungen löschen',
+              color: AppColors.error,
+              onTap: _clearMemories,
+            ),
+            _Divider(),
+            _ListTile(
               icon: Icons.restart_alt_rounded,
               title: 'App zurücksetzen',
               subtitle: 'Alles löschen — wie neu installiert',
@@ -898,12 +893,13 @@ class _SettingsScreenState extends State<SettingsScreen>
           SliverToBoxAdapter(child: _SchedulerSection()),
 
           // ── Über ──
+          SliverToBoxAdapter(child: _SectionLabel('Über')),
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.favorite_rounded,
               title: 'AI-Buddy',
-              subtitle: 'v$appVersion',
-              trailing: _Badge('v$appVersion', color: AppColors.secondary),
+              subtitle: 'Version $appVersion',
+              color: AppColors.primary,
               onTap: () {},
             ),
           ])),
@@ -1057,6 +1053,28 @@ class _ModelDropdownState extends State<_ModelDropdown> {
 }
 
 // ──── UI Widgets ────
+
+/// Kleines Abschnitts-Label über einer Karte (iOS-Settings-Stil).
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(28, 18, 28, 4),
+      child: Text(
+        text.toUpperCase(),
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.1,
+          color: AppColors.textSecondary,
+        ),
+      ),
+    );
+  }
+}
 
 class _GlassCard extends StatelessWidget {
   final List<Widget> children;
@@ -1390,21 +1408,20 @@ class _ResultBox extends StatelessWidget {
 
 class _Badge extends StatelessWidget {
   final String text;
-  final Color? color;
-  const _Badge(this.text, {this.color});
+  const _Badge(this.text);
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: (color ?? AppColors.primary).withValues(alpha: 0.15),
+        color: AppColors.primary.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: Text(text, style: TextStyle(
+      child: Text(text, style: const TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w700,
-        color: color ?? AppColors.primary,
+        color: AppColors.primary,
       )),
     );
   }
