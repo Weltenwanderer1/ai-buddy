@@ -86,12 +86,13 @@ class SendMessageToContactTool implements ToolInterface {
 
       // Resolve contact name to phone number
       try {
-        final List contacts = await _channel.invokeMethod('searchContacts', {
+        final result = await _channel.invokeMethod('searchContacts', {
           'query': contact,
           'limit': 1,
         });
+        final contacts = result is List ? result : const [];
 
-        if (contacts.isEmpty) {
+        if (contacts.isEmpty || contacts.first is! Map) {
           return ToolResult(
             toolName: definition.name,
             parameters: parameters,
@@ -101,9 +102,9 @@ class SendMessageToContactTool implements ToolInterface {
           );
         }
 
-        final Map<String, dynamic> c = Map<String, dynamic>.from(contacts.first);
-        final phones = c['phones'] as List? ?? [];
-        if (phones.isEmpty) {
+        final Map<String, dynamic> c = Map<String, dynamic>.from(contacts.first as Map);
+        final phones = c['phones'] is List ? c['phones'] as List : const [];
+        if (phones.isEmpty || phones.first is! Map) {
           return ToolResult(
             toolName: definition.name,
             parameters: parameters,
@@ -114,7 +115,7 @@ class SendMessageToContactTool implements ToolInterface {
         }
 
         // Use the first phone number
-        final Map<String, dynamic> firstPhone = Map<String, dynamic>.from(phones.first);
+        final Map<String, dynamic> firstPhone = Map<String, dynamic>.from(phones.first as Map);
         phone = firstPhone['number'] as String? ?? '';
         final resolvedName = c['name'] ?? contact;
 
@@ -161,8 +162,9 @@ class SendMessageToContactTool implements ToolInterface {
           displayText: '📱 SMS an $contact',
         );
       } else {
-        // WhatsApp
-        final uri = Uri.parse('https://wa.me/$cleanPhone?text=${Uri.encodeComponent(message)}');
+        // WhatsApp — wa.me erwartet die Nummer im internationalen Format ohne '+'
+        final waPhone = cleanPhone.replaceAll('+', '');
+        final uri = Uri.parse('https://wa.me/$waPhone?text=${Uri.encodeComponent(message)}');
         await launchUrl(uri);
         return ToolResult(
           toolName: definition.name,

@@ -34,10 +34,10 @@ class NavigationService {
       if (res.statusCode == 200) {
         final data = jsonDecode(res.body) as List;
         if (data.isNotEmpty) {
-          return LatLng(
-            double.parse(data.first['lat'] as String),
-            double.parse(data.first['lon'] as String),
-          );
+          // Nominatim liefert lat/lon je nach Endpoint als String oder Zahl.
+          final lat = _toDouble(data.first['lat']);
+          final lon = _toDouble(data.first['lon']);
+          if (lat != null && lon != null) return LatLng(lat, lon);
         }
       }
     } catch (e) {
@@ -86,7 +86,9 @@ class NavigationService {
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       if (body['code'] != 'Ok') return null;
 
-      final route = (body['routes'] as List).first as Map<String, dynamic>;
+      final routes = (body['routes'] as List?) ?? [];
+      if (routes.isEmpty) return null;
+      final route = routes.first as Map<String, dynamic>;
       final distance = (route['distance'] as num).toDouble();
       final duration = (route['duration'] as num).toDouble();
       final geometry = route['geometry'] as Map<String, dynamic>;
@@ -97,7 +99,9 @@ class NavigationService {
           (list[0] as num).toDouble(),
         );
       }).toList();
-      final steps = ((route['legs'] as List).first['steps'] as List).map((s) {
+      final legs = (route['legs'] as List?) ?? [];
+      final rawSteps = legs.isNotEmpty ? ((legs.first['steps'] as List?) ?? []) : <dynamic>[];
+      final steps = rawSteps.map((s) {
         final step = s as Map<String, dynamic>;
         final m = step['maneuver'] as Map<String, dynamic>;
         final loc = m['location'] as List;
@@ -260,6 +264,12 @@ class NavigationService {
   }
 
   // ── Helpers ──
+
+  double? _toDouble(dynamic v) {
+    if (v is num) return v.toDouble();
+    if (v is String) return double.tryParse(v);
+    return null;
+  }
 
   String _mapOsrmProfile(String p) {
     switch (p) {

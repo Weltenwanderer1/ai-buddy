@@ -280,11 +280,16 @@ class ChatService {
   /// Runs contextual extraction on the combined turn, stores in
   /// short-term, and promotes important ones to long-term automatically.
   void _saveMemory(MemoryService memory, String userMessage, String reply) {
-    // Store both messages in short-term (preserves conversation flow)
+    // Store both messages in short-term (preserves conversation flow).
+    // Intentionally not awaited (don't block the chat turn), but errors
+    // must be handled — an unhandled async error would crash the zone.
     Future.wait([
       memory.addShortTerm(userMessage, source: 'user'),
       memory.addShortTerm(reply, source: 'assistant'),
-    ]);
+    ]).catchError((Object e) {
+      debugPrint('Memory save error: $e');
+      return <void>[];
+    });
 
     // Auto-extract memories from the conversation turn
     // Runs locally — no extra LLM call, instant

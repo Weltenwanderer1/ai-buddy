@@ -231,6 +231,7 @@ class AutomationService extends ChangeNotifier {
     if (idx >= 0) {
       _rules[idx].lastFired = DateTime.now();
       await _saveRules();
+      notifyListeners();
     }
   }
 

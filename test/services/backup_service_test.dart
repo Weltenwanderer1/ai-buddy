@@ -153,11 +153,16 @@ void main() {
       expect((stripped['nested'] as Map)['safe'], 'kept');
     });
 
-    test('corrupt zip throws on decode', () {
-      expect(
-        () => ZipDecoder().decodeBytes([1, 2, 3, 4, 5]),
-        throwsA(anything),
-      );
+    test('corrupt zip yields no backup.json', () {
+      // archive 4.x liefert für ungültige Bytes ein leeres Archive statt
+      // einer Exception — der Import scheitert dann am fehlenden backup.json.
+      Archive? decoded;
+      try {
+        decoded = ZipDecoder().decodeBytes([1, 2, 3, 4, 5]);
+      } catch (_) {
+        decoded = null; // Exception ist ebenfalls akzeptabel
+      }
+      expect(decoded?.findFile('backup.json'), isNull);
     });
 
     test('backup missing backup.json throws', () async {

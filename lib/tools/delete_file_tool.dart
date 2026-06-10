@@ -2,6 +2,7 @@ import 'dart:io';
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import 'sandbox_path.dart';
 
 /// Deletes a file or empty directory.
 class DeleteFileTool implements ToolInterface {
@@ -41,7 +42,16 @@ class DeleteFileTool implements ToolInterface {
 
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
-      final fullPath = '$root/${subPath.replaceFirst(RegExp(r'^/+'), '')}';
+      final fullPath = resolveSandboxPath(root, subPath);
+      if (fullPath == null) {
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result: 'Ungültiger Pfad: $subPath',
+          isError: true,
+          displayText: '❌ Ungültiger Pfad',
+        );
+      }
       final file = File(fullPath);
       final dir = Directory(fullPath);
 

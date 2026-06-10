@@ -37,7 +37,8 @@ class SearchMemoriesTool implements ToolInterface {
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final query = parameters['query'] as String? ?? '';
-    final limit = (parameters['limit'] as int?) ?? 10;
+    final rawLimit = parameters['limit'];
+    final limit = (rawLimit is num ? rawLimit.toInt() : 10).clamp(1, 50);
 
     if (query.isEmpty) {
       return ToolResult(

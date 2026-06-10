@@ -2,6 +2,7 @@ import 'dart:io';
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import 'sandbox_path.dart';
 
 class ListFilesTool implements ToolInterface {
   final String? Function()? getRootPath;
@@ -25,7 +26,10 @@ class ListFilesTool implements ToolInterface {
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
       final subPath = (parameters['path'] as String?) ?? '';
-      final fullPath = subPath.isEmpty ? root : '$root/${subPath.replaceFirst(RegExp(r'^/+'), '')}';
+      final fullPath = subPath.isEmpty ? root : resolveSandboxPath(root, subPath);
+      if (fullPath == null) {
+        return ToolResult(toolName: definition.name, parameters: parameters, result: 'Ungültiger Pfad: $subPath', isError: true, displayText: 'Ungültiger Pfad');
+      }
       final dir = Directory(fullPath);
       if (!await dir.exists()) {
         return ToolResult(toolName: definition.name, parameters: parameters, result: 'Pfad nicht gefunden: $fullPath', isError: true, displayText: 'Pfad nicht gefunden');
