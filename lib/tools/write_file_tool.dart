@@ -2,6 +2,7 @@ import 'dart:io';
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import 'sandbox_path.dart';
 
 class WriteFileTool implements ToolInterface {
   final String? Function()? getRootPath;
@@ -29,7 +30,10 @@ class WriteFileTool implements ToolInterface {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
       final subPath = parameters['path'] as String? ?? '';
       final content = parameters['content'] as String? ?? '';
-      final fullPath = '$root/${subPath.replaceFirst(RegExp(r'^/+'), '')}';
+      final fullPath = resolveSandboxPath(root, subPath);
+      if (fullPath == null) {
+        return ToolResult(toolName: definition.name, parameters: parameters, result: 'Ungültiger Pfad: $subPath', isError: true, displayText: 'Ungültiger Pfad');
+      }
       final file = File(fullPath);
       await file.parent.create(recursive: true);
       await file.writeAsString(content);

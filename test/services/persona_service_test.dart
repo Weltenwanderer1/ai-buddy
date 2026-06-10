@@ -17,7 +17,7 @@ void main() {
       expect(prompt, contains('hilfsbereit'));
       expect(prompt, contains('neugierig'));
       expect(prompt, contains('Luna ist ein AI-Begleiter'));
-      expect(prompt, contains('natürlich'));
+      expect(prompt, contains('REGELN'));
     });
 
     test('buildSystemPrompt with evolution context', () {

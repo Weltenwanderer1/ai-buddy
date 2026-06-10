@@ -73,6 +73,16 @@ class UpdateCalendarEventTool implements ToolInterface {
       );
     }
 
+    if (title == null && startStr == null && endStr == null && description == null && location == null) {
+      return ToolResult(
+        toolName: definition.name,
+        parameters: parameters,
+        result: 'Fehler: Mindestens ein Feld (title, start, end, description, location) muss angegeben werden.',
+        isError: true,
+        displayText: '❌ Keine Änderungen angegeben',
+      );
+    }
+
     if (updateEventCallback == null) {
       return ToolResult(
         toolName: definition.name,

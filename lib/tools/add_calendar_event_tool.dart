@@ -109,19 +109,7 @@ class AddCalendarEventTool implements ToolInterface {
     }
 
     // Parse start time
-    DateTime? startTime;
-    startTime = _parseDateTime(startStr);
-
-    // Parse end time / duration
-    DateTime? endTime;
-    final endAsInt = int.tryParse(endStr);
-    if (endAsInt != null && endAsInt > 0 && endAsInt <= 525600) {
-      // Treat as duration in minutes
-      endTime = (startTime ?? DateTime.now()).add(Duration(minutes: endAsInt));
-    } else {
-      endTime = _parseDateTime(endStr);
-    }
-
+    final startTime = _parseDateTime(startStr);
     if (startTime == null) {
       return ToolResult(
         toolName: definition.name,
@@ -130,6 +118,16 @@ class AddCalendarEventTool implements ToolInterface {
         isError: true,
         displayText: '❌ Startzeit ungültig',
       );
+    }
+
+    // Parse end time / duration
+    DateTime? endTime;
+    final endAsInt = int.tryParse(endStr);
+    if (endAsInt != null && endAsInt > 0 && endAsInt <= 525600) {
+      // Treat as duration in minutes
+      endTime = startTime.add(Duration(minutes: endAsInt));
+    } else {
+      endTime = _parseDateTime(endStr);
     }
 
     endTime ??= startTime.add(const Duration(hours: 1)); // Default 1h

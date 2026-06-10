@@ -180,13 +180,9 @@ class PiperTtsService extends ChangeNotifier {
   Future<bool> loadVoice(PiperVoice voice) async {
     if (_isLoaded && _currentVoice == voice) return true; // Already loaded
 
-    // Unload previous voice first to avoid ONNX session conflicts
+    // The plugin has no unload API — loadViaPath below replaces the
+    // previous ONNX session. Just reset our bookkeeping.
     if (_isLoaded) {
-      try {
-        await _piper.unload();
-      } catch (e) {
-        debugPrint('PiperTts: unload failed: $e');
-      }
       _isLoaded = false;
       _currentVoice = null;
     }

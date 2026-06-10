@@ -64,7 +64,7 @@ class ToolCallParser {
 
     // 1c. Parse plain call: syntax without XML tags: call:open_app{app_name: "..."}
     final plainCallPattern = RegExp(
-      r'call:([^\{&lt;\n]+)\{([^}]*)\}',
+      r'call:([^\{<\n]+)\{([^}]*)\}',
       caseSensitive: false,
       dotAll: true,
     );
@@ -102,8 +102,10 @@ class ToolCallParser {
 
     // 3. Parse raw JSON tool calls: {"name": "tool_name", "arguments": {...}}
     //    Some LLMs output this format directly instead of using the API's structured tool_calls.
+    // Arguments may contain one level of nested objects, e.g.
+    // {"name": "x", "arguments": {"params": {"a": 1}}}.
     final rawJsonToolPattern = RegExp(
-      r'\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{[^}]*\})\s*\}',
+      r'\{\s*"name"\s*:\s*"([^"]+)"\s*,\s*"arguments"\s*:\s*(\{(?:[^{}]|\{[^{}]*\})*\})\s*\}',
       dotAll: true,
     );
     for (final match in rawJsonToolPattern.allMatches(content)) {
@@ -177,7 +179,7 @@ class ToolCallParser {
     // Remove plain call: syntax
     cleaned = cleaned.replaceAllMapped(
       RegExp(
-        r'call:[^\{&lt;\n]+\{[^}]*\}',
+        r'call:[^\{<\n]+\{[^}]*\}',
         caseSensitive: false,
         dotAll: true,
       ),
@@ -196,7 +198,7 @@ class ToolCallParser {
     // Remove raw JSON tool calls: {"name": "tool_name", "arguments": {...}}
     cleaned = cleaned.replaceAllMapped(
       RegExp(
-        r'\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{[^}]*\}\s*\}',
+        r'\{\s*"name"\s*:\s*"[^"]+"\s*,\s*"arguments"\s*:\s*\{(?:[^{}]|\{[^{}]*\})*\}\s*\}',
         dotAll: true,
       ),
       (_) => '',

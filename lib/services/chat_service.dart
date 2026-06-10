@@ -110,12 +110,33 @@ class ChatService {
           return;
         }
 
-        // Streaming currently only supports text-only (no tools)
+        // Tool-Callbacks für den Streaming-Pfad (analog zu sendMessage)
+        Future<String> Function(String, Map<String, dynamic>)? onToolCall;
+        final registry = _toolRegistry;
+        if (registry != null && registry.getToolDefinitions().isNotEmpty) {
+          onToolCall = (String toolName, Map<String, dynamic> args) async {
+            final result = await registry.execute(toolName, args);
+            return result.result;
+          };
+        }
+
         try {
           final stream = provider.streamChat(
             systemPrompt: systemPrompt,
             messages: messages.cast<Map<String, dynamic>>(),
             temperature: 0.5,
+            toolDefinitions: registry?.getToolDefinitions(),
+            onToolCall: onToolCall,
+            maxToolRounds: 5,
+            onToolActivity: (toolName) {
+              // '🔧'-Marker: signalisiert der UI laufende Tool-Ausführung
+              if (!controller.isClosed) controller.add('🔧');
+              onToolActivity?.call(ChatMessage(
+                text: '🔧 $toolName...',
+                isUser: false,
+                type: MessageType.toolActivity,
+              ));
+            },
           );
 
           await for (final chunk in stream) {
@@ -280,11 +301,16 @@ class ChatService {
   /// Runs contextual extraction on the combined turn, stores in
   /// short-term, and promotes important ones to long-term automatically.
   void _saveMemory(MemoryService memory, String userMessage, String reply) {
-    // Store both messages in short-term (preserves conversation flow)
+    // Store both messages in short-term (preserves conversation flow).
+    // Intentionally not awaited (don't block the chat turn), but errors
+    // must be handled — an unhandled async error would crash the zone.
     Future.wait([
       memory.addShortTerm(userMessage, source: 'user'),
       memory.addShortTerm(reply, source: 'assistant'),
-    ]);
+    ]).catchError((Object e) {
+      debugPrint('Memory save error: $e');
+      return <void>[];
+    });
 
     // Auto-extract memories from the conversation turn
     // Runs locally — no extra LLM call, instant

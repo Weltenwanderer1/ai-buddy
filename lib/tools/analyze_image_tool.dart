@@ -2,6 +2,7 @@ import 'dart:io';
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import 'sandbox_path.dart';
 
 /// Takes a photo from camera or picks from gallery, then analyzes it with Vision LLM.
 class AnalyzeImageTool implements ToolInterface {
@@ -118,8 +119,16 @@ class AnalyzeImageTool implements ToolInterface {
             );
           }
           final root = getRootPath?.call() ?? '/storage/emulated/0';
-          final fullPath =
-              '$root/${filePath.replaceFirst(RegExp(r'^/+'), '')}';
+          final fullPath = resolveSandboxPath(root, filePath);
+          if (fullPath == null) {
+            return ToolResult(
+              toolName: definition.name,
+              parameters: parameters,
+              result: 'Ungültiger Pfad: $filePath',
+              isError: true,
+              displayText: '❌ Ungültiger Pfad',
+            );
+          }
           if (await File(fullPath).exists()) {
             imagePath = fullPath;
           } else {

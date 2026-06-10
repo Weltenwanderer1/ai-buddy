@@ -150,6 +150,138 @@ class OllamaCloudService extends ChangeNotifier {
         systemPrompt, messages, model ?? defaultModel, temperature);
   }
 
+  /// Streaming chat WITH tool support.
+  ///
+  /// Streams content tokens to the caller while accumulating structured
+  /// `delta.tool_calls` fragments (OpenAI streaming format). When the model
+  /// requests tools, they are executed via [onToolCall], the results are
+  /// appended to the conversation, and the next round is streamed — up to
+  /// [maxToolRounds] rounds. Always uses the OpenAI-compatible endpoint
+  /// (tools are not supported on the Ollama-native path).
+  Stream<String> chatStreamWithTools({
+    required String systemPrompt,
+    required List<Map<String, dynamic>> messages,
+    List<Map<String, dynamic>>? tools,
+    Future<String> Function(String toolName, Map<String, dynamic> args)?
+        onToolCall,
+    void Function(String toolName)? onToolActivity,
+    int maxToolRounds = 5,
+    String? model,
+    double temperature = 0.7,
+  }) async* {
+    final current = <Map<String, dynamic>>[
+      {'role': 'system', 'content': _sanitize(systemPrompt)},
+      ...messages,
+    ];
+    final url = Uri.parse(_chatCompletionsPath);
+    final hasTools =
+        tools != null && tools.isNotEmpty && onToolCall != null;
+
+    for (var round = 0; round <= maxToolRounds; round++) {
+      final body = <String, dynamic>{
+        'model': _sanitize(model ?? defaultModel),
+        'messages': current,
+        'temperature': temperature,
+        'stream': true,
+      };
+      // Letzte Runde ohne Tools erzwingen, damit das Modell eine
+      // Textantwort liefert statt endlos Tools anzufordern.
+      if (hasTools && round < maxToolRounds) {
+        body['tools'] = tools;
+      }
+
+      final collected = <int, ToolCallDraft>{};
+      await for (final chunk
+          in _streamResponseWithToolCapture(url, _baseHeaders, body, collected)) {
+        yield chunk;
+      }
+
+      final toolCalls = _draftsToToolCalls(collected);
+      if (!hasTools || toolCalls.isEmpty) return;
+
+      // Assistant-Nachricht mit allen Tool-Calls in die History
+      current.add({
+        'role': 'assistant',
+        'content': '',
+        'tool_calls': [
+          for (final tc in toolCalls)
+            {
+              'id': tc.id,
+              'type': tc.type,
+              'function': {
+                'name': tc.name,
+                'arguments': jsonEncode(tc.arguments),
+              },
+            },
+        ],
+      });
+
+      for (final tc in toolCalls) {
+        debugPrint('chatStreamWithTools tool: ${tc.name}');
+        onToolActivity?.call(tc.name);
+        String result;
+        try {
+          result = await onToolCall(tc.name, tc.arguments);
+        } catch (e) {
+          result = 'Fehler: $e';
+        }
+        final trimmed =
+            result.length > 2000 ? '${result.substring(0, 2000)}...' : result;
+        current.add({
+          'role': 'tool',
+          'tool_call_id': tc.id,
+          'content': trimmed,
+        });
+      }
+    }
+  }
+
+  /// Convert accumulated streaming tool-call drafts into [ToolCall]s.
+  List<ToolCall> _draftsToToolCalls(Map<int, ToolCallDraft> drafts) {
+    final indices = drafts.keys.toList()..sort();
+    final calls = <ToolCall>[];
+    for (final i in indices) {
+      final d = drafts[i]!;
+      if (d.name.isEmpty) continue;
+      Map<String, dynamic> args = {};
+      final argsStr = d.arguments.toString().trim();
+      if (argsStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(argsStr);
+          if (decoded is Map) args = decoded.cast<String, dynamic>();
+        } catch (_) {
+          // Unvollständiges/ungültiges JSON — Tool mit leeren Args aufrufen
+          // ist sinnlos, also überspringen.
+          continue;
+        }
+      }
+      calls.add(ToolCall(
+        id: d.id.isNotEmpty ? d.id : 'stream_tool_$i',
+        type: 'function',
+        name: d.name,
+        arguments: args,
+      ));
+    }
+    return calls;
+  }
+
+  /// Accumulate one OpenAI streaming `delta.tool_calls` entry into [drafts].
+  @visibleForTesting
+  static void accumulateToolCallDelta(
+      Map<int, ToolCallDraft> drafts, Map<String, dynamic> entry) {
+    final index = (entry['index'] as num?)?.toInt() ?? 0;
+    final draft = drafts.putIfAbsent(index, () => ToolCallDraft());
+    final id = entry['id'] as String?;
+    if (id != null && id.isNotEmpty) draft.id = id;
+    final func = entry['function'];
+    if (func is Map) {
+      final name = func['name'] as String?;
+      if (name != null && name.isNotEmpty) draft.name += name;
+      final args = func['arguments'] as String?;
+      if (args != null) draft.arguments.write(args);
+    }
+  }
+
   /// Internal: streaming request that handles both Ollama native and OpenAI-compatible endpoints.
   /// Sanitize a string for safe JSON/UTF-8 encoding.
   /// Removes C0 control chars AND unpaired surrogates that cause
@@ -262,10 +394,166 @@ class OllamaCloudService extends ChangeNotifier {
       if (e is OllamaApiException) rethrow;
       throw Exception('Streaming failed: $e');
     } finally {
+      // detachSocket() liefert ein Future — Fehler dort dürfen nicht als
+      // unhandled async error hochblubbern.
       try {
-        response?.detachSocket().then((socket) => socket.destroy());
+        unawaited(response
+            ?.detachSocket()
+            .then((socket) => socket.destroy())
+            .catchError((_) {}));
       } catch (_) {}
       client?.close();
+    }
+  }
+
+  /// Like [_streamResponse], but additionally captures streaming
+  /// `delta.tool_calls` fragments into [drafts] (OpenAI format only).
+  Stream<String> _streamResponseWithToolCapture(
+    Uri url,
+    Map<String, String> headers,
+    Map<String, dynamic> body,
+    Map<int, ToolCallDraft> drafts,
+  ) async* {
+    HttpClient? client;
+    HttpClientResponse? response;
+
+    try {
+      client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 30);
+      client.idleTimeout = const Duration(seconds: 120);
+      final request = await client.postUrl(url);
+      for (final entry in headers.entries) {
+        request.headers.set(entry.key, entry.value);
+      }
+      request.add(utf8.encode(jsonEncode(body)));
+      response = await request.close().timeout(const Duration(seconds: 120));
+
+      if (response.statusCode != 200) {
+        final errorBody = await response.transform(utf8.decoder).join();
+        throw OllamaApiException(
+          response.statusCode,
+          'Streaming API error (${response.statusCode}): $errorBody',
+        );
+      }
+
+      final lines =
+          response.transform(utf8.decoder).transform(const LineSplitter());
+      String? currentData;
+
+      await for (final line in lines) {
+        if (line.startsWith('data: ')) {
+          currentData = line.substring(6).trim();
+        } else if (line.isEmpty && currentData != null) {
+          final chunk = _parseToolStreamChunk(currentData, drafts);
+          if (chunk != null) yield chunk;
+          currentData = null;
+        } else if (line.isNotEmpty && !line.startsWith(':')) {
+          final chunk = _parseToolStreamChunk(line.trim(), drafts);
+          if (chunk != null) yield chunk;
+        }
+      }
+      if (currentData != null) {
+        final chunk = _parseToolStreamChunk(currentData, drafts);
+        if (chunk != null) yield chunk;
+      }
+    } catch (e) {
+      if (e is OllamaApiException) rethrow;
+      throw Exception('Streaming failed: $e');
+    } finally {
+      try {
+        unawaited(response
+            ?.detachSocket()
+            .then((socket) => socket.destroy())
+            .catchError((_) {}));
+      } catch (_) {}
+      client?.close();
+    }
+  }
+
+  /// Parse an OpenAI streaming chunk: returns content text (or null) and
+  /// accumulates tool-call deltas into [drafts].
+  String? _parseToolStreamChunk(String data, Map<int, ToolCallDraft> drafts) {
+    if (data.isEmpty || data == '[DONE]') return null;
+    try {
+      final json = jsonDecode(data) as Map<String, dynamic>;
+      final choices = json['choices'] as List?;
+      if (choices == null || choices.isEmpty) return null;
+      final delta = choices[0]['delta'] as Map<String, dynamic>?;
+      if (delta == null) return null;
+      final toolDeltas = delta['tool_calls'];
+      if (toolDeltas is List) {
+        for (final entry in toolDeltas) {
+          if (entry is Map) {
+            accumulateToolCallDelta(drafts, entry.cast<String, dynamic>());
+          }
+        }
+      }
+      return delta['content'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Describe an image with a vision-capable model.
+  ///
+  /// Sends the image as base64 data URL in the OpenAI-compatible
+  /// `image_url` content format (supported by OpenRouter and the
+  /// Ollama `/v1` endpoint). Tries the default model first, then the
+  /// fallback model.
+  Future<String> describeImage({
+    required String imageBase64,
+    String mimeType = 'image/jpeg',
+    String? question,
+    String? model,
+  }) async {
+    final messages = [
+      {
+        'role': 'user',
+        'content': [
+          {
+            'type': 'text',
+            'text': question ?? 'Beschreibe dieses Bild detailliert auf Deutsch.',
+          },
+          {
+            'type': 'image_url',
+            'image_url': {'url': 'data:$mimeType;base64,$imageBase64'},
+          },
+        ],
+      },
+    ];
+
+    Future<String> request(String useModel) async {
+      final response = await _client
+          .post(
+            Uri.parse(_chatCompletionsPath),
+            headers: _baseHeaders,
+            body: jsonEncode({
+              'model': useModel,
+              'messages': messages,
+              'temperature': 0.3,
+            }),
+          )
+          .timeout(_timeout);
+      if (response.statusCode != 200) {
+        throw OllamaApiException(
+          response.statusCode,
+          'Vision API error (${response.statusCode}): ${response.body.length > 300 ? response.body.substring(0, 300) : response.body}',
+        );
+      }
+      final data = jsonDecode(response.body);
+      final content = data['choices']?[0]?['message']?['content'];
+      if (content is! String || content.isEmpty) {
+        throw const FormatException('Vision-Antwort ohne Inhalt');
+      }
+      return content;
+    }
+
+    if (model != null) return request(model);
+    try {
+      return await request(defaultModel);
+    } catch (e) {
+      debugPrint('Vision mit $defaultModel fehlgeschlagen: $e — versuche $fallbackModel');
+      return request(fallbackModel);
     }
   }
 
@@ -711,6 +999,14 @@ class OllamaCloudService extends ChangeNotifier {
     _client.close();
     super.dispose();
   }
+}
+
+/// Mutable accumulator for one streamed tool call (OpenAI delta format:
+/// id/name arrive once, arguments arrive as string fragments).
+class ToolCallDraft {
+  String id = '';
+  String name = '';
+  final StringBuffer arguments = StringBuffer();
 }
 
 /// Parsed LLM response with optional tool calls.

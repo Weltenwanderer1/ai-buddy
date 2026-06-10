@@ -77,11 +77,29 @@ class OllamaCloudProvider implements LlmProvider {
     required String systemPrompt,
     required List<Map<String, dynamic>> messages,
     double temperature = 0.7,
+    List<Map<String, dynamic>>? toolDefinitions,
+    Future<String> Function(String toolName, Map<String, dynamic> args)? onToolCall,
+    void Function(String toolName)? onToolActivity,
+    int maxToolRounds = 3,
   }) {
     final cloudMessages = messages.map((m) => {
       'role': m['role'] as String,
       'content': m['content'] as String,
     }).toList();
+
+    if (toolDefinitions != null &&
+        toolDefinitions.isNotEmpty &&
+        onToolCall != null) {
+      return _cloud.chatStreamWithTools(
+        systemPrompt: systemPrompt,
+        messages: cloudMessages.cast<Map<String, dynamic>>(),
+        tools: toolDefinitions,
+        onToolCall: onToolCall,
+        onToolActivity: onToolActivity,
+        maxToolRounds: maxToolRounds,
+        temperature: temperature,
+      );
+    }
 
     return _cloud.chatStream(
       systemPrompt: systemPrompt,

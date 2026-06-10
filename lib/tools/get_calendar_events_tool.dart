@@ -30,7 +30,8 @@ class GetCalendarEventsTool implements ToolInterface {
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
-    final daysAhead = (parameters['days_ahead'] as int?) ?? 7;
+    final rawDays = parameters['days_ahead'];
+    final daysAhead = (rawDays is num ? rawDays.toInt() : int.tryParse('$rawDays') ?? 7).clamp(1, 365);
 
     if (getEventsCallback == null) {
       return ToolResult(

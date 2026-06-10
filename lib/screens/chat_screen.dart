@@ -308,15 +308,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     await for (final chunk in stream) {
       if (chunk == '🔧') {
         // Tool execution marker - show activity, keep thinking state
-        setState(() => _isThinking = false);
+        if (mounted) setState(() => _isThinking = false);
         continue;
       }
       if (firstChunk) {
         firstChunk = false;
-        setState(() => _isThinking = false);
+        if (mounted) setState(() => _isThinking = false);
       }
       buffer.write(chunk);
-      setState(() => _streamingText = buffer.toString());
+      if (mounted) setState(() => _streamingText = buffer.toString());
       _scrollToBottom();
     }
 
@@ -335,11 +335,13 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       }
     }
 
-    setState(() {
-      _isStreaming = false;
-      _isThinking = false;
-      _streamingText = '';
-    });
+    if (mounted) {
+      setState(() {
+        _isStreaming = false;
+        _isThinking = false;
+        _streamingText = '';
+      });
+    }
 
     _scrollToBottom();
   }
@@ -367,7 +369,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     } else {
       _liveVoice!.removeListener(_onLiveVoiceUpdate);
       await _liveVoice!.stop();
-      setState(() {});
+      if (mounted) setState(() {});
     }
   }
 
@@ -397,7 +399,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
   void _onLiveVoiceUpdate() {
     final lv = _liveVoice;
-    if (lv == null) return;
+    if (lv == null || !mounted) return;
 
     if (lv.state == LiveVoiceState.thinking || lv.state == LiveVoiceState.speaking) {
       _scrollToBottom();

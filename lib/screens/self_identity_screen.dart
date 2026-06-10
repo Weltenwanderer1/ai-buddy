@@ -398,16 +398,12 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: TextEditingController(text: entry.value),
-                  style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-                  decoration: InputDecoration(
-                    filled: true,
-                    fillColor: AppColors.bgCard.withValues(alpha: 0.4),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  ),
-                  onChanged: (v) {
+                child: _EditableListField(
+                  // Index als Key: nach Add/Remove übernimmt didUpdateWidget
+                  // den neuen Text in den bestehenden Controller.
+                  key: ValueKey(entry.key),
+                  initialText: entry.value,
+                  onTextChanged: (v) {
                     items[entry.key] = v;
                     onChanged(items);
                   },
@@ -453,5 +449,63 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
 
   String _formatDate(DateTime dt) {
     return '${dt.day.toString().padLeft(2, '0')}.${dt.month.toString().padLeft(2, '0')}.${dt.year}';
+  }
+}
+
+/// Eine Zeile der editierbaren Listen mit eigenem Controller-Lifecycle —
+/// verhindert, dass bei jedem Rebuild neue Controller entstehen und leaken.
+class _EditableListField extends StatefulWidget {
+  final String initialText;
+  final ValueChanged<String> onTextChanged;
+
+  const _EditableListField({
+    super.key,
+    required this.initialText,
+    required this.onTextChanged,
+  });
+
+  @override
+  State<_EditableListField> createState() => _EditableListFieldState();
+}
+
+class _EditableListFieldState extends State<_EditableListField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void didUpdateWidget(covariant _EditableListField old) {
+    super.didUpdateWidget(old);
+    // Nach Add/Remove verschieben sich die Zeilen — Text übernehmen,
+    // ohne laufende Eingaben zu stören (Parent rebuildet beim Tippen nicht).
+    if (old.initialText != widget.initialText &&
+        _controller.text != widget.initialText) {
+      _controller.text = widget.initialText;
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: _controller,
+      style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: AppColors.bgCard.withValues(alpha: 0.4),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      onChanged: widget.onTextChanged,
+    );
   }
 }

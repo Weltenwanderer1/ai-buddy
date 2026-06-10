@@ -79,11 +79,11 @@ class SetTimerTool implements ToolInterface {
     final durationRaw = parameters['duration_seconds'];
     final duration = _readInt(durationRaw) ?? 0;
 
-    if (duration <= 0) {
+    if (duration <= 0 || duration > 86400) {
       return ToolResult(
         toolName: definition.name,
         parameters: parameters,
-        result: 'Fehler: duration_seconds muss > 0 sein.',
+        result: 'Fehler: duration_seconds muss zwischen 1 und 86400 (24h) liegen.',
         isError: true,
         displayText: '❌ Ungültige Dauer',
       );

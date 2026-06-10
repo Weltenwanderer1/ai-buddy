@@ -43,15 +43,26 @@ class PhoneCallTool implements ToolInterface {
 
     // If contactId given, fetch number
     if (contactId.isNotEmpty) {
-      final fetched = await _channel.invokeMethod('searchContacts', {
-        'query': contactId,
-        'limit': 1,
-      });
-      if (fetched is List && fetched.isNotEmpty) {
-        final phones = (fetched[0]['phones'] as List? ?? []);
-        if (phones.isNotEmpty) {
-          number = (phones[0]['number'] as String? ?? '');
+      try {
+        final fetched = await _channel.invokeMethod('searchContacts', {
+          'query': contactId,
+          'limit': 1,
+        });
+        if (fetched is List && fetched.isNotEmpty && fetched[0] is Map) {
+          final contact = fetched[0] as Map;
+          final phones = contact['phones'];
+          if (phones is List && phones.isNotEmpty && phones[0] is Map) {
+            number = ((phones[0] as Map)['number'] as String?) ?? '';
+          }
         }
+      } on PlatformException catch (e) {
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result: 'Kontakt konnte nicht geladen werden: ${e.message}',
+          isError: true,
+          displayText: 'Kontakt-Fehler',
+        );
       }
     }
 

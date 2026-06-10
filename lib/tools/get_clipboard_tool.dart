@@ -32,7 +32,8 @@ class GetClipboardTool implements ToolInterface {
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final action = parameters['action'] as String? ?? 'current';
-    final limit = parameters['limit'] as int? ?? 10;
+    final rawLimit = parameters['limit'];
+    final limit = (rawLimit is num ? rawLimit.toInt() : 10).clamp(1, 50);
 
     switch (action) {
       case 'current':
