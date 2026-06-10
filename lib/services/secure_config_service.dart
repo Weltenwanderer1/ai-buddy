@@ -72,8 +72,10 @@ class SecureConfigService {
 
   String get ollamaBaseUrl =>
       _cache[keyOllamaBaseUrl] ?? _env(keyOllamaBaseUrl) ?? 'https://ollama.com/api';
+  // Kein eingebauter Default-Key: echte Keys gehören in Secure Storage
+  // oder .env, nie ins Repo (siehe README).
   String get ollamaApiKey =>
-      _cache[keyOllamaApiKey] ?? _env(keyOllamaApiKey) ?? 'b8ddca52fce64596b6e075c5537222a6.hbKSd4qQklkZQs6PQLwc4uBU';
+      _cache[keyOllamaApiKey] ?? _env(keyOllamaApiKey) ?? '';
   String get ollamaModel =>
       _cache[keyOllamaModel] ?? _env(keyOllamaModel) ?? 'kimi-k2.6:cloud';
   String get ollamaFallbackModel =>

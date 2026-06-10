@@ -1018,7 +1018,8 @@ class _ModelDropdownState extends State<_ModelDropdown> {
 
   Future<String?> _showCustomModelDialog(BuildContext context, String current) async {
     final controller = TextEditingController(text: current);
-    return showDialog<String>(
+    try {
+      return await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.bgCard,
@@ -1048,7 +1049,10 @@ class _ModelDropdownState extends State<_ModelDropdown> {
           ),
         ],
       ),
-    );
+      );
+    } finally {
+      controller.dispose();
+    }
   }
 }
 

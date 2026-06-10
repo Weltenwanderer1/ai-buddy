@@ -140,7 +140,7 @@ class _OfflineMapDialogState extends State<OfflineMapDialog> {
   @override
   Widget build(BuildContext context) {
     final hasExisting = _regionInfo != null && (_regionInfo!['downloaded'] as int?) != null && (_regionInfo!['downloaded'] as int) > 0;
-    final tileCount = _regionInfo?['tileCount'] as int? ?? '?' as dynamic;
+    final tileCount = (_regionInfo?['tileCount'] as int?)?.toString() ?? '?';
     final downloaded = _regionInfo?['downloaded'] as int? ?? 0;
     final updated = _regionInfo?['updatedAt'] as String? ?? '';
 

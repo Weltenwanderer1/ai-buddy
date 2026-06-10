@@ -262,8 +262,13 @@ class OllamaCloudService extends ChangeNotifier {
       if (e is OllamaApiException) rethrow;
       throw Exception('Streaming failed: $e');
     } finally {
+      // detachSocket() liefert ein Future — Fehler dort dürfen nicht als
+      // unhandled async error hochblubbern.
       try {
-        response?.detachSocket().then((socket) => socket.destroy());
+        unawaited(response
+            ?.detachSocket()
+            .then((socket) => socket.destroy())
+            .catchError((_) {}));
       } catch (_) {}
       client?.close();
     }

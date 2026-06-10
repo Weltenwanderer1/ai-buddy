@@ -178,8 +178,14 @@ class MainActivity : FlutterActivity() {
                 "startListening" -> {
                     val preferOffline = call.argument<Boolean>("preferOffline") ?: true
                     val locale = call.argument<String>("locale") ?: "de_DE"
+                    // Der Recognizer kann onError UND onResults liefern —
+                    // result darf aber nur genau einmal beantwortet werden.
+                    var replied = false
                     startOfflineListening(preferOffline, locale) { text ->
-                        result.success(text)
+                        if (!replied) {
+                            replied = true
+                            result.success(text)
+                        }
                     }
                 }
                 "stopListening" -> {
@@ -345,16 +351,18 @@ class MainActivity : FlutterActivity() {
 
     private fun addContact(name: String, phone: String, email: String): Boolean {
         return try {
-            val values = arrayListOf(android.content.ContentValues().apply {
+            val values = android.content.ContentValues().apply {
                 put(android.provider.ContactsContract.RawContacts.ACCOUNT_TYPE, null as String?)
                 put(android.provider.ContactsContract.RawContacts.ACCOUNT_NAME, null as String?)
-            })
-            val rawUri = contentResolver.bulkInsert(
+            }
+            // insert() liefert die URI des neuen RawContacts — bulkInsert()
+            // würde nur die Anzahl der Zeilen zurückgeben, nicht die ID.
+            val rawUri = contentResolver.insert(
                 android.provider.ContactsContract.RawContacts.CONTENT_URI,
-                values.toTypedArray()
-            )
-            if (rawUri <= 0) return false
-            val rawId = rawUri.toLong()
+                values
+            ) ?: return false
+            val rawId = android.content.ContentUris.parseId(rawUri)
+            if (rawId <= 0) return false
 
             val ops = arrayListOf(
                 android.content.ContentProviderOperation.newInsert(

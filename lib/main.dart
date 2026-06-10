@@ -644,6 +644,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
                 description: description ?? event.description,
                 location: location ?? event.location,
               );
+              // Serien-Regel beibehalten — sonst macht ein Update aus einem
+              // wiederkehrenden Termin einen Einzeltermin.
+              updatedEvent.recurrenceRule = event.recurrenceRule;
               final result = await deviceCal.createOrUpdateEvent(updatedEvent);
               return result?.isSuccess ?? false;
             }
