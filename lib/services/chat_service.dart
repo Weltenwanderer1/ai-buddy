@@ -110,12 +110,33 @@ class ChatService {
           return;
         }
 
-        // Streaming currently only supports text-only (no tools)
+        // Tool-Callbacks für den Streaming-Pfad (analog zu sendMessage)
+        Future<String> Function(String, Map<String, dynamic>)? onToolCall;
+        final registry = _toolRegistry;
+        if (registry != null && registry.getToolDefinitions().isNotEmpty) {
+          onToolCall = (String toolName, Map<String, dynamic> args) async {
+            final result = await registry.execute(toolName, args);
+            return result.result;
+          };
+        }
+
         try {
           final stream = provider.streamChat(
             systemPrompt: systemPrompt,
             messages: messages.cast<Map<String, dynamic>>(),
             temperature: 0.5,
+            toolDefinitions: registry?.getToolDefinitions(),
+            onToolCall: onToolCall,
+            maxToolRounds: 5,
+            onToolActivity: (toolName) {
+              // '🔧'-Marker: signalisiert der UI laufende Tool-Ausführung
+              if (!controller.isClosed) controller.add('🔧');
+              onToolActivity?.call(ChatMessage(
+                text: '🔧 $toolName...',
+                isUser: false,
+                type: MessageType.toolActivity,
+              ));
+            },
           );
 
           await for (final chunk in stream) {

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -415,19 +416,30 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         }
       };
       AnalyzeImageTool.analyzeCallback = ({required imagePath, question}) async {
-        // Vision analysis via the cloud LLM service
-        // For now, return a placeholder — the actual Vision API integration
-        // depends on the LLM provider supporting image inputs.
         try {
           final file = File(imagePath);
           if (!await file.exists()) return 'Bild nicht gefunden: $imagePath';
           final bytes = await file.readAsBytes();
-          final sizeKB = bytes.length ~/ 1024;
-          return 'Bild analysiert: $imagePath (${sizeKB}KB). '
-              'Frage: ${question ?? "Was ist auf dem Bild?"}. '
-              'Hinweis: Vision-API-Integration erfordert LLM mit Bild-Unterstützung.';
+          // Base64 bläht ~33% auf — Bilder über ~6 MB sprengen das
+          // Request-Limit der meisten APIs.
+          if (bytes.length > 6 * 1024 * 1024) {
+            return 'Bild zu groß (${bytes.length ~/ (1024 * 1024)} MB, max. 6 MB).';
+          }
+          final ext = imagePath.split('.').last.toLowerCase();
+          final mime = const {
+            'png': 'image/png',
+            'webp': 'image/webp',
+            'gif': 'image/gif',
+            'heic': 'image/heic',
+          }[ext] ?? 'image/jpeg';
+          return await _cloudService.describeImage(
+            imageBase64: base64Encode(bytes),
+            mimeType: mime,
+            question: question,
+          );
         } catch (e) {
-          return 'Fehler bei der Bildanalyse: $e';
+          return 'Fehler bei der Bildanalyse: $e. '
+              'Hinweis: Das gewählte Modell muss Bild-Eingaben unterstützen (Vision-Modell in den Einstellungen wählen).';
         }
       };
 

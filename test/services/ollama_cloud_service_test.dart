@@ -125,6 +125,53 @@ void main() {
     });
   });
 
+  group('accumulateToolCallDelta', () {
+    test('assembles id, name and fragmented arguments by index', () {
+      final drafts = <int, ToolCallDraft>{};
+      OllamaCloudService.accumulateToolCallDelta(drafts, {
+        'index': 0,
+        'id': 'call_1',
+        'function': {'name': 'get_weather', 'arguments': '{"ci'},
+      });
+      OllamaCloudService.accumulateToolCallDelta(drafts, {
+        'index': 0,
+        'function': {'arguments': 'ty": "Wien"}'},
+      });
+
+      expect(drafts, hasLength(1));
+      expect(drafts[0]!.id, 'call_1');
+      expect(drafts[0]!.name, 'get_weather');
+      expect(drafts[0]!.arguments.toString(), '{"city": "Wien"}');
+    });
+
+    test('keeps parallel tool calls separate by index', () {
+      final drafts = <int, ToolCallDraft>{};
+      OllamaCloudService.accumulateToolCallDelta(drafts, {
+        'index': 0,
+        'id': 'a',
+        'function': {'name': 'tool_a', 'arguments': '{}'},
+      });
+      OllamaCloudService.accumulateToolCallDelta(drafts, {
+        'index': 1,
+        'id': 'b',
+        'function': {'name': 'tool_b', 'arguments': '{"x":1}'},
+      });
+
+      expect(drafts, hasLength(2));
+      expect(drafts[0]!.name, 'tool_a');
+      expect(drafts[1]!.name, 'tool_b');
+      expect(drafts[1]!.arguments.toString(), '{"x":1}');
+    });
+
+    test('missing index defaults to 0', () {
+      final drafts = <int, ToolCallDraft>{};
+      OllamaCloudService.accumulateToolCallDelta(drafts, {
+        'function': {'name': 'tool', 'arguments': '{}'},
+      });
+      expect(drafts.keys, [0]);
+    });
+  });
+
   group('extractStatus', () {
     test('extracts HTTP status from exception message', () {
       final service = OllamaCloudService(

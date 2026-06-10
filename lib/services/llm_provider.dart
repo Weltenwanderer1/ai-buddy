@@ -25,10 +25,15 @@ abstract class LlmProvider {
   });
 
   /// Stream a chat response token-by-token.
-  /// Tool calling is NOT supported in streaming mode — use [chat] for that.
+  /// If [toolDefinitions] and [onToolCall] are provided, the provider
+  /// executes tool rounds between streamed answers (where supported).
   Stream<String> streamChat({
     required String systemPrompt,
     required List<Map<String, dynamic>> messages,
     double temperature = 0.7,
+    List<Map<String, dynamic>>? toolDefinitions,
+    Future<String> Function(String toolName, Map<String, dynamic> args)? onToolCall,
+    void Function(String toolName)? onToolActivity,
+    int maxToolRounds = 3,
   });
 }
