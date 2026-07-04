@@ -5,6 +5,8 @@ import '../models/chat_message.dart';
 import '../services/llm_provider.dart';
 import '../services/ollama_cloud_provider.dart';
 import '../services/ollama_cloud_service.dart';
+import '../services/anthropic_provider.dart';
+import '../services/anthropic_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
@@ -27,6 +29,7 @@ class ChatResult {
 
 class ChatService {
   final OllamaCloudService? _cloudService;
+  final AnthropicService? _anthropicService;
   final SecureConfigService? _configService;
   final ToolRegistry? _toolRegistry;
   final SelfIdentityService? _selfIdentity;
@@ -35,8 +38,9 @@ class ChatService {
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService({OllamaCloudService? cloudService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities})
+  ChatService({OllamaCloudService? cloudService, AnthropicService? anthropicService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities})
       : _cloudService = cloudService,
+        _anthropicService = anthropicService,
         _configService = configService,
         _toolRegistry = toolRegistry,
         _selfIdentity = selfIdentity,
@@ -44,13 +48,29 @@ class ChatService {
         _buddyCapabilities = buddyCapabilities;
 
   /// Resolve the active LLM provider based on config.
-  /// Only cloud providers (ollama/openrouter).
+  /// Supports: ollama, openrouter, openai (via OllamaCloudService),
+  /// and anthropic (via AnthropicService).
   LlmProvider? _resolveProvider() {
     final config = _configService;
     final provider = config?.llmProvider ?? 'ollama';
 
-    if ((provider == 'ollama' || provider == 'openrouter') && _cloudService != null && config != null) {
-      // Update cloud config from SecureConfigService
+    // Anthropic has its own service + provider (Messages API format)
+    if (provider == 'anthropic') {
+      if (_anthropicService != null && config != null) {
+        _anthropicService!.updateConfig(
+          baseUrl: config.anthropicBaseUrl,
+          apiKey: config.anthropicApiKey,
+          defaultModel: config.anthropicModel,
+          fallbackModel: config.anthropicFallbackModel,
+        );
+        return AnthropicProvider(_anthropicService!);
+      }
+      return null;
+    }
+
+    // ollama, openrouter, openai — all use the OpenAI-compatible endpoint
+    // via OllamaCloudService
+    if (_cloudService != null && config != null) {
       _cloudService!.updateConfig(
         baseUrl: config.activeBaseUrl,
         apiKey: config.activeApiKey,
@@ -91,7 +111,7 @@ class ChatService {
         final provider = _resolveProvider();
         if (provider == null) {
           if (!controller.isClosed) {
-            controller.add('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).');
+            controller.add('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama, OpenRouter, OpenAI oder Anthropic).');
           }
           if (!controller.isClosed) controller.close();
           return;
@@ -186,7 +206,7 @@ class ChatService {
 
     final provider = _resolveProvider();
     if (provider == null) {
-      return ChatResult('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama oder OpenRouter).');
+      return ChatResult('Bitte wähle einen KI-Anbieter in den Einstellungen (Ollama, OpenRouter, OpenAI oder Anthropic).');
     }
 
     try {

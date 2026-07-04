@@ -36,6 +36,7 @@ import 'services/firebase_init_service.dart';
 import 'services/firebase_backup_service.dart';
 import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
+import 'services/anthropic_service.dart';
 import 'services/embedding_service.dart';
 import 'services/clipboard_history_service.dart';
 import 'services/password_service.dart';
@@ -111,6 +112,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late FirebaseBackupService _firebaseBackup;
   late LocationService _locationService;
   late OllamaCloudService _cloudService;
+  late AnthropicService _anthropicService;
   late EmbeddingService _embeddingService;
   late ToolLearningService _toolLearning;
   late ClipboardHistoryService _clipboardHistory;
@@ -133,6 +135,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _automationService.dispose();
       _buddyScheduler.dispose();
       _cloudService.dispose();
+      _anthropicService.dispose();
       _toolLearning.dispose();
     }
     super.dispose();
@@ -264,6 +267,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         apiKey: _secureConfig.activeApiKey,
         defaultModel: _secureConfig.activeModel,
         fallbackModel: _secureConfig.activeFallbackModel,
+      );
+      _anthropicService = AnthropicService(
+        baseUrl: _secureConfig.anthropicBaseUrl,
+        apiKey: _secureConfig.anthropicApiKey,
+        defaultModel: _secureConfig.anthropicModel,
+        fallbackModel: _secureConfig.anthropicFallbackModel,
       );
 
       SetReminderTool.scheduleCallback = ({required title, required body, required scheduledTime}) {
@@ -772,6 +781,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService),
         Provider.value(value: _cloudService),
+        ChangeNotifierProvider.value(value: _anthropicService),
         Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
         ChangeNotifierProvider.value(value: _firebaseBackup),

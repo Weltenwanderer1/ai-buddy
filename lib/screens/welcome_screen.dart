@@ -33,7 +33,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   String _selectedLang = 'en';
 
   // Provider
-  String _provider = 'ollama'; // ollama | openrouter | skip
+  String _provider = 'ollama'; // ollama | openrouter | openai | anthropic | skip
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
   bool _testing = false;
@@ -87,17 +87,27 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     if (_provider != 'skip') {
       await widget.secureConfig.setLlmProvider(_provider);
       if (_apiKeyController.text.isNotEmpty) {
-        if (_provider == 'ollama') {
-          await widget.secureConfig.setOllamaApiKey(_apiKeyController.text);
-        } else {
-          await widget.secureConfig.setOpenRouterApiKey(_apiKeyController.text);
+        switch (_provider) {
+          case 'ollama':
+            await widget.secureConfig.setOllamaApiKey(_apiKeyController.text);
+          case 'openrouter':
+            await widget.secureConfig.setOpenRouterApiKey(_apiKeyController.text);
+          case 'openai':
+            await widget.secureConfig.setOpenAIApiKey(_apiKeyController.text);
+          case 'anthropic':
+            await widget.secureConfig.setAnthropicApiKey(_apiKeyController.text);
         }
       }
       if (_modelController.text.isNotEmpty) {
-        if (_provider == 'ollama') {
-          await widget.secureConfig.setOllamaModel(_modelController.text);
-        } else {
-          await widget.secureConfig.setOpenRouterModel(_modelController.text);
+        switch (_provider) {
+          case 'ollama':
+            await widget.secureConfig.setOllamaModel(_modelController.text);
+          case 'openrouter':
+            await widget.secureConfig.setOpenRouterModel(_modelController.text);
+          case 'openai':
+            await widget.secureConfig.setOpenAIModel(_modelController.text);
+          case 'anthropic':
+            await widget.secureConfig.setAnthropicModel(_modelController.text);
         }
       }
     }
@@ -123,9 +133,12 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       _testResult = null;
     });
     try {
-      final baseUrl = _provider == 'openrouter'
-          ? 'https://openrouter.ai/api'
-          : 'https://ollama.com/api';
+      final baseUrl = switch (_provider) {
+        'openrouter' => 'https://openrouter.ai/api',
+        'openai' => 'https://api.openai.com',
+        'anthropic' => 'https://api.anthropic.com',
+        _ => 'https://ollama.com/api',
+      };
       final apiKey = _apiKeyController.text;
       // Simple connectivity test: fetch models endpoint
       final url = Uri.parse('$baseUrl/v1/models');
@@ -133,6 +146,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       final req = await client.getUrl(url);
       if (apiKey.isNotEmpty) {
         req.headers.set('Authorization', 'Bearer $apiKey');
+        if (_provider == 'anthropic') {
+          req.headers.set('x-api-key', apiKey);
+          req.headers.set('anthropic-version', '2023-06-01');
+        }
       }
       final res = await req.close();
       client.close();
@@ -269,6 +286,24 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             onTap: () => setState(() {
               _provider = 'openrouter';
               _modelController.text = 'anthropic/claude-3.5-sonnet';
+            }),
+          ),
+          _ProviderTile(
+            label: 'OpenAI',
+            icon: Icons.psychology,
+            selected: _provider == 'openai',
+            onTap: () => setState(() {
+              _provider = 'openai';
+              _modelController.text = 'gpt-4o';
+            }),
+          ),
+          _ProviderTile(
+            label: 'Anthropic',
+            icon: Icons.auto_awesome,
+            selected: _provider == 'anthropic',
+            onTap: () => setState(() {
+              _provider = 'anthropic';
+              _modelController.text = 'claude-sonnet-4-20250514';
             }),
           ),
           _ProviderTile(

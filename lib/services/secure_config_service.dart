@@ -15,8 +15,20 @@ class SecureConfigService {
   static const keyOpenRouterApiKey = 'OPENROUTER_API_KEY';
   static const keyOpenRouterModel = 'OPENROUTER_MODEL';
   static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
-  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', or 'local'
+  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', 'openai', 'anthropic'
   static const keyTavilyApiKey = 'TAVILY_API_KEY';
+
+  // OpenAI (direct API — OpenAI-compatible)
+  static const keyOpenAIBaseUrl = 'OPENAI_BASE_URL';
+  static const keyOpenAIApiKey = 'OPENAI_API_KEY';
+  static const keyOpenAIModel = 'OPENAI_MODEL';
+  static const keyOpenAIFallbackModel = 'OPENAI_FALLBACK_MODEL';
+
+  // Anthropic (direct Messages API)
+  static const keyAnthropicBaseUrl = 'ANTHROPIC_BASE_URL';
+  static const keyAnthropicApiKey = 'ANTHROPIC_API_KEY';
+  static const keyAnthropicModel = 'ANTHROPIC_MODEL';
+  static const keyAnthropicFallbackModel = 'ANTHROPIC_FALLBACK_MODEL';
 
   // Email (IMAP)
   static const keyImapServer = 'IMAP_SERVER';
@@ -26,7 +38,7 @@ class SecureConfigService {
   static const keyImapUseSsl = 'IMAP_USE_SSL';
 
   // Embedding config
-  static const keyEmbeddingProvider = 'EMBEDDING_PROVIDER';  // 'ollama', 'openai'
+  static const keyEmbeddingProvider = 'EMBEDDING_PROVIDER';  // 'ollama', 'openai', 'openrouter'
   static const keyEmbeddingBaseUrl = 'EMBEDDING_BASE_URL';
   static const keyEmbeddingApiKey = 'EMBEDDING_API_KEY';
   static const keyEmbeddingModel = 'EMBEDDING_MODEL';
@@ -56,6 +68,14 @@ class SecureConfigService {
       keyOpenRouterFallbackModel,
       keyLlmProvider,
       keyTavilyApiKey,
+      keyOpenAIBaseUrl,
+      keyOpenAIApiKey,
+      keyOpenAIModel,
+      keyOpenAIFallbackModel,
+      keyAnthropicBaseUrl,
+      keyAnthropicApiKey,
+      keyAnthropicModel,
+      keyAnthropicFallbackModel,
       keyImapServer,
       keyImapPort,
       keyEmailAddress,
@@ -116,11 +136,62 @@ class SecureConfigService {
       _cache[keyLlmProvider] ?? _env(keyLlmProvider) ?? 'ollama';
   bool get useOpenRouter => llmProvider == 'openrouter';
   bool get useLocalModel => llmProvider == 'local';
+  bool get useOpenAI => llmProvider == 'openai';
+  bool get useAnthropic => llmProvider == 'anthropic';
 
-  String get activeBaseUrl => useOpenRouter ? openRouterBaseUrl : ollamaBaseUrl;
-  String get activeApiKey => useOpenRouter ? openRouterApiKey : ollamaApiKey;
-  String get activeModel => useOpenRouter ? openRouterModel : ollamaModel;
-  String get activeFallbackModel => useOpenRouter ? openRouterFallbackModel : ollamaFallbackModel;
+  // OpenAI getters
+  String get openAIBaseUrl =>
+      _cache[keyOpenAIBaseUrl] ?? _env(keyOpenAIBaseUrl) ?? 'https://api.openai.com';
+  String get openAIApiKey =>
+      _cache[keyOpenAIApiKey] ?? _env(keyOpenAIApiKey) ?? '';
+  String get openAIModel =>
+      _cache[keyOpenAIModel] ?? _env(keyOpenAIModel) ?? 'gpt-4o';
+  String get openAIFallbackModel =>
+      _cache[keyOpenAIFallbackModel] ?? _env(keyOpenAIFallbackModel) ?? 'gpt-4o-mini';
+
+  // Anthropic getters
+  String get anthropicBaseUrl =>
+      _cache[keyAnthropicBaseUrl] ?? _env(keyAnthropicBaseUrl) ?? 'https://api.anthropic.com';
+  String get anthropicApiKey =>
+      _cache[keyAnthropicApiKey] ?? _env(keyAnthropicApiKey) ?? '';
+  String get anthropicModel =>
+      _cache[keyAnthropicModel] ?? _env(keyAnthropicModel) ?? 'claude-sonnet-4-20250514';
+  String get anthropicFallbackModel =>
+      _cache[keyAnthropicFallbackModel] ?? _env(keyAnthropicFallbackModel) ?? 'claude-3-5-haiku-20241022';
+
+  /// Active config — resolves based on the selected LLM provider.
+  String get activeBaseUrl {
+    switch (llmProvider) {
+      case 'openrouter': return openRouterBaseUrl;
+      case 'openai': return openAIBaseUrl;
+      case 'anthropic': return anthropicBaseUrl;
+      default: return ollamaBaseUrl;
+    }
+  }
+  String get activeApiKey {
+    switch (llmProvider) {
+      case 'openrouter': return openRouterApiKey;
+      case 'openai': return openAIApiKey;
+      case 'anthropic': return anthropicApiKey;
+      default: return ollamaApiKey;
+    }
+  }
+  String get activeModel {
+    switch (llmProvider) {
+      case 'openrouter': return openRouterModel;
+      case 'openai': return openAIModel;
+      case 'anthropic': return anthropicModel;
+      default: return ollamaModel;
+    }
+  }
+  String get activeFallbackModel {
+    switch (llmProvider) {
+      case 'openrouter': return openRouterFallbackModel;
+      case 'openai': return openAIFallbackModel;
+      case 'anthropic': return anthropicFallbackModel;
+      default: return ollamaFallbackModel;
+    }
+  }
   String get tavilyApiKey =>
       _cache[keyTavilyApiKey] ?? _env(keyTavilyApiKey) ?? '';
 
@@ -222,6 +293,42 @@ class SecureConfigService {
     _cache[keyLlmProvider] = value;
   }
 
+  // OpenAI setters
+  Future<void> setOpenAIBaseUrl(String value) async {
+    await _storage.write(key: keyOpenAIBaseUrl, value: value);
+    _cache[keyOpenAIBaseUrl] = value;
+  }
+  Future<void> setOpenAIApiKey(String value) async {
+    await _storage.write(key: keyOpenAIApiKey, value: value);
+    _cache[keyOpenAIApiKey] = value;
+  }
+  Future<void> setOpenAIModel(String value) async {
+    await _storage.write(key: keyOpenAIModel, value: value);
+    _cache[keyOpenAIModel] = value;
+  }
+  Future<void> setOpenAIFallbackModel(String value) async {
+    await _storage.write(key: keyOpenAIFallbackModel, value: value);
+    _cache[keyOpenAIFallbackModel] = value;
+  }
+
+  // Anthropic setters
+  Future<void> setAnthropicBaseUrl(String value) async {
+    await _storage.write(key: keyAnthropicBaseUrl, value: value);
+    _cache[keyAnthropicBaseUrl] = value;
+  }
+  Future<void> setAnthropicApiKey(String value) async {
+    await _storage.write(key: keyAnthropicApiKey, value: value);
+    _cache[keyAnthropicApiKey] = value;
+  }
+  Future<void> setAnthropicModel(String value) async {
+    await _storage.write(key: keyAnthropicModel, value: value);
+    _cache[keyAnthropicModel] = value;
+  }
+  Future<void> setAnthropicFallbackModel(String value) async {
+    await _storage.write(key: keyAnthropicFallbackModel, value: value);
+    _cache[keyAnthropicFallbackModel] = value;
+  }
+
   Future<void> setTavilyApiKey(String value) async {
     await _storage.write(key: keyTavilyApiKey, value: value);
     _cache[keyTavilyApiKey] = value;
@@ -292,4 +399,6 @@ class SecureConfigService {
 
   bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;
   bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
+  bool get isOpenAIConfigured => openAIApiKey.isNotEmpty;
+  bool get isAnthropicConfigured => anthropicApiKey.isNotEmpty;
 }

@@ -15,6 +15,7 @@ import '../services/persona_evolution_service.dart';
 import '../services/self_identity_service.dart';
 import '../services/tile_download_service.dart';
 import '../services/ollama_cloud_service.dart';
+import '../services/anthropic_service.dart';
 import '../services/embedding_service.dart';
 import '../widgets/offline_map_dialog.dart';
 import 'persona_editor_screen.dart';
@@ -43,6 +44,14 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _openRouterKeyController = TextEditingController();
   final _openRouterModelController = TextEditingController();
   final _openRouterFallbackController = TextEditingController();
+  // OpenAI controllers
+  final _openAIKeyController = TextEditingController();
+  final _openAIModelController = TextEditingController();
+  final _openAIFallbackController = TextEditingController();
+  // Anthropic controllers
+  final _anthropicKeyController = TextEditingController();
+  final _anthropicModelController = TextEditingController();
+  final _anthropicFallbackController = TextEditingController();
   // Buddy name controller
   final _buddyNameController = TextEditingController();
   // Email controllers
@@ -77,6 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _secAbout = false;
   String _llmProvider = 'ollama';
   TtsEngine _ttsEngine = TtsEngine.piper;
+  String _piperLangFilter = 'all';
 
   // Cloud model presets
   static const List<Map<String, String>> _ollamaModels = [
@@ -89,6 +99,17 @@ class _SettingsScreenState extends State<SettingsScreen>
     {'id': 'openrouter/deepseek/deepseek-chat-v4', 'name': 'DeepSeek V4 Pro (128k)'},
     {'id': 'anthropic/claude-3.5-sonnet', 'name': 'Claude 3.5 Sonnet (ausgewogen)'},
     {'id': 'google/gemini-2.0-flash-001', 'name': 'Gemini 2.0 Flash (schnell)'},
+  ];
+  static const List<Map<String, String>> _openAIModels = [
+    {'id': 'gpt-4o', 'name': 'GPT-4o (ausgewogen)'},
+    {'id': 'gpt-4o-mini', 'name': 'GPT-4o mini (schnell)'},
+    {'id': 'gpt-4.1', 'name': 'GPT-4.1 (kreativ)'},
+    {'id': 'o4-mini', 'name': 'o4-mini (reasoning)'},
+  ];
+  static const List<Map<String, String>> _anthropicModels = [
+    {'id': 'claude-sonnet-4-20250514', 'name': 'Claude Sonnet 4 (ausgewogen)'},
+    {'id': 'claude-opus-4-20250514', 'name': 'Claude Opus 4 (stärkster)'},
+    {'id': 'claude-3-5-haiku-20241022', 'name': 'Claude 3.5 Haiku (schnell)'},
   ];
 
   @override
@@ -106,6 +127,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterKeyController.text = config.openRouterApiKey;
     _openRouterModelController.text = config.openRouterModel;
     _openRouterFallbackController.text = config.openRouterFallbackModel;
+    _openAIKeyController.text = config.openAIApiKey;
+    _openAIModelController.text = config.openAIModel;
+    _openAIFallbackController.text = config.openAIFallbackModel;
+    _anthropicKeyController.text = config.anthropicApiKey;
+    _anthropicModelController.text = config.anthropicModel;
+    _anthropicFallbackController.text = config.anthropicFallbackModel;
     _buddyNameController.text = config.buddyName;
     _emailAddressController.text = config.emailAddress;
     _emailPasswordController.text = config.emailPassword;
@@ -131,6 +158,12 @@ class _SettingsScreenState extends State<SettingsScreen>
     _openRouterKeyController.dispose();
     _openRouterModelController.dispose();
     _openRouterFallbackController.dispose();
+    _openAIKeyController.dispose();
+    _openAIModelController.dispose();
+    _openAIFallbackController.dispose();
+    _anthropicKeyController.dispose();
+    _anthropicModelController.dispose();
+    _anthropicFallbackController.dispose();
     _buddyNameController.dispose();
     _emailAddressController.dispose();
     _emailPasswordController.dispose();
@@ -191,8 +224,20 @@ class _SettingsScreenState extends State<SettingsScreen>
     await config.setOpenRouterApiKey(_openRouterKeyController.text.trim());
     await config.setOpenRouterModel(_openRouterModelController.text.trim());
     await config.setOpenRouterFallbackModel(_openRouterFallbackController.text.trim());
+    await config.setOpenAIApiKey(_openAIKeyController.text.trim());
+    await config.setOpenAIModel(_openAIModelController.text.trim());
+    await config.setOpenAIFallbackModel(_openAIFallbackController.text.trim());
+    await config.setAnthropicApiKey(_anthropicKeyController.text.trim());
+    await config.setAnthropicModel(_anthropicModelController.text.trim());
+    await config.setAnthropicFallbackModel(_anthropicFallbackController.text.trim());
 
-    if (mounted) _showSnack('${_llmProvider == "ollama" ? "Ollama" : "OpenRouter"} gespeichert ✅', context.buddy.success);
+    final providerLabel = switch (_llmProvider) {
+      'openrouter' => 'OpenRouter',
+      'openai' => 'OpenAI',
+      'anthropic' => 'Anthropic',
+      _ => 'Ollama',
+    };
+    if (mounted) _showSnack('$providerLabel gespeichert ✅', context.buddy.success);
   }
 
   Future<void> _saveEmbeddingConfig() async {
@@ -220,11 +265,66 @@ class _SettingsScreenState extends State<SettingsScreen>
     setState(() { _isTestingOllama = true; _ollamaTestResult = null; });
     try {
       final config = context.read<SecureConfigService>();
-      final cloud = OllamaCloudService(
-          baseUrl: _llmProvider == 'openrouter' ? config.openRouterBaseUrl : config.ollamaBaseUrl,
-          apiKey: _llmProvider == 'openrouter' ? _openRouterKeyController.text.trim().isNotEmpty ? _openRouterKeyController.text.trim() : config.openRouterApiKey : _ollamaKeyController.text.trim().isNotEmpty ? _ollamaKeyController.text.trim() : config.ollamaApiKey,
-          defaultModel: _llmProvider == 'openrouter' ? (_openRouterModelController.text.trim().isNotEmpty ? _openRouterModelController.text.trim() : config.openRouterModel) : (_ollamaModelController.text.trim().isNotEmpty ? _ollamaModelController.text.trim() : config.ollamaModel),
-          fallbackModel: _llmProvider == 'openrouter' ? (_openRouterFallbackController.text.trim().isNotEmpty ? _openRouterFallbackController.text.trim() : config.openRouterFallbackModel) : (_ollamaFallbackController.text.trim().isNotEmpty ? _ollamaFallbackController.text.trim() : config.ollamaFallbackModel),
+      final providerLabel = switch (_llmProvider) {
+        'openrouter' => 'OpenRouter',
+        'openai' => 'OpenAI',
+        'anthropic' => 'Anthropic',
+        _ => 'Ollama',
+      };
+
+      if (_llmProvider == 'anthropic') {
+        // Anthropic has its own API format
+        final key = _anthropicKeyController.text.trim().isNotEmpty
+            ? _anthropicKeyController.text.trim()
+            : config.anthropicApiKey;
+        final model = _anthropicModelController.text.trim().isNotEmpty
+            ? _anthropicModelController.text.trim()
+            : config.anthropicModel;
+        final svc = AnthropicService(
+          baseUrl: config.anthropicBaseUrl,
+          apiKey: key,
+          defaultModel: model,
+          fallbackModel: config.anthropicFallbackModel,
+        );
+        try {
+          final reply = await svc.chat(
+            systemPrompt: 'Du bist ein Test. Antworte kurz: OK',
+            messages: [{'role': 'user', 'content': 'Hallo, Test!'}],
+            temperature: 0.1,
+          );
+          final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
+          if (!mounted) return;
+          setState(() => _ollamaTestResult = '$providerLabel OK — $text');
+        } finally {
+          svc.dispose();
+        }
+      } else {
+        // ollama, openrouter, openai — all OpenAI-compatible via OllamaCloudService
+        final baseUrl = switch (_llmProvider) {
+          'openrouter' => config.openRouterBaseUrl,
+          'openai' => config.openAIBaseUrl,
+          _ => config.ollamaBaseUrl,
+        };
+        final apiKey = switch (_llmProvider) {
+          'openrouter' => (_openRouterKeyController.text.trim().isNotEmpty ? _openRouterKeyController.text.trim() : config.openRouterApiKey),
+          'openai' => (_openAIKeyController.text.trim().isNotEmpty ? _openAIKeyController.text.trim() : config.openAIApiKey),
+          _ => (_ollamaKeyController.text.trim().isNotEmpty ? _ollamaKeyController.text.trim() : config.ollamaApiKey),
+        };
+        final model = switch (_llmProvider) {
+          'openrouter' => (_openRouterModelController.text.trim().isNotEmpty ? _openRouterModelController.text.trim() : config.openRouterModel),
+          'openai' => (_openAIModelController.text.trim().isNotEmpty ? _openAIModelController.text.trim() : config.openAIModel),
+          _ => (_ollamaModelController.text.trim().isNotEmpty ? _ollamaModelController.text.trim() : config.ollamaModel),
+        };
+        final fallback = switch (_llmProvider) {
+          'openrouter' => (_openRouterFallbackController.text.trim().isNotEmpty ? _openRouterFallbackController.text.trim() : config.openRouterFallbackModel),
+          'openai' => (_openAIFallbackController.text.trim().isNotEmpty ? _openAIFallbackController.text.trim() : config.openAIFallbackModel),
+          _ => (_ollamaFallbackController.text.trim().isNotEmpty ? _ollamaFallbackController.text.trim() : config.ollamaFallbackModel),
+        };
+        final cloud = OllamaCloudService(
+          baseUrl: baseUrl,
+          apiKey: apiKey,
+          defaultModel: model,
+          fallbackModel: fallback,
         );
         try {
           final reply = await cloud.chat(
@@ -234,10 +334,11 @@ class _SettingsScreenState extends State<SettingsScreen>
           );
           final text = reply.length > 60 ? '${reply.substring(0, 60)}...' : reply;
           if (!mounted) return;
-          setState(() => _ollamaTestResult = '${_llmProvider == "openrouter" ? "OpenRouter" : "Ollama"} OK — $text');
+          setState(() => _ollamaTestResult = '$providerLabel OK — $text');
         } finally {
           cloud.dispose();
         }
+      }
     } catch (e) {
       if (mounted) setState(() => _ollamaTestResult = 'Fehler: ${_trunc(e.toString(), 120)}');
     } finally {
@@ -259,7 +360,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         apiKey: _embeddingApiKeyController.text.trim().isNotEmpty
             ? _embeddingApiKeyController.text.trim()
             : config.embeddingApiKey,
-        provider: config.embeddingProvider,
+        provider: _embeddingProvider,
       );
       try {
         final result = await embedding.getEmbedding('Hallo Welt');
@@ -722,7 +823,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
           if (_secEmbedding) ...[
           SliverToBoxAdapter(child: _GlassCard(children: [
-            // Provider Switch
+            // Provider Switch — 3 tabs
             Container(
               margin: const EdgeInsets.only(bottom: 16),
               padding: const EdgeInsets.all(4),
@@ -733,57 +834,18 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               child: Row(
                 children: [
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _embeddingProvider = 'ollama'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _embeddingProvider == 'ollama' ? context.buddy.accent : null,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Ollama',
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: TextStyle(
-                            color: _embeddingProvider == 'ollama' ? Colors.white : context.buddy.t2,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: GestureDetector(
-                      onTap: () => setState(() => _embeddingProvider = 'openai'),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: _embeddingProvider == 'openai' ? context.buddy.accent : null,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'OpenAI',
-                          textAlign: TextAlign.center,
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                          style: TextStyle(
-                            color: _embeddingProvider == 'openai' ? Colors.white : context.buddy.t2,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  _embeddingTab('Ollama', 'ollama'),
+                  _embeddingTab('OpenRouter', 'openrouter'),
+                  _embeddingTab('OpenAI', 'openai'),
                 ],
               ),
             ),
             _GlassTextField(
-              label: 'Base URL (z.B. https://ollama.com/api)',
+              label: _embeddingProvider == 'ollama'
+                  ? 'Base URL (z.B. https://ollama.com/api)'
+                  : _embeddingProvider == 'openrouter'
+                      ? 'Base URL (Standard: https://openrouter.ai/api)'
+                      : 'Base URL (Standard: https://api.openai.com)',
               icon: Icons.link_rounded,
               controller: _embeddingBaseUrlController,
             ),
@@ -794,7 +856,11 @@ class _SettingsScreenState extends State<SettingsScreen>
               obscure: true,
             ),
             _GlassTextField(
-              label: 'Modell (z.B. nomic-embed-text)',
+              label: _embeddingProvider == 'ollama'
+                  ? 'Modell (z.B. nomic-embed-text)'
+                  : _embeddingProvider == 'openrouter'
+                      ? 'Modell (z.B. qwen/qwen3-embedding-8b)'
+                      : 'Modell (z.B. text-embedding-3-small)',
               icon: Icons.memory_rounded,
               controller: _embeddingModelController,
             ),
@@ -899,7 +965,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _ollamaExpanded,
             onToggle: () => setState(() => _ollamaExpanded = !_ollamaExpanded),
             children: [
-              // Provider Switch
+              // Provider Switch — 4 tabs (2x2 grid)
               Container(
                 margin: const EdgeInsets.only(bottom: 16),
                 padding: const EdgeInsets.all(4),
@@ -908,53 +974,19 @@ class _SettingsScreenState extends State<SettingsScreen>
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: context.buddy.border),
                 ),
-                child: Row(
+                child: Column(
                   children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _llmProvider = 'ollama'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _llmProvider == 'ollama' ? context.buddy.accent : null,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'Ollama',
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: _llmProvider == 'ollama' ? Colors.white : context.buddy.t2,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        _providerTab('Ollama', 'ollama'),
+                        _providerTab('OpenRouter', 'openrouter'),
+                      ],
                     ),
-                    Expanded(
-                      child: GestureDetector(
-                        onTap: () => setState(() => _llmProvider = 'openrouter'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: _llmProvider == 'openrouter' ? context.buddy.accent : null,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            'OpenRouter',
-                            textAlign: TextAlign.center,
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
-                            style: TextStyle(
-                              color: _llmProvider == 'openrouter' ? Colors.white : context.buddy.t2,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        _providerTab('OpenAI', 'openai'),
+                        _providerTab('Anthropic', 'anthropic'),
+                      ],
                     ),
                   ],
                 ),
@@ -972,7 +1004,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                   controller: _ollamaKeyController,
                   obscure: true,
                 ),
-                // Modell-Dropdown statt Textfeld
                 _buildModelDropdown(
                   label: 'Modell',
                   icon: Icons.smart_toy_rounded,
@@ -991,7 +1022,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                   controller: _openRouterKeyController,
                   obscure: true,
                 ),
-                // Modell-Dropdown statt Textfeld
                 _buildModelDropdown(
                   label: 'Modell',
                   icon: Icons.smart_toy_rounded,
@@ -1002,6 +1032,42 @@ class _SettingsScreenState extends State<SettingsScreen>
                   label: 'Fallback',
                   icon: Icons.backup_rounded,
                   controller: _openRouterFallbackController,
+                ),
+              ] else if (_llmProvider == 'openai') ...[
+                _GlassTextField(
+                  label: 'API Key',
+                  icon: Icons.key_rounded,
+                  controller: _openAIKeyController,
+                  obscure: true,
+                ),
+                _buildModelDropdown(
+                  label: 'Modell',
+                  icon: Icons.smart_toy_rounded,
+                  models: _openAIModels,
+                  controller: _openAIModelController,
+                ),
+                _GlassTextField(
+                  label: 'Fallback',
+                  icon: Icons.backup_rounded,
+                  controller: _openAIFallbackController,
+                ),
+              ] else if (_llmProvider == 'anthropic') ...[
+                _GlassTextField(
+                  label: 'API Key',
+                  icon: Icons.key_rounded,
+                  controller: _anthropicKeyController,
+                  obscure: true,
+                ),
+                _buildModelDropdown(
+                  label: 'Modell',
+                  icon: Icons.smart_toy_rounded,
+                  models: _anthropicModels,
+                  controller: _anthropicModelController,
+                ),
+                _GlassTextField(
+                  label: 'Fallback',
+                  icon: Icons.backup_rounded,
+                  controller: _anthropicFallbackController,
                 ),
               ],
 
@@ -1071,15 +1137,37 @@ class _SettingsScreenState extends State<SettingsScreen>
                 Builder(builder: (context) {
                   final piper = context.watch<PiperTtsService>();
                   return Column(children: [
-                    // Voice download selection
+                    // Voice download selection — grouped by language
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Align(alignment: Alignment.centerLeft,
                         child: Text('Piper Stimmen (offline)', style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                     ),
+                    // Language dropdown
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                      child: Row(
+                        children: [
+                          Text('Sprache: ', style: TextStyle(color: context.buddy.t2, fontSize: 13)),
+                          Expanded(
+                            child: DropdownButton<String>(
+                              value: _piperLangFilter,
+                              isExpanded: true,
+                              underline: Container(height: 1, color: context.buddy.border),
+                              items: [
+                                const DropdownMenuItem(value: 'all', child: Text('Alle Sprachen')),
+                                ...PiperVoice.supportedLanguages.map((code) =>
+                                  DropdownMenuItem(value: code, child: Text(PiperVoice.languageNameFor(code)))),
+                              ],
+                              onChanged: (v) => setState(() => _piperLangFilter = v ?? 'all'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     const SizedBox(height: 8),
-                    ...PiperVoice.values.map((voice) => _PiperVoiceTile(
+                    ..._filteredPiperVoices.map((voice) => _PiperVoiceTile(
                       voice: voice,
                       piper: piper,
                       isCurrent: piper.currentVoice == voice,
@@ -1320,6 +1408,68 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Filtered Piper voices based on language selection.
+  List<PiperVoice> get _filteredPiperVoices {
+    if (_piperLangFilter == 'all') return PiperVoice.values;
+    return PiperVoice.forLanguage(_piperLangFilter);
+  }
+
+  /// Provider tab button for the 4-provider switch grid.
+  Widget _providerTab(String label, String id) {
+    final selected = _llmProvider == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _llmProvider = id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? context.buddy.accent : null,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: TextStyle(
+              color: selected ? Colors.white : context.buddy.t2,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Embedding provider tab button for the 3-provider switch.
+  Widget _embeddingTab(String label, String id) {
+    final selected = _embeddingProvider == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _embeddingProvider = id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? context.buddy.accent : null,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: TextStyle(
+              color: selected ? Colors.white : context.buddy.t2,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
       ),
     );
   }

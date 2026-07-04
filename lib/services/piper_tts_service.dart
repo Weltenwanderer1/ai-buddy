@@ -6,20 +6,63 @@ import 'package:piper_tts_plugin/piper_tts_plugin.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:http/http.dart' as http;
 
-/// Available German Piper voice models for download.
+/// Available Piper voice models for download, organized by language.
+///
+/// Languages: DE, EN, ES, ZH (Mandarin).
+/// Japanese is NOT available in Piper — Device TTS fallback is used instead.
 enum PiperVoice {
-  thorsten('de_DE-thorsten-high', 'Thorsten (Männlich, natürlich)',
+  // ── Deutsch ──
+  thorsten('de_DE-thorsten-high', 'Thorsten (DE, Männlich, natürlich)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/thorsten/high/de_DE-thorsten-high.onnx.json'),
-  eva('de_DE-eva-medium', 'Eva (Weiblich, klar)',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx.json'),
-  karl('de_DE-karl-medium', 'Karl (Männlich, tief)',
+  karl('de_DE-karl-medium', 'Karl (DE, Männlich, tief)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/karl/medium/de_DE-karl-medium.onnx',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/karl/medium/de_DE-karl-medium.onnx.json'),
-  ramona('de_DE-ramona-low', 'Ramona (Weiblich, leicht)',
+  eva('de_DE-eva-medium', 'Eva (DE, Weiblich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/eva/medium/de_DE-eva-medium.onnx.json'),
+  ramona('de_DE-ramona-low', 'Ramona (DE, Weiblich, leicht)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx.json');
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/de/de_DE/ramona/low/de_DE-ramona-low.onnx.json'),
+
+  // ── English ──
+  lessac('en_US-lessac-medium', 'Lessac (EN, Männlich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/lessac/medium/en_US-lessac-medium.onnx.json'),
+  ryan('en_US-ryan-medium', 'Ryan (EN, Männlich, natürlich)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/ryan/medium/en_US-ryan-medium.onnx.json'),
+  amy('en_US-amy-medium', 'Amy (EN, Weiblich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/amy/medium/en_US-amy-medium.onnx.json'),
+  hfcFemale('en_US-hfc_female-medium', 'HFC Female (EN, Weiblich, natürlich)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_US/hfc_female/medium/en_US-hfc_female-medium.onnx.json'),
+
+  // ── Español ──
+  davefx('es_ES-davefx-medium', 'Davefx (ES, Männlich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/davefx/medium/es_ES-davefx-medium.onnx.json'),
+  carlfm('es_ES-carlfm-x_low', 'Carlfm (ES, Männlich, leicht)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/carlfm/x_low/es_ES-carlfm-x_low.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/carlfm/x_low/es_ES-carlfm-x_low.onnx.json'),
+  sharvard('es_ES-sharvard-medium', 'Sharvard (ES, Weiblich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/sharvard/medium/es_ES-sharvard-medium.onnx.json'),
+  mls9972('es_ES-mls_9972-low', 'MLS 9972 (ES, Weiblich, leicht)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/mls_9972/low/es_ES-mls_9972-low.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/mls_9972/low/es_ES-mls_9972-low.onnx.json'),
+
+  // ── Mandarin (中文) ──
+  chaowen('zh_CN-chaowen-medium', 'Chaowen (ZH, Männlich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/chaowen/medium/zh_CN-chaowen-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/chaowen/medium/zh_CN-chaowen-medium.onnx.json'),
+  huayan('zh_CN-huayan-medium', 'Huayan (ZH, Weiblich, klar)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json'),
+  xiaoYa('zh_CN-xiao_ya-medium', 'Xiao Ya (ZH, Weiblich, leicht)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx.json');
 
   final String id;
   final String displayName;
@@ -34,6 +77,41 @@ enum PiperVoice {
     }
     return null;
   }
+
+  /// Language code for this voice (e.g. 'de', 'en', 'es', 'zh').
+  String get languageCode => id.split('-').first.split('_').first;
+
+  /// Language display name.
+  String get languageName => switch (languageCode) {
+    'de' => 'Deutsch',
+    'en' => 'English',
+    'es' => 'Español',
+    'zh' => '中文 (Mandarin)',
+    _ => languageCode,
+  };
+
+  /// Whether this voice is male.
+  bool get isMale {
+    final m = displayName.toLowerCase();
+    return m.contains('männlich') || m.contains('male');
+  }
+
+  /// All voices for a given language code.
+  static List<PiperVoice> forLanguage(String langCode) {
+    return PiperVoice.values.where((v) => v.languageCode == langCode).toList();
+  }
+
+  /// All supported language codes.
+  static List<String> get supportedLanguages => ['de', 'en', 'es', 'zh'];
+
+  /// Language display name for a code.
+  static String languageNameFor(String code) => switch (code) {
+    'de' => 'Deutsch',
+    'en' => 'English',
+    'es' => 'Español',
+    'zh' => '中文 (Mandarin)',
+    _ => code,
+  };
 }
 
 /// Service for offline Piper TTS — synthesizes text to speech entirely on-device.

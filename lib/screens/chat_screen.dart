@@ -21,6 +21,7 @@ import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/location_service.dart';
 import '../services/ollama_cloud_service.dart';
+import '../services/anthropic_service.dart';
 import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
 import 'settings_screen.dart';
@@ -247,7 +248,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
 
     try {
-      final chatService = ChatService(cloudService: cloudService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
+      final chatService = ChatService(cloudService: cloudService, anthropicService: context.read<AnthropicService?>(), configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
       // Use sendMessage (with tool support) as primary path
       final result = await chatService.sendMessage(
         userMessage: text,
@@ -282,7 +283,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     } catch (e) {
       debugPrint('sendMessage failed: $e, falling back to streaming');
       try {
-        final chatService = ChatService(cloudService: cloudService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
+        final chatService = ChatService(cloudService: cloudService, anthropicService: context.read<AnthropicService?>(), configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities);
         await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution, buddyName, fileMetadata);
       } catch (e2) {
         debugPrint('Non-streaming fallback also failed: $e2');
@@ -470,6 +471,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     final tts = context.read<TtsPlaybackService>();
     final chatService = ChatService(
       cloudService: context.read<OllamaCloudService>(),
+      anthropicService: context.read<AnthropicService?>(),
       configService: context.read<SecureConfigService>(),
       toolRegistry: _toolRegistry,
       selfIdentity: context.read<SelfIdentityService>(),

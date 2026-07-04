@@ -14,8 +14,13 @@ class OllamaCloudProvider implements LlmProvider {
 
   @override
   String get displayName {
-    final isOpenRouter = _cloud.baseUrl.contains('openrouter');
-    return isOpenRouter ? 'OpenRouter (${_cloud.defaultModel})' : 'Ollama Cloud (${_cloud.defaultModel})';
+    final base = _cloud.baseUrl.toLowerCase();
+    if (base.contains('openrouter')) {
+      return 'OpenRouter (${_cloud.defaultModel})';
+    } else if (base.contains('openai.com')) {
+      return 'OpenAI (${_cloud.defaultModel})';
+    }
+    return 'Ollama Cloud (${_cloud.defaultModel})';
   }
 
   @override
