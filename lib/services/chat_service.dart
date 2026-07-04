@@ -38,7 +38,11 @@ class ChatService {
   int _messageCount = 0;
   static const int evolutionInterval = 10;
 
-  ChatService({OllamaCloudService? cloudService, AnthropicService? anthropicService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities})
+  /// UI/answer language (ISO 639-1: en, de, es, ja, zh). Steuert, in welcher
+  /// Sprache der Buddy antwortet.
+  final String appLanguage;
+
+  ChatService({OllamaCloudService? cloudService, AnthropicService? anthropicService, SecureConfigService? configService, ToolRegistry? toolRegistry, SelfIdentityService? selfIdentity, LocationService? locationService, BuddyCapabilitiesService? buddyCapabilities, this.appLanguage = 'en'})
       : _cloudService = cloudService,
         _anthropicService = anthropicService,
         _configService = configService,
@@ -46,6 +50,15 @@ class ChatService {
         _selfIdentity = selfIdentity,
         _locationService = locationService,
         _buddyCapabilities = buddyCapabilities;
+
+  /// Map ISO code → the language name used in the system-prompt directive.
+  static String languageName(String code) => switch (code) {
+    'de' => 'German (Deutsch)',
+    'es' => 'Spanish (Español)',
+    'ja' => 'Japanese (日本語)',
+    'zh' => 'Mandarin Chinese (中文)',
+    _ => 'English',
+  };
 
   /// Resolve the active LLM provider based on config.
   /// Supports: ollama, openrouter, openai (via OllamaCloudService),
@@ -569,6 +582,12 @@ class ChatService {
         debugPrint('Location context error: $e');
       }
     }
+
+    // Antwortsprache — steht bewusst am Ende, damit sie die (deutschen)
+    // Beispiel-Formulierungen weiter oben überschreibt.
+    parts.add('\nWICHTIG: Antworte dem Nutzer IMMER auf ${languageName(appLanguage)}, '
+        'unabhängig von der Sprache dieses System-Prompts. '
+        '(Reply to the user in ${languageName(appLanguage)} regardless of the language of this prompt.)');
 
     return parts.join('\n').trim();
   }

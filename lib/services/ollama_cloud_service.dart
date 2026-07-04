@@ -94,7 +94,15 @@ class OllamaCloudService extends ChangeNotifier {
   /// Returns true if the base URL points to an Ollama native API
   /// (URL ends with /api or /api/).
   bool get _isOllamaNative {
-    final trimmed = baseUrl.replaceAll(RegExp(r'/+$'), '');
+    final trimmed = baseUrl.replaceAll(RegExp(r'/+$'), '').toLowerCase();
+    // OpenRouter/OpenAI/Anthropic enden zwar teils auf /api, sind aber
+    // OpenAI-kompatibel — sie dürfen NICHT über den Ollama-Native-Endpunkt
+    // (/api/chat) laufen, sonst 404/Format-Fehler.
+    if (trimmed.contains('openrouter') ||
+        trimmed.contains('openai') ||
+        trimmed.contains('anthropic')) {
+      return false;
+    }
     return trimmed.endsWith('/api');
   }
 
@@ -1049,18 +1057,27 @@ class ToolCall {
   });
 
   /// Convert to the assistant message format for the conversation history.
-  Map<String, dynamic> toAssistantMessage() => {
+  Map<String, dynamic> toAssistantMessage() => assistantMessageFor([this]);
+
+  /// Build ONE assistant message carrying ALL tool calls of a turn.
+  ///
+  /// Wichtig bei parallelen Tool-Calls: die Assistant-Nachricht muss jeden
+  /// tool_call enthalten, sonst referenzieren die nachfolgenden tool-Results
+  /// eine tool_call_id, die es in der Historie nicht gibt (Anthropic/OpenAI
+  /// antworten dann mit 400).
+  static Map<String, dynamic> assistantMessageFor(List<ToolCall> calls) => {
         'role': 'assistant',
         'content': '',
         'tool_calls': [
-          {
-            'id': id,
-            'type': type,
-            'function': {
-              'name': name,
-              'arguments': jsonEncode(arguments),
+          for (final c in calls)
+            {
+              'id': c.id,
+              'type': c.type,
+              'function': {
+                'name': c.name,
+                'arguments': jsonEncode(c.arguments),
+              },
             },
-          },
         ],
       };
 }

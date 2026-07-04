@@ -17,7 +17,7 @@ class SaveMemoryTool implements ToolInterface {
       'properties': {
         'content': {
           'type': 'string',
-          'description': 'Die zu speichernde Information als vollstaendiger Satz. Mindestens 10 Zeichen. Beispiele: "Der Nutzer heisst Guenther und wohnt in Wien" — NICHT nur "Guenther". "Der Nutzer mag keine Suessigkeiten" — NICHT nur "Suessigkeiten".',
+          'description': 'Die zu speichernde Information als vollstaendiger Satz. Mindestens 10 Zeichen. Beispiele: "Der Nutzer heisst Max und wohnt in Berlin" — NICHT nur "Max". "Der Nutzer mag keine Suessigkeiten" — NICHT nur "Suessigkeiten".',
         },
         'tier': {
           'type': 'string',
@@ -60,7 +60,7 @@ class SaveMemoryTool implements ToolInterface {
         parameters: parameters,
         result: 'Abgelehnt: Inhalt zu kurz (${"${trimmed.length}"} Zeichen, Minimum $_minContentLength). '
             'Speichere vollstaendige Saetze mit Kontext, keine Einzelwoerter. '
-            'Beispiel: "Der Nutzer heisst Guenther" statt nur "Guentther".',
+            'Beispiel: "Der Nutzer heisst Max" statt nur "Max".',
         displayText: '⚠️ Zu kurz — bitte vollständigen Satz',
         isError: true,
       );

@@ -78,6 +78,11 @@ class EmbeddingService {
   /// OllamaCloudService).
   static String _normalizeBase(String base) {
     var b = base.replaceAll(RegExp(r'/+$'), '');
+    // OpenRouter serviert alles unter /api/v1/... — das /api NICHT strippen,
+    // sonst geht die Anfrage an openrouter.ai/v1/... (404).
+    if (b.toLowerCase().contains('openrouter')) {
+      return b.replaceAll(RegExp(r'/v1$'), '');
+    }
     b = b.replaceAll(RegExp(r'/(api/v1|api|v1)$'), '');
     return b;
   }

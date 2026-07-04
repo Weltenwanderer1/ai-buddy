@@ -42,6 +42,9 @@ class LiveVoiceService extends ChangeNotifier {
   bool get isActive => _active;
   String? get sttError => _stt.lastError;
 
+  /// STT-Locale (z.B. de_DE, en_US) — folgt der App-Sprache.
+  final String sttLocale;
+
   LiveVoiceService({
     required SttService stt,
     required TtsPlaybackService tts,
@@ -49,6 +52,7 @@ class LiveVoiceService extends ChangeNotifier {
     required ChatHistoryService chatHistory,
     required MemoryService memory,
     required PersonaService persona,
+    this.sttLocale = 'en_US',
   })  : _stt = stt,
         _tts = tts,
         _chatService = chatService,
@@ -106,7 +110,7 @@ class LiveVoiceService extends ChangeNotifier {
       notifyListeners();
       debugPrint('LiveVoice [$iteration]: listening...');
 
-      final transcript = await _stt.listenonce();
+      final transcript = await _stt.listenonce(localeId: sttLocale);
 
       if (!_active) break;
 

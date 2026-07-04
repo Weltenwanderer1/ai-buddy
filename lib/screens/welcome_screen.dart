@@ -137,7 +137,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         'openrouter' => 'https://openrouter.ai/api',
         'openai' => 'https://api.openai.com',
         'anthropic' => 'https://api.anthropic.com',
-        _ => 'https://ollama.com/api',
+        // Ohne /api — Ollama Cloud serviert die OpenAI-kompatible Model-Liste
+        // unter /v1/models (mit /api würde /api/v1/models 404 liefern).
+        _ => 'https://ollama.com',
       };
       final apiKey = _apiKeyController.text;
       // Simple connectivity test: fetch models endpoint
@@ -153,11 +155,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       }
       final res = await req.close();
       client.close();
+      if (!mounted) return;
       setState(() {
         _testing = false;
         _testResult = res.statusCode == 200 ? 'success' : 'fail';
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         _testing = false;
         _testResult = 'fail';
@@ -167,9 +171,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
     return MaterialApp(
-      // Localize THIS screen's own context
+      // Localize THIS screen's own context — locale follows the live selection
       locale: Locale(_selectedLang),
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: [
@@ -179,32 +182,37 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       theme: AppTheme.light(AppColors.primary),
       darkTheme: AppTheme.dark(AppColors.primary),
       themeMode: ThemeMode.system,
-      home: Scaffold(
-        body: Container(
-          decoration: const BoxDecoration(gradient: AppColors.bgGradient),
-          child: SafeArea(
-            child: Column(
-              children: [
-                // Progress bar
-                LinearProgressIndicator(
-                  value: (_step + 1) / _totalSteps,
-                  minHeight: 3,
-                  backgroundColor: Colors.white.withValues(alpha: 0.05),
-                  color: AppColors.primary,
-                ),
-                Expanded(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 250),
-                    child: _buildStep(t, _step),
+      // Builder resolves `t` from the INNER context so tapping a language
+      // updates the wizard text immediately (the outer app's locale is stale).
+      home: Builder(builder: (innerContext) {
+        final t = AppLocalizations.of(innerContext);
+        return Scaffold(
+          body: Container(
+            decoration: const BoxDecoration(gradient: AppColors.bgGradient),
+            child: SafeArea(
+              child: Column(
+                children: [
+                  // Progress bar
+                  LinearProgressIndicator(
+                    value: (_step + 1) / _totalSteps,
+                    minHeight: 3,
+                    backgroundColor: Colors.white.withValues(alpha: 0.05),
+                    color: AppColors.primary,
                   ),
-                ),
-                // Nav buttons
-                _buildNav(t),
-              ],
+                  Expanded(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      child: _buildStep(t, _step),
+                    ),
+                  ),
+                  // Nav buttons
+                  _buildNav(t),
+                ],
+              ),
             ),
           ),
-        ),
-      ),
+        );
+      }),
     );
   }
 

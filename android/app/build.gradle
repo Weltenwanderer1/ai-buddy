@@ -2,7 +2,12 @@ plugins {
     id "com.android.application"
     id "kotlin-android"
     id "dev.flutter.flutter-gradle-plugin"
-    id "com.google.gms.google-services"
+}
+
+// Firebase nur aktivieren, wenn google-services.json vorhanden ist —
+// ein frischer Clone ohne eigenes Firebase-Projekt muss trotzdem bauen.
+if (file("google-services.json").exists()) {
+    apply plugin: "com.google.gms.google-services"
 }
 
 def keystorePropertiesFile = rootProject.file("key.properties")
@@ -26,12 +31,18 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    // Release-Signierung kommt ausschließlich aus key.properties (liegt NICHT
+    // im Repo). Ohne key.properties wird mit dem Debug-Key signiert, damit
+    // `flutter build apk --release` für jeden Clone baubar bleibt.
+    // Niemals Passwörter hier hardcoden — das Repo ist öffentlich.
     signingConfigs {
-        release {
-            keyAlias keystoreProperties['keyAlias'] ?: 'upload'
-            keyPassword keystoreProperties['keyPassword'] ?: 'aibuddy2024'
-            storeFile keystoreProperties['storeFile'] ? rootProject.file(keystoreProperties['storeFile']) : rootProject.file('app/upload-keystore.jks')
-            storePassword keystoreProperties['storePassword'] ?: 'aibuddy2024'
+        if (keystorePropertiesFile.exists()) {
+            release {
+                keyAlias keystoreProperties['keyAlias']
+                keyPassword keystoreProperties['keyPassword']
+                storeFile rootProject.file(keystoreProperties['storeFile'])
+                storePassword keystoreProperties['storePassword']
+            }
         }
     }
 
@@ -47,7 +58,9 @@ android {
         release {
             minifyEnabled = false
             shrinkResources = false
-            signingConfig signingConfigs.release
+            signingConfig keystorePropertiesFile.exists()
+                ? signingConfigs.release
+                : signingConfigs.debug
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -71,5 +84,3 @@ dependencies {
 flutter {
     source = "../.."
 }
-
-

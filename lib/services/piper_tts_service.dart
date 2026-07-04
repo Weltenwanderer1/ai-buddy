@@ -54,15 +54,13 @@ enum PiperVoice {
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/es/es_ES/mls_9972/low/es_ES-mls_9972-low.onnx.json'),
 
   // ── Mandarin (中文) ──
-  chaowen('zh_CN-chaowen-medium', 'Chaowen (ZH, Männlich, klar)',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/chaowen/medium/zh_CN-chaowen-medium.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/chaowen/medium/zh_CN-chaowen-medium.onnx.json'),
+  // Piper hat für zh_CN aktuell nur die huayan-Stimme (medium + x_low).
   huayan('zh_CN-huayan-medium', 'Huayan (ZH, Weiblich, klar)',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx',
     'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/medium/zh_CN-huayan-medium.onnx.json'),
-  xiaoYa('zh_CN-xiao_ya-medium', 'Xiao Ya (ZH, Weiblich, leicht)',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx',
-    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/xiao_ya/medium/zh_CN-xiao_ya-medium.onnx.json');
+  huayanLow('zh_CN-huayan-x_low', 'Huayan (ZH, Weiblich, leicht)',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/x_low/zh_CN-huayan-x_low.onnx',
+    'https://huggingface.co/rhasspy/piper-voices/resolve/main/zh/zh_CN/huayan/x_low/zh_CN-huayan-x_low.onnx.json');
 
   final String id;
   final String displayName;
@@ -93,6 +91,7 @@ enum PiperVoice {
   /// Whether this voice is male.
   bool get isMale {
     final m = displayName.toLowerCase();
+    if (m.contains('weiblich') || m.contains('female')) return false;
     return m.contains('männlich') || m.contains('male');
   }
 

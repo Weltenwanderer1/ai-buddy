@@ -191,7 +191,10 @@ class AnthropicService extends ChangeNotifier {
       if (e is OllamaApiException) rethrow;
       throw Exception('Anthropic streaming failed: $e');
     } finally {
-      client?.close();
+      // force: true reißt auch eine noch laufende Antwort ab, wenn der
+      // Listener mitten im Stream abbricht — sonst hängt die Verbindung
+      // bis zum Idle-Timeout offen.
+      client?.close(force: true);
     }
   }
 
@@ -304,14 +307,51 @@ class AnthropicService extends ChangeNotifier {
 
       // Standard text message — Anthropic accepts string content
       if (content is List) {
-        // Vision multi-content: pass through (Anthropic supports image_url)
-        result.add({'role': role, 'content': content});
+        // Vision multi-content: OpenAI-Format in Anthropic-Format übersetzen.
+        // Anthropic erwartet {type:image, source:{type:base64, media_type, data}}
+        // statt {type:image_url, image_url:{url:"data:..."}} → sonst 400.
+        result.add({'role': role, 'content': _convertContentBlocks(content)});
       } else {
         result.add({'role': role, 'content': content is String ? content : ''});
       }
     }
 
     return result;
+  }
+
+  /// Übersetzt OpenAI-Content-Blöcke (text / image_url-Data-URL) in das
+  /// Anthropic-Format (text / image mit base64-source).
+  List<Map<String, dynamic>> _convertContentBlocks(List content) {
+    final out = <Map<String, dynamic>>[];
+    for (final raw in content) {
+      if (raw is! Map) continue;
+      final type = raw['type'];
+      if (type == 'image_url') {
+        final url = (raw['image_url'] is Map)
+            ? raw['image_url']['url'] as String?
+            : raw['image_url'] as String?;
+        if (url != null && url.startsWith('data:')) {
+          // data:<media_type>;base64,<data>
+          final comma = url.indexOf(',');
+          final header = url.substring(5, comma); // media_type;base64
+          final mediaType = header.split(';').first;
+          final data = url.substring(comma + 1);
+          out.add({
+            'type': 'image',
+            'source': {
+              'type': 'base64',
+              'media_type': mediaType.isNotEmpty ? mediaType : 'image/jpeg',
+              'data': data,
+            },
+          });
+        }
+      } else if (type == 'text') {
+        out.add({'type': 'text', 'text': raw['text'] as String? ?? ''});
+      } else {
+        out.add(raw.cast<String, dynamic>());
+      }
+    }
+    return out;
   }
 
   /// Convert OpenAI tool definition to Anthropic format.

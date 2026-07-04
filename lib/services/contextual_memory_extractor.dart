@@ -110,7 +110,6 @@ class ContextualMemoryExtractor {
   static final _familyPatterns = [
     _Pattern(r'\b(meine frau|mein mann|mein partner|meine partnerin)\s+heißt\s+([a-zäöüß]+)', bonus: 2),
     _Pattern(r'\b(mein sohn|meine tochter|mein kind)\s+heißt\s+([a-zäöüß]+)', bonus: 2),
-    _Pattern(r'\b(atreju|ellie|saskia|aju)\b', bonus: 2), // already known names from context
     _Pattern(r'\b(vater von|mutter von|eltern von)\s+([a-zäöüß]+)', bonus: 2),
   ];
 

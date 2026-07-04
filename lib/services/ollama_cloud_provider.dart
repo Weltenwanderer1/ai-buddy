@@ -71,7 +71,7 @@ class OllamaCloudProvider implements LlmProvider {
       // Simple chat without tools
       return await _cloud.chat(
         systemPrompt: systemPrompt,
-        messages: cloudMessages.cast<Map<String, String>>(),
+        messages: cloudMessages.cast<Map<String, dynamic>>(),
         temperature: temperature,
       );
     }
@@ -130,8 +130,8 @@ class OllamaCloudProvider implements LlmProvider {
     int rounds = 0;
 
     while (currentResponse.hasToolCalls && rounds < maxRounds) {
-      // Add assistant message with tool calls to history
-      currentMessages.add(currentResponse.toolCalls.first.toAssistantMessage());
+      // Add assistant message with ALL tool calls to history (parallel calls)
+      currentMessages.add(ToolCall.assistantMessageFor(currentResponse.toolCalls));
 
       for (final tc in currentResponse.toolCalls) {
         debugPrint('OllamaCloudProvider tool call: ${tc.name} args=${tc.arguments}');

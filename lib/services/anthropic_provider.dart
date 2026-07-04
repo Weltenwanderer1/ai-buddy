@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'llm_provider.dart';
 import 'anthropic_service.dart';
+import 'ollama_cloud_service.dart' show ToolCall;
 
 /// LLM Provider wrapper around [AnthropicService].
 ///
@@ -124,8 +125,8 @@ class AnthropicProvider implements LlmProvider {
             : 'Tool-Aufruf ausgeführt.';
       }
 
-      // Add assistant response with tool calls to history
-      currentMessages.add(response.toolCalls.first.toAssistantMessage());
+      // Add assistant response with ALL tool calls to history (parallel calls)
+      currentMessages.add(ToolCall.assistantMessageFor(response.toolCalls));
 
       for (final tc in response.toolCalls) {
         debugPrint('AnthropicProvider tool call: ${tc.name} args=${tc.arguments}');

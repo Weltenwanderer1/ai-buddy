@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
+import 'package:provider/provider.dart';
 import '../services/live_voice_service.dart';
 import '../services/stt_service.dart';
+import '../services/settings_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/buddy_colors.dart';
 
@@ -87,6 +89,8 @@ class _MessageInputState extends State<MessageInput> {
       );
       return;
     }
+    // App-Sprache VOR dem ersten await lesen (context danach unsicher).
+    final locale = SttService.localeFor(context.read<SettingsService>().appLanguage);
 
     setState(() => _isDictating = true);
     try {
@@ -105,7 +109,7 @@ class _MessageInputState extends State<MessageInput> {
 
       // Add placeholder while listening
       final currentText = _controller.text;
-      final result = await stt.listenonce(localeId: 'de_DE');
+      final result = await stt.listenonce(localeId: locale);
       if (result != null && result.isNotEmpty) {
         final separator = currentText.isNotEmpty ? ' ' : '';
         _controller.text = currentText + separator + result;

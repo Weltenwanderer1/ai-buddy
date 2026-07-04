@@ -2320,10 +2320,20 @@ class _ProactivityTileState extends State<_ProactivityTile> {
 class _AppearanceSection extends StatelessWidget {
   const _AppearanceSection();
 
+  static const _languages = <(String, String)>[
+    ('en', '🇬🇧 English'),
+    ('de', '🇩🇪 Deutsch'),
+    ('es', '🇪🇸 Español'),
+    ('ja', '🇯🇵 日本語'),
+    ('zh', '🇨🇳 中文'),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final c = context.buddy;
-    final current = context.watch<SettingsService>().themeMode;
+    final settings = context.watch<SettingsService>();
+    final current = settings.themeMode;
+    final appLang = settings.appLanguage;
     const options = <(ThemeMode, String, IconData)>[
       (ThemeMode.system, 'System', Icons.brightness_auto_rounded),
       (ThemeMode.light, 'Hell', Icons.light_mode_rounded),
@@ -2341,6 +2351,55 @@ class _AppearanceSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // App-Sprache
+          Padding(
+            padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
+            child: Row(
+              children: [
+                Icon(Icons.language, size: 17, color: c.t2),
+                const SizedBox(width: 8),
+                Text('Sprache / Language',
+                    style: TextStyle(color: c.t2, fontSize: 13, fontWeight: FontWeight.w600)),
+              ],
+            ),
+          ),
+          SizedBox(
+            height: 38,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                for (final (code, label) in _languages)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8, left: 2),
+                    child: GestureDetector(
+                      onTap: () => context.read<SettingsService>().appLanguage = code,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: appLang == code
+                              ? c.accent.withValues(alpha: 0.15)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: appLang == code ? c.accent : c.border,
+                            width: appLang == code ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Text(label,
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: appLang == code ? c.accent : c.t2,
+                            )),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
           Row(
             children: [
               for (final (value, label, icon) in options)

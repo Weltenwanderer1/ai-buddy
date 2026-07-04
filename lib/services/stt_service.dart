@@ -19,6 +19,15 @@ class SttService {
   bool get isListening => _isListening;
   String? get lastError => _lastError;
 
+  /// Map an app language code (en, de, es, ja, zh) to an STT locale id.
+  static String localeFor(String lang) => switch (lang) {
+    'de' => 'de_DE',
+    'es' => 'es_ES',
+    'ja' => 'ja_JP',
+    'zh' => 'zh_CN',
+    _ => 'en_US',
+  };
+
   void _finishActive(String? value) {
     final c = _activeCompleter;
     _activeCompleter = null;
