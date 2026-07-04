@@ -175,7 +175,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       // Localize THIS screen's own context — locale follows the live selection
       locale: Locale(_selectedLang),
       supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: [
+      localizationsDelegates: const [
         AppLocalizations.delegate,
         ...GlobalMaterialLocalizations.delegates,
       ],

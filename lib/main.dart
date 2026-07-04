@@ -804,7 +804,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
             themeMode: settings.themeMode,
             locale: appLocale,
             supportedLocales: AppLocalizations.supportedLocales,
-            localizationsDelegates: [
+            localizationsDelegates: const [
               AppLocalizations.delegate,
               GlobalMaterialLocalizations.delegate,
               GlobalWidgetsLocalizations.delegate,

@@ -1,3 +1,6 @@
+// Die Getter spiegeln bewusst die snake_case-Übersetzungs-Keys wider —
+// ein i18n-Wörterbuch, keine normalen Bezeichner.
+// ignore_for_file: non_constant_identifier_names
 import 'package:flutter/material.dart';
 
 /// Lightweight i18n system for AI-Buddy.
