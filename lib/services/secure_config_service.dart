@@ -1,0 +1,295 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+/// Manages API keys and config securely.
+/// Priority: Secure Storage > .env file > hardcoded defaults.
+class SecureConfigService {
+  static const _storage = FlutterSecureStorage();
+
+  // Keys
+  static const keyOllamaBaseUrl = 'OLLAMA_CLOUD_BASE_URL';
+  static const keyOllamaApiKey = 'OLLAMA_CLOUD_API_KEY';
+  static const keyOllamaModel = 'OLLAMA_CLOUD_MODEL';
+  static const keyOllamaFallbackModel = 'OLLAMA_CLOUD_FALLBACK_MODEL';
+  static const keyOpenRouterBaseUrl = 'OPENROUTER_BASE_URL';
+  static const keyOpenRouterApiKey = 'OPENROUTER_API_KEY';
+  static const keyOpenRouterModel = 'OPENROUTER_MODEL';
+  static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
+  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', or 'local'
+  static const keyTavilyApiKey = 'TAVILY_API_KEY';
+
+  // Email (IMAP)
+  static const keyImapServer = 'IMAP_SERVER';
+  static const keyImapPort = 'IMAP_PORT';
+  static const keyEmailAddress = 'EMAIL_ADDRESS';
+  static const keyEmailPassword = 'EMAIL_PASSWORD';
+  static const keyImapUseSsl = 'IMAP_USE_SSL';
+
+  // Embedding config
+  static const keyEmbeddingProvider = 'EMBEDDING_PROVIDER';  // 'ollama', 'openai'
+  static const keyEmbeddingBaseUrl = 'EMBEDDING_BASE_URL';
+  static const keyEmbeddingApiKey = 'EMBEDDING_API_KEY';
+  static const keyEmbeddingModel = 'EMBEDDING_MODEL';
+
+  // TTS config
+  static const keyTtsEngine = 'TTS_ENGINE';
+  static const keyPiperVoice = 'PIPER_VOICE';
+  static const keyPiperSpeed = 'PIPER_SPEED';
+
+  // Buddy name
+  static const keyBuddyName = 'BUDDY_NAME';
+  static const keyProactivityLevel = 'PROACTIVITY_LEVEL';
+
+  // Cache
+  final Map<String, String> _cache = {};
+
+  /// Initialize: read all keys into cache, migrate .env values if present.
+  Future<void> init() async {
+    final allKeys = [
+      keyOllamaBaseUrl,
+      keyOllamaApiKey,
+      keyOllamaModel,
+      keyOllamaFallbackModel,
+      keyOpenRouterBaseUrl,
+      keyOpenRouterApiKey,
+      keyOpenRouterModel,
+      keyOpenRouterFallbackModel,
+      keyLlmProvider,
+      keyTavilyApiKey,
+      keyImapServer,
+      keyImapPort,
+      keyEmailAddress,
+      keyEmailPassword,
+      keyImapUseSsl,
+      keyEmbeddingProvider,
+      keyEmbeddingBaseUrl,
+      keyEmbeddingApiKey,
+      keyEmbeddingModel,
+      keyTtsEngine,
+      keyPiperVoice,
+      keyPiperSpeed,
+      keyBuddyName,
+      keyProactivityLevel,
+    ];
+
+    for (final key in allKeys) {
+      final secured = await _storage.read(key: key);
+      if (secured != null) {
+        _cache[key] = secured;
+      } else {
+        // Migrate from .env if present
+        final envVal = dotenv.env[key];
+        if (envVal != null && envVal.isNotEmpty) {
+          await _storage.write(key: key, value: envVal);
+          _cache[key] = envVal;
+        }
+      }
+    }
+  }
+
+  // --- Helpers ---
+
+  /// Safe dotenv lookup — returns null if dotenv is not initialized.
+  String? _env(String key) => dotenv.isInitialized ? dotenv.env[key] : null;
+
+  // --- Getters with defaults ---
+
+  String get ollamaBaseUrl =>
+      _cache[keyOllamaBaseUrl] ?? _env(keyOllamaBaseUrl) ?? 'https://ollama.com/api';
+  // Kein eingebauter Default-Key: echte Keys gehören in Secure Storage
+  // oder .env, nie ins Repo (siehe README).
+  String get ollamaApiKey =>
+      _cache[keyOllamaApiKey] ?? _env(keyOllamaApiKey) ?? '';
+  String get ollamaModel =>
+      _cache[keyOllamaModel] ?? _env(keyOllamaModel) ?? 'kimi-k2.6:cloud';
+  String get ollamaFallbackModel =>
+      _cache[keyOllamaFallbackModel] ?? _env(keyOllamaFallbackModel) ?? 'deepseek-v4-flash:cloud';
+  String get openRouterBaseUrl =>
+      _cache[keyOpenRouterBaseUrl] ?? _env(keyOpenRouterBaseUrl) ?? 'https://openrouter.ai/api';
+  String get openRouterApiKey =>
+      _cache[keyOpenRouterApiKey] ?? _env(keyOpenRouterApiKey) ?? '';
+  String get openRouterModel =>
+      _cache[keyOpenRouterModel] ?? _env(keyOpenRouterModel) ?? 'anthropic/claude-3.5-sonnet';
+  String get openRouterFallbackModel =>
+      _cache[keyOpenRouterFallbackModel] ?? _env(keyOpenRouterFallbackModel) ?? 'google/gemini-2.0-flash-001';
+  String get llmProvider =>
+      _cache[keyLlmProvider] ?? _env(keyLlmProvider) ?? 'ollama';
+  bool get useOpenRouter => llmProvider == 'openrouter';
+  bool get useLocalModel => llmProvider == 'local';
+
+  String get activeBaseUrl => useOpenRouter ? openRouterBaseUrl : ollamaBaseUrl;
+  String get activeApiKey => useOpenRouter ? openRouterApiKey : ollamaApiKey;
+  String get activeModel => useOpenRouter ? openRouterModel : ollamaModel;
+  String get activeFallbackModel => useOpenRouter ? openRouterFallbackModel : ollamaFallbackModel;
+  String get tavilyApiKey =>
+      _cache[keyTavilyApiKey] ?? _env(keyTavilyApiKey) ?? '';
+
+  // Email (IMAP) getters
+  String get imapServer =>
+      _cache[keyImapServer] ?? _env(keyImapServer) ?? 'imap.gmail.com';
+  int get imapPort {
+    final raw = _cache[keyImapPort] ?? _env(keyImapPort) ?? '993';
+    return int.tryParse(raw) ?? 993;
+  }
+  String get emailAddress =>
+      _cache[keyEmailAddress] ?? _env(keyEmailAddress) ?? '';
+  String get emailPassword =>
+      _cache[keyEmailPassword] ?? _env(keyEmailPassword) ?? '';
+  bool get imapUseSsl {
+    final raw = _cache[keyImapUseSsl] ?? _env(keyImapUseSsl) ?? 'true';
+    return raw.toLowerCase() == 'true';
+  }
+  bool get isEmailConfigured =>
+      emailAddress.isNotEmpty && emailPassword.isNotEmpty && imapServer.isNotEmpty;
+
+  // Embedding getters
+  String get embeddingProvider =>
+      _cache[keyEmbeddingProvider] ?? _env(keyEmbeddingProvider) ?? 'ollama';
+  String get embeddingBaseUrl =>
+      _cache[keyEmbeddingBaseUrl] ?? _env(keyEmbeddingBaseUrl) ?? 'https://ollama.com/api';
+  String get embeddingApiKey =>
+      _cache[keyEmbeddingApiKey] ?? _env(keyEmbeddingApiKey) ?? '';
+  String get embeddingModel =>
+      _cache[keyEmbeddingModel] ?? _env(keyEmbeddingModel) ?? 'nomic-embed-text';
+
+  // TTS config
+  String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'piper';
+  String get piperVoice => _cache[keyPiperVoice] ?? _env(keyPiperVoice) ?? 'de_DE-thorsten-high';
+  /// Buddy display name (e.g. "Buddy" or a custom name).
+  String get buddyName => _cache[keyBuddyName] ?? 'Buddy';
+
+  // --- Buddy name setter ---
+  Future<void> setBuddyName(String value) async {
+    await _storage.write(key: keyBuddyName, value: value);
+    _cache[keyBuddyName] = value;
+  }
+
+  double get piperSpeed {
+    final raw = _cache[keyPiperSpeed] ?? _env(keyPiperSpeed) ?? '1.0';
+    return double.tryParse(raw) ?? 1.0;
+  }
+
+  int get proactivityLevel {
+    final raw = _cache[keyProactivityLevel] ?? _env(keyProactivityLevel) ?? '2';
+    return int.tryParse(raw) ?? 2;
+  }
+
+  Future<void> setProactivityLevel(int value) async {
+    final clamped = value.clamp(0, 3);
+    await _storage.write(key: keyProactivityLevel, value: clamped.toString());
+    _cache[keyProactivityLevel] = clamped.toString();
+  }
+
+  // --- Setters ---
+
+  Future<void> setOllamaBaseUrl(String value) async {
+    await _storage.write(key: keyOllamaBaseUrl, value: value);
+    _cache[keyOllamaBaseUrl] = value;
+  }
+
+  Future<void> setOllamaApiKey(String value) async {
+    await _storage.write(key: keyOllamaApiKey, value: value);
+    _cache[keyOllamaApiKey] = value;
+  }
+
+  Future<void> setOllamaModel(String value) async {
+    await _storage.write(key: keyOllamaModel, value: value);
+    _cache[keyOllamaModel] = value;
+  }
+
+  Future<void> setOllamaFallbackModel(String value) async {
+    await _storage.write(key: keyOllamaFallbackModel, value: value);
+    _cache[keyOllamaFallbackModel] = value;
+  }
+
+  Future<void> setOpenRouterApiKey(String value) async {
+    await _storage.write(key: keyOpenRouterApiKey, value: value);
+    _cache[keyOpenRouterApiKey] = value;
+  }
+
+  Future<void> setOpenRouterModel(String value) async {
+    await _storage.write(key: keyOpenRouterModel, value: value);
+    _cache[keyOpenRouterModel] = value;
+  }
+
+  Future<void> setOpenRouterFallbackModel(String value) async {
+    await _storage.write(key: keyOpenRouterFallbackModel, value: value);
+    _cache[keyOpenRouterFallbackModel] = value;
+  }
+
+  Future<void> setLlmProvider(String value) async {
+    await _storage.write(key: keyLlmProvider, value: value);
+    _cache[keyLlmProvider] = value;
+  }
+
+  Future<void> setTavilyApiKey(String value) async {
+    await _storage.write(key: keyTavilyApiKey, value: value);
+    _cache[keyTavilyApiKey] = value;
+  }
+
+  // Email (IMAP) setters
+  Future<void> setImapServer(String value) async {
+    await _storage.write(key: keyImapServer, value: value);
+    _cache[keyImapServer] = value;
+  }
+
+  Future<void> setImapPort(int value) async {
+    await _storage.write(key: keyImapPort, value: value.toString());
+    _cache[keyImapPort] = value.toString();
+  }
+
+  Future<void> setEmailAddress(String value) async {
+    await _storage.write(key: keyEmailAddress, value: value);
+    _cache[keyEmailAddress] = value;
+  }
+
+  Future<void> setEmailPassword(String value) async {
+    await _storage.write(key: keyEmailPassword, value: value);
+    _cache[keyEmailPassword] = value;
+  }
+
+  Future<void> setImapUseSsl(bool value) async {
+    await _storage.write(key: keyImapUseSsl, value: value.toString());
+    _cache[keyImapUseSsl] = value.toString();
+  }
+
+  // Embedding setters
+  Future<void> setEmbeddingProvider(String value) async {
+    await _storage.write(key: keyEmbeddingProvider, value: value);
+    _cache[keyEmbeddingProvider] = value;
+  }
+
+  Future<void> setEmbeddingBaseUrl(String value) async {
+    await _storage.write(key: keyEmbeddingBaseUrl, value: value);
+    _cache[keyEmbeddingBaseUrl] = value;
+  }
+
+  Future<void> setEmbeddingApiKey(String value) async {
+    await _storage.write(key: keyEmbeddingApiKey, value: value);
+    _cache[keyEmbeddingApiKey] = value;
+  }
+
+  Future<void> setEmbeddingModel(String value) async {
+    await _storage.write(key: keyEmbeddingModel, value: value);
+    _cache[keyEmbeddingModel] = value;
+  }
+
+  Future<void> setTtsEngine(String value) async {
+    await _storage.write(key: keyTtsEngine, value: value);
+    _cache[keyTtsEngine] = value;
+  }
+
+  Future<void> setPiperVoice(String value) async {
+    await _storage.write(key: keyPiperVoice, value: value);
+    _cache[keyPiperVoice] = value;
+  }
+
+  Future<void> setPiperSpeed(double value) async {
+    final str = value.toStringAsFixed(2);
+    await _storage.write(key: keyPiperSpeed, value: str);
+    _cache[keyPiperSpeed] = str;
+  }
+
+  bool get isOllamaConfigured => ollamaApiKey.isNotEmpty;
+  bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
+}

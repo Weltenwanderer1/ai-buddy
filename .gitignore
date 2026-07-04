@@ -1,0 +1,53 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+build/
+*.g.dart
+
+# Secrets
+.env
+secrets.json
+config/secrets.json
+android/app/google-services.json
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+**/desktop.ini
+
+# Generated
+*.lock
+!pubspec.lock
+
+# Signing / Build
+key.properties
+upload-keystore.jks
+local.properties
+*.apk
+*.bak
+.gradle/
+flutter_*.log
+
+# Hermes plans (not part of app)
+.hermes/
+
+# Keystore
+.keystore/
+
+# Debug symbols (not needed in repo)
+debug-symbols/
+
+# Dev-only files
+NIGHT_REPORT.md
+*.symbols
+
+# Dev scripts (personal paths)
+scripts/cleanup-apks.sh
+scripts/upload-apk.sh
