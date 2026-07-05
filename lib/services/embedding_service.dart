@@ -10,10 +10,10 @@ import 'package:flutter/foundation.dart';
 /// - OpenAI-compatible: POST /v1/embeddings  {model, input}
 ///   (covers OpenAI, OpenRouter, and any OpenAI-compatible endpoint)
 class EmbeddingService {
-  final String baseUrl;
-  final String model;
-  final String apiKey;
-  final String provider; // 'ollama' or 'openai'
+  String baseUrl;
+  String model;
+  String apiKey;
+  String provider; // 'ollama' or 'openai'
   final http.Client _client;
 
   /// Embedding cache: text → vector. Avoids recomputing for unchanged text.
@@ -63,6 +63,21 @@ class EmbeddingService {
 
   /// Clear the embedding cache.
   void clearCache() => _cache.clear();
+
+  /// Update configuration fields and clear the cache so the next
+  /// embedding request uses the new provider / endpoint.
+  void updateConfig({
+    String? baseUrl,
+    String? model,
+    String? apiKey,
+    String? provider,
+  }) {
+    if (baseUrl != null) this.baseUrl = baseUrl;
+    if (model != null) this.model = model;
+    if (apiKey != null) this.apiKey = apiKey;
+    if (provider != null) this.provider = provider;
+    _cache.clear();
+  }
 
   Future<List<double>?> _fetchEmbedding(String text) async {
     if (provider.toLowerCase() == 'ollama') {

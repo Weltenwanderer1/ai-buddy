@@ -73,7 +73,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   bool _elevenExpanded = true;
   bool _buddyNameExpanded = true;
   bool _emailExpanded = false;
-  bool _secEmbedding = false;
+  bool _embeddingExpanded = false;
   String _embeddingProvider = 'ollama';
 
   // Kollabierbare Settings-Sektionen
@@ -242,10 +242,31 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Future<void> _saveEmbeddingConfig() async {
     final config = context.read<SecureConfigService>();
+    final memory = context.read<MemoryService>();
+
     await config.setEmbeddingProvider(_embeddingProvider);
     await config.setEmbeddingBaseUrl(_embeddingBaseUrlController.text.trim());
     await config.setEmbeddingApiKey(_embeddingApiKeyController.text.trim());
     await config.setEmbeddingModel(_embeddingModelController.text.trim());
+
+    // Re-inject updated config into the active EmbeddingService so
+    // memory searches immediately use the new provider.
+    final embedding = memory.embeddingService;
+    if (embedding != null) {
+      embedding.updateConfig(
+        provider: _embeddingProvider,
+        baseUrl: _embeddingBaseUrlController.text.trim().isNotEmpty
+            ? _embeddingBaseUrlController.text.trim()
+            : config.embeddingBaseUrl,
+        model: _embeddingModelController.text.trim().isNotEmpty
+            ? _embeddingModelController.text.trim()
+            : config.embeddingModel,
+        apiKey: _embeddingApiKeyController.text.trim().isNotEmpty
+            ? _embeddingApiKeyController.text.trim()
+            : config.embeddingApiKey,
+      );
+    }
+
     if (mounted) _showSnack('Embedding-Konfiguration gespeichert ✅', context.buddy.success);
   }
 
@@ -753,73 +774,6 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ])),
 
-          // ── Embedding (Memory-Suche) ──
-          SliverToBoxAdapter(child: _SectionHeader('Embedding (Memory-Suche)',
-            expanded: _secEmbedding,
-            onTap: () => setState(() => _secEmbedding = !_secEmbedding),
-          )),
-          if (_secEmbedding) ...[
-          SliverToBoxAdapter(child: _GlassCard(children: [
-            // Provider Switch — 3 tabs
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: context.buddy.card.withValues(alpha: 0.4),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: context.buddy.border),
-              ),
-              child: Row(
-                children: [
-                  _embeddingTab('Ollama', 'ollama'),
-                  _embeddingTab('OpenRouter', 'openrouter'),
-                  _embeddingTab('OpenAI', 'openai'),
-                ],
-              ),
-            ),
-            _GlassTextField(
-              label: _embeddingProvider == 'ollama'
-                  ? 'Base URL (z.B. https://ollama.com/api)'
-                  : _embeddingProvider == 'openrouter'
-                      ? 'Base URL (Standard: https://openrouter.ai/api)'
-                      : 'Base URL (Standard: https://api.openai.com)',
-              icon: Icons.link_rounded,
-              controller: _embeddingBaseUrlController,
-            ),
-            _GlassTextField(
-              label: 'API Key',
-              icon: Icons.key_rounded,
-              controller: _embeddingApiKeyController,
-              obscure: true,
-            ),
-            _GlassTextField(
-              label: _embeddingProvider == 'ollama'
-                  ? 'Modell (z.B. nomic-embed-text)'
-                  : _embeddingProvider == 'openrouter'
-                      ? 'Modell (z.B. qwen/qwen3-embedding-8b)'
-                      : 'Modell (z.B. text-embedding-3-small)',
-              icon: Icons.memory_rounded,
-              controller: _embeddingModelController,
-            ),
-            const SizedBox(height: 8),
-            Row(children: [
-              Expanded(child: _GradientButton(
-                icon: Icons.save_rounded,
-                label: 'Speichern',
-                onTap: _saveEmbeddingConfig,
-              )),
-              const SizedBox(width: 8),
-              Expanded(child: _OutlineButton(
-                icon: _isTestingEmbedding ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                label: _isTestingEmbedding ? 'Teste…' : 'Testen',
-                onTap: _isTestingEmbedding ? null : _testEmbedding,
-              )),
-            ]),
-            if (_embeddingTestResult != null)
-              _ResultBox(text: _embeddingTestResult!),
-          ])),
-          ],
-
           // ── Konfiguration ──
           SliverToBoxAdapter(child: _SectionHeader('Konfiguration',
             expanded: _secConfig,
@@ -891,6 +845,74 @@ class _SettingsScreenState extends State<SettingsScreen>
                   onTap: _saveEmailConfig,
                 )),
               ]),
+            ],
+          )),
+
+          // ── Embedding (Memory-Suche) ──
+          SliverToBoxAdapter(child: _ExpandableSection(
+            title: 'Embedding (Memory-Suche)',
+            icon: Icons.memory_rounded,
+            color: context.buddy.accent,
+            expanded: _embeddingExpanded,
+            onToggle: () => setState(() => _embeddingExpanded = !_embeddingExpanded),
+            children: [
+              // Provider Switch — 3 tabs
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: context.buddy.card.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: context.buddy.border),
+                ),
+                child: Row(
+                  children: [
+                    _embeddingTab('Ollama', 'ollama'),
+                    _embeddingTab('OpenRouter', 'openrouter'),
+                    _embeddingTab('OpenAI', 'openai'),
+                  ],
+                ),
+              ),
+              _GlassTextField(
+                label: _embeddingProvider == 'ollama'
+                    ? 'Base URL (z.B. https://ollama.com/api)'
+                    : _embeddingProvider == 'openrouter'
+                        ? 'Base URL (Standard: https://openrouter.ai/api)'
+                        : 'Base URL (Standard: https://api.openai.com)',
+                icon: Icons.link_rounded,
+                controller: _embeddingBaseUrlController,
+              ),
+              _GlassTextField(
+                label: 'API Key',
+                icon: Icons.key_rounded,
+                controller: _embeddingApiKeyController,
+                obscure: true,
+              ),
+              _GlassTextField(
+                label: _embeddingProvider == 'ollama'
+                    ? 'Modell (z.B. nomic-embed-text)'
+                    : _embeddingProvider == 'openrouter'
+                        ? 'Modell (z.B. qwen/qwen3-embedding-8b)'
+                        : 'Modell (z.B. text-embedding-3-small)',
+                icon: Icons.memory_rounded,
+                controller: _embeddingModelController,
+              ),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _GradientButton(
+                  icon: Icons.save_rounded,
+                  label: 'Speichern',
+                  onTap: _saveEmbeddingConfig,
+                )),
+                const SizedBox(width: 8),
+                Expanded(child: _OutlineButton(
+                  icon: _isTestingEmbedding ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
+                  label: _isTestingEmbedding ? 'Teste…' : 'Testen',
+                  onTap: _isTestingEmbedding ? null : _testEmbedding,
+                )),
+              ]),
+              if (_embeddingTestResult != null)
+                _ResultBox(text: _embeddingTestResult!),
             ],
           )),
 
