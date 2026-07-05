@@ -16,6 +16,10 @@ Built with Flutter. Works with the LLM provider of your choice (Ollama Cloud, Op
 - ☁️ **Backup** — local export/import; optional Firebase cloud backup (bring your own Firebase project)
 - 🔒 **Privacy-first** — all data (memory, chat, persona) stays on the device; API keys live in Android secure storage
 
+## Download
+
+Pre-built APKs are attached to each [GitHub Release](https://github.com/Weltenwanderer1/ai-buddy/releases) (created automatically when a `v*` version tag is pushed). These are debug-signed for sideloading — enable "install from unknown sources" for your browser/file manager. They are **not** Play-Store-signed.
+
 ## Getting started
 
 ### Requirements
