@@ -39,6 +39,14 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
     permissions:
       contents: write     # nötig, um ein GitHub-Release anzulegen
+    env:
+      # Aus den verschlüsselten Repo-Secrets. Sind sie NICHT gesetzt, bleibt
+      # KEYSTORE_BASE64 leer → der Signing-Schritt wird übersprungen → Build
+      # fällt auf den Debug-Key zurück (Repo bleibt ohne Secrets baubar).
+      KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -56,12 +64,24 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # Release-Build. Ohne android/key.properties (liegt NICHT im Repo) fällt
-      # die Signierung automatisch auf den Debug-Key zurück (build.gradle) —
-      # die APK ist per Sideload installierbar, ohne dass Keys/Secrets nötig
-      # sind. Für Play-Store-Signierung: key.properties + Keystore als
-      # GitHub-Secrets hinterlegen und hier einspielen.
-      - name: Build release APK (debug-signed)
+      # Release-Signierung NUR wenn die Secrets hinterlegt sind. Keystore +
+      # key.properties werden zur Build-Zeit erzeugt und liegen nie im Repo.
+      - name: Set up release signing
+        if: env.KEYSTORE_BASE64 != ''
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > android/app/upload-keystore.jks
+          cat > android/key.properties <<EOF
+          storeFile=app/upload-keystore.jks
+          storePassword=$STORE_PASSWORD
+          keyAlias=$KEY_ALIAS
+          keyPassword=$KEY_PASSWORD
+          EOF
+          echo "Release-Signierung aktiv."
+
+      # Ohne android/key.properties fällt die Signierung automatisch auf den
+      # Debug-Key zurück (build.gradle) — die APK ist trotzdem per Sideload
+      # installierbar, ohne dass Keys/Secrets nötig sind.
+      - name: Build release APK
         run: flutter build apk --release
 
       - name: Rename APK
