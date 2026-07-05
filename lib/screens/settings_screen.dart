@@ -1360,7 +1360,22 @@ class _SettingsScreenState extends State<SettingsScreen>
     final selected = _embeddingProvider == id;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _embeddingProvider = id),
+        onTap: () {
+          setState(() {
+            _embeddingProvider = id;
+            // Auto-fill default base URL when switching provider
+            final defaults = {
+              'ollama': 'https://ollama.com/api',
+              'openrouter': 'https://openrouter.ai/api/v1',
+              'openai': 'https://api.openai.com',
+            };
+            final current = _embeddingBaseUrlController.text.trim();
+            final isDefault = ['https://ollama.com/api', 'https://openrouter.ai/api/v1', 'https://openrouter.ai/api', 'https://api.openai.com', ''].contains(current);
+            if (isDefault) {
+              _embeddingBaseUrlController.text = defaults[id] ?? '';
+            }
+          });
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
