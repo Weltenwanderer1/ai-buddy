@@ -8,7 +8,6 @@
 -keep class io.flutter.util.**  { *; }
 -keep class io.flutter.view.**  { *; }
 -keep class io.flutter.**  { *; }
--keep class com.google.firebase.** { *; }
 -dontwarn kotlinx.coroutines.**
 
 # Play Core

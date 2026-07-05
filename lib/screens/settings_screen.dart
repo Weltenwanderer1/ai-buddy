@@ -7,7 +7,7 @@ import '../services/secure_config_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/piper_tts_service.dart';
 import '../services/backup_service.dart';
-import '../services/firebase_backup_service.dart';
+
 import '../services/chat_history_service.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
@@ -444,69 +444,6 @@ class _SettingsScreenState extends State<SettingsScreen>
         _showSnack('Fehler: ${_trunc(e.toString(), 80)}', context.buddy.error);
       }
     }
-  }
-
-  // ── Cloud Backup (Firebase) ──
-
-  Future<void> _showAuthDialog() async {
-    final fb = context.read<FirebaseBackupService>();
-    if (!fb.isAvailable) {
-      _showSnack('Firebase nicht konfiguriert', context.buddy.pin);
-      return;
-    }
-    await showDialog(
-      context: context,
-      builder: (_) => _AuthDialog(fb: fb, onDone: () => Navigator.pop(context)),
-    );
-  }
-
-  Future<void> _cloudBackup() async {
-    final fb = context.read<FirebaseBackupService>();
-    if (!fb.isSignedIn) { _showAuthDialog(); return; }
-    try {
-      final ok = await fb.backup();
-      if (ok && mounted) {
-        _showSnack('Cloud-Backup erstellt ✅', context.buddy.success);
-      } else if (mounted) {
-        _showSnack(fb.lastError ?? 'Backup fehlgeschlagen', context.buddy.pin);
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnack('Fehler: ${_trunc(e.toString(), 80)}', context.buddy.error);
-      }
-    }
-  }
-
-  Future<void> _cloudRestore() async {
-    final fb = context.read<FirebaseBackupService>();
-    if (!fb.isSignedIn) { _showAuthDialog(); return; }
-    final hasBackup = await fb.hasCloudBackup();
-    if (!hasBackup) {
-      if (mounted) _showSnack('Kein Cloud-Backup gefunden', context.buddy.pin);
-      return;
-    }
-    final lastTs = await fb.lastBackupTimestamp() ?? 'unbekannt';
-    if (!mounted) return; // _confirm nutzt den State-Context
-    final confirmed = await _confirm('Cloud-Backup wiederherstellen?',
-        'Aktuelle Daten werden überschrieben. Letztes Backup: $lastTs');
-    if (!confirmed) return;
-
-    try {
-      final ok = await fb.restore();
-      if (ok && mounted) {
-        _showSnack('Cloud-Backup eingespielt ✅', context.buddy.success);
-      } else if (mounted) {
-        _showSnack(fb.lastError ?? 'Wiederherstellung fehlgeschlagen', context.buddy.pin);
-      }
-    } catch (e) {
-      if (mounted) _showSnack('Fehler: ${_trunc(e.toString(), 80)}', context.buddy.error);
-    }
-  }
-
-  Future<void> _cloudSignOut() async {
-    final fb = context.read<FirebaseBackupService>();
-    await fb.signOut();
-    if (mounted) _showSnack('Abgemeldet', context.buddy.pin);
   }
 
   Future<void> _resetApp() async {
@@ -1299,57 +1236,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               onTap: _restoreBackup,
             ),
             _Divider(),
-            // ── Cloud Backup (reactive) ──
-            Consumer<FirebaseBackupService>(
-              builder: (context, fb, _) {
-                final email = fb.user?.email;
-                if (email == null) {
-                  return Column(children: [
-                    _ListTile(
-                      icon: Icons.cloud_off_outlined,
-                      title: 'Cloud-Backup',
-                      subtitle: 'Nicht angemeldet — tippe zum Login',
-                      color: context.buddy.t2,
-                      onTap: _showAuthDialog,
-                    ),
-                    _Divider(),
-                  ]);
-                }
-                return Column(children: [
-                  _ListTile(
-                    icon: Icons.account_circle_outlined,
-                    title: email,
-                    subtitle: 'Angemeldet',
-                    color: context.buddy.accent,
-                    onTap: () {},
-                  ),
-                  _Divider(),
-                  _ListTile(
-                    icon: Icons.cloud_upload_outlined,
-                    title: 'Cloud-Backup',
-                    subtitle: 'Jetzt online sichern',
-                    color: context.buddy.accent,
-                    onTap: _cloudBackup,
-                  ),
-                  _Divider(),
-                  _ListTile(
-                    icon: Icons.cloud_download_outlined,
-                    title: 'Cloud-Wiederherstellen',
-                    subtitle: 'Aus Online-Backup laden',
-                    color: context.buddy.accent,
-                    onTap: _cloudRestore,
-                  ),
-                  _Divider(),
-                  _ListTile(
-                    icon: Icons.logout_outlined,
-                    title: 'Abmelden',
-                    color: context.buddy.t2,
-                    onTap: _cloudSignOut,
-                  ),
-                  _Divider(),
-                ]);
-              },
-            ),
+            _Divider(),
             _ListTile(
               icon: Icons.delete_forever_outlined,
               title: 'Chat löschen',
@@ -2500,112 +2387,6 @@ class _AccentColorPicker extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-// ═════════════════════════════════════════════════════════════
-
-class _AuthDialog extends StatefulWidget {
-  final FirebaseBackupService fb;
-  final VoidCallback onDone;
-  const _AuthDialog({required this.fb, required this.onDone});
-
-  @override
-  State<_AuthDialog> createState() => _AuthDialogState();
-}
-
-class _AuthDialogState extends State<_AuthDialog> {
-  final _emailCtrl = TextEditingController();
-  final _passCtrl = TextEditingController();
-  bool _isSignUp = false;
-  bool _loading = false;
-  String? _error;
-
-  @override
-  void dispose() {
-    _emailCtrl.dispose();
-    _passCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submit() async {
-    setState(() { _loading = true; _error = null; });
-    final ok = _isSignUp
-        ? await widget.fb.signUp(_emailCtrl.text, _passCtrl.text)
-        : await widget.fb.signIn(_emailCtrl.text, _passCtrl.text);
-    if (!mounted) return;
-    setState(() => _loading = false);
-    if (ok) {
-      widget.onDone();
-    } else {
-      setState(() => _error = widget.fb.lastError ?? 'Fehler');
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final c = context.buddy;
-    return AlertDialog(
-      backgroundColor: c.card,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide(color: c.border)),
-      title: Text(_isSignUp ? 'Registrieren' : 'Anmelden', style: TextStyle(color: c.t1, fontWeight: FontWeight.bold)),
-      content: SizedBox(
-        width: 280,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: _emailCtrl,
-              keyboardType: TextInputType.emailAddress,
-              autocorrect: false,
-              style: TextStyle(color: c.t1),
-              decoration: InputDecoration(
-                hintText: 'E-Mail',
-                hintStyle: TextStyle(color: c.t2),
-                filled: true,
-                fillColor: c.pill,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _passCtrl,
-              obscureText: true,
-              style: TextStyle(color: c.t1),
-              decoration: InputDecoration(
-                hintText: 'Passwort (min. 6 Zeichen)',
-                hintStyle: TextStyle(color: c.t2),
-                filled: true,
-                fillColor: c.pill,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-              ),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 12),
-              Text(_error!, style: TextStyle(color: c.error, fontSize: 13)),
-            ],
-          ],
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => setState(() => _isSignUp = !_isSignUp),
-          child: Text(_isSignUp ? 'Schon Konto? Anmelden' : 'Neu hier? Registrieren',
-              style: TextStyle(color: c.accent)),
-        ),
-        if (_loading)
-          SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: c.accent, strokeWidth: 2))
-        else
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: c.accent,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: _submit,
-            child: Text(_isSignUp ? 'Registrieren' : 'Anmelden'),
-          ),
-      ],
     );
   }
 }

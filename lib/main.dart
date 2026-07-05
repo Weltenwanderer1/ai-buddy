@@ -24,7 +24,7 @@ import 'services/buddy_capabilities_service.dart';
 import 'services/notification_service.dart';
 import 'services/timer_service.dart';
 import 'services/proactive_notification_service.dart';
-import 'services/fcm_service.dart';
+
 import 'services/volume_service.dart';
 import 'services/voice_recorder_service.dart';
 import 'services/automation_service.dart';
@@ -32,8 +32,8 @@ import 'services/offline_stt_service.dart';
 import 'services/buddy_scheduler.dart';
 import 'services/buddy_notifier.dart';
 import 'services/backup_service.dart';
-import 'services/firebase_init_service.dart';
-import 'services/firebase_backup_service.dart';
+
+
 import 'services/location_service.dart';
 import 'services/ollama_cloud_service.dart';
 import 'services/anthropic_service.dart';
@@ -72,9 +72,6 @@ import 'package:timezone/timezone.dart' as tz;
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Ohne google-services.json wirft initializeApp — die App muss trotzdem
-  // starten (Cloud-Backup bleibt dann einfach deaktiviert).
-  await FirebaseInitService.init();
   runApp(const AIBuddyApp());
 }
 
@@ -102,14 +99,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late NotificationService _notificationService;
   late TimerService _timerService;
   late ProactiveNotificationService _proactiveNotificationService;
-  late FcmService _fcmService;
   late VolumeService _volumeService;
   late VoiceRecorderService _voiceRecorderService;
   late AutomationService _automationService;
   late OfflineSttService _offlineSttService;
   late BuddyScheduler _buddyScheduler;
   late BackupService _backupService;
-  late FirebaseBackupService _firebaseBackup;
   late LocationService _locationService;
   late OllamaCloudService _cloudService;
   late AnthropicService _anthropicService;
@@ -194,9 +189,6 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _proactiveNotificationService = ProactiveNotificationService();
       try { await _proactiveNotificationService.init(); } catch (e) { debugPrint('ProactiveNotify init: $e'); }
 
-      _fcmService = FcmService();
-      try { await _fcmService.init(); } catch (e) { debugPrint('FCM init: $e'); }
-
       _volumeService = VolumeService();
 
       _voiceRecorderService = VoiceRecorderService();
@@ -221,19 +213,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
       _locationService = LocationService();
 
-      // Firebase init (graceful fallback)
-      await FirebaseInitService.init();
-
       _backupService = BackupService(
-        memory: _memory,
-        persona: _persona,
-        settings: _settings,
-        chatHistory: _chatHistory,
-        personaEvolution: _personaEvolution,
-        selfIdentity: _selfIdentity,
-      );
-
-      _firebaseBackup = FirebaseBackupService(
         memory: _memory,
         persona: _persona,
         settings: _settings,
@@ -784,7 +764,6 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _anthropicService),
         Provider.value(value: _toolRegistry),
         Provider.value(value: _backupService),
-        ChangeNotifierProvider.value(value: _firebaseBackup),
         ChangeNotifierProvider.value(value: _locationService),
         ChangeNotifierProvider.value(value: _proactiveNotificationService),
         ChangeNotifierProvider.value(value: _buddyScheduler),

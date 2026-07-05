@@ -405,7 +405,7 @@ JSON:''';
     notifyListeners();
   }
 
-  /// Import from a backup bundle (Firebase or local).
+  /// Import from a backup bundle.
   Future<void> importData(Map<String, dynamic> data) async {
     _name = data['name']?.toString() ?? _name;
     _essence = data['essence']?.toString() ?? _essence;
