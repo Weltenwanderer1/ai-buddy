@@ -110,5 +110,7 @@ jobs:
           body: |
             Automatisch gebaute Debug-signierte APK für ${{ github.ref_name }}.
 
+            **Gebaut mit:** [Hermes Agent](https://hermes-agent.nousresearch.com) by @NousResearch · [OpenClaw](https://github.com/OpenClaw)
+
             > Zum Installieren „Unbekannte Quellen" für deinen Browser/Dateimanager erlauben.
             > Diese APK ist **nicht** für den Play Store signiert.
