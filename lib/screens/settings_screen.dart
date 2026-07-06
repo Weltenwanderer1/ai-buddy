@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import '../core/i18n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/buddy_colors.dart';
-import '../services/settings_service.dart';
 import '../core/version.dart';
 import '../services/secure_config_service.dart';
 import '../services/tts_playback_service.dart';
@@ -27,9 +26,23 @@ import 'buddy_capabilities_screen.dart';
 import 'memory_browser_screen.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:package_info_plus/package_info_plus.dart';
-import '../services/buddy_scheduler.dart';
 import '../tools/tool_registry.dart';
 import '../tools/read_email_tool.dart';
+import '../widgets/settings/model_dropdown.dart';
+import '../widgets/settings/section_header.dart';
+import '../widgets/settings/glass_card.dart';
+import '../widgets/settings/expandable_section.dart';
+import '../widgets/settings/list_tile.dart';
+import '../widgets/settings/glass_text_field.dart';
+import '../widgets/settings/gradient_button.dart';
+import '../widgets/settings/outline_button.dart';
+import '../widgets/settings/result_box.dart';
+import '../widgets/settings/badge.dart';
+import '../widgets/settings/divider.dart';
+import '../widgets/settings/piper_voice_tile.dart';
+import '../widgets/settings/scheduler_section.dart';
+import '../widgets/settings/proactivity_tile.dart';
+import '../widgets/settings/appearance_section.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -694,19 +707,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
 
           // ── Erscheinungsbild ──
-          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_appearance,
+          SliverToBoxAdapter(child: SectionHeader(t.settings_tab_appearance,
             expanded: _secAppearance,
             onTap: () => setState(() => _secAppearance = !_secAppearance),
           )),
-          if (_secAppearance) const SliverToBoxAdapter(child: _AppearanceSection()),
+          if (_secAppearance) const SliverToBoxAdapter(child: AppearanceSection()),
 
           // ── Buddy ──
-          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_buddy,
+          SliverToBoxAdapter(child: SectionHeader(t.settings_tab_buddy,
             expanded: _secBuddy,
             onTap: () => setState(() => _secBuddy = !_secBuddy),
           )),
-          if (_secBuddy) SliverToBoxAdapter(child: _GlassCard(children: [
-            _ListTile(
+          if (_secBuddy) SliverToBoxAdapter(child: GlassCard(children: [
+            SettingsListTile(
               icon: Icons.face_5_rounded,
               title: t.buddy_persona_edit,
               subtitle: persona.name.isEmpty ? 'Standard' : persona.name,
@@ -716,8 +729,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const PersonaEditorScreen()),
               ),
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.self_improvement_rounded,
               title: t.buddy_self_identity,
               subtitle: t.buddy_persona_desc,
@@ -727,17 +740,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const SelfIdentityScreen()),
               ),
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.psychology_rounded,
               title: t.buddy_evolution,
               subtitle: '${evolution.learnedTraits.length} ${t.buddy_evolution_traits}',
               color: context.buddy.accent,
-              trailing: _Badge('${evolution.learnedTraits.length}'),
+              trailing: SettingsBadge('${evolution.learnedTraits.length}'),
               onTap: _showKIEntwicklung,
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.memory_rounded,
               title: t.buddy_memories,
               subtitle: t.memory_core_long_short,
@@ -747,17 +760,17 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const MemoryBrowserScreen()),
               ),
             ),
-            _Divider(),
-            _ProactivityTile(),
+            SettingsDivider(),
+            ProactivityTile(),
           ])),
 
           // ── Werkzeuge ──
-          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_tools,
+          SliverToBoxAdapter(child: SectionHeader(t.settings_tab_tools,
             expanded: _secTools,
             onTap: () => setState(() => _secTools = !_secTools),
           )),
-          if (_secTools) SliverToBoxAdapter(child: _GlassCard(children: [
-            _ListTile(
+          if (_secTools) SliverToBoxAdapter(child: GlassCard(children: [
+            SettingsListTile(
               icon: Icons.map_rounded,
               title: t.buddy_offline_maps,
               subtitle: t.buddy_offline_maps_desc,
@@ -770,8 +783,8 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               onTap: () => showDialog(context: context, builder: (_) => const OfflineMapDialog()),
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.notes_rounded,
               title: t.buddy_notes,
               subtitle: t.tools_desc,
@@ -781,8 +794,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
               ),
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.auto_fix_high_rounded,
               title: t.buddy_capabilities,
               subtitle: t.buddy_capabilities_desc,
@@ -795,14 +808,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           ])),
 
           // ── Konfiguration ──
-          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_config,
+          SliverToBoxAdapter(child: SectionHeader(t.settings_tab_config,
             expanded: _secConfig,
             onTap: () => setState(() => _secConfig = !_secConfig),
           )),
           if (_secConfig) ...[
 
           // ── Buddy-Name ──
-          SliverToBoxAdapter(child: _ExpandableSection(
+          SliverToBoxAdapter(child: ExpandableSection(
             title: t.buddy_name,
             icon: Icons.person_rounded,
             color: context.buddy.accent,
@@ -811,7 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             children: [
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                child: _GlassTextField(
+                child: GlassTextField(
                   label: t.buddy_name_hint,
                   icon: Icons.edit_rounded,
                   controller: _buddyNameController,
@@ -819,7 +832,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: _GradientButton(
+                Expanded(child: GradientButton(
                   icon: Icons.save_rounded,
                   label: t.common_save,
                   onTap: _saveBuddyName,
@@ -829,37 +842,37 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
 
           // ── E-Mail (IMAP) ──
-          SliverToBoxAdapter(child: _ExpandableSection(
+          SliverToBoxAdapter(child: ExpandableSection(
             title: t.config_email,
             icon: Icons.email_rounded,
             color: context.buddy.accent,
             expanded: _emailExpanded,
             onToggle: () => setState(() => _emailExpanded = !_emailExpanded),
             children: [
-              _GlassTextField(
+              GlassTextField(
                 label: t.config_email_address,
                 icon: Icons.email_rounded,
                 controller: _emailAddressController,
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: t.config_email_password,
                 icon: Icons.lock_rounded,
                 controller: _emailPasswordController,
                 obscure: true,
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: t.config_email_server,
                 icon: Icons.dns_rounded,
                 controller: _imapServerController,
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: t.config_email_port,
                 icon: Icons.pin_rounded,
                 controller: _imapPortController,
               ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: _GradientButton(
+                Expanded(child: GradientButton(
                   icon: Icons.save_rounded,
                   label: t.common_save,
                   onTap: _saveEmailConfig,
@@ -869,7 +882,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
 
           // ── Embedding (Memory-Suche) ──
-          SliverToBoxAdapter(child: _ExpandableSection(
+          SliverToBoxAdapter(child: ExpandableSection(
             title: t.config_embedding,
             icon: Icons.memory_rounded,
             color: context.buddy.accent,
@@ -893,7 +906,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ],
                 ),
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: _embeddingProvider == 'ollama'
                     ? t.config_base_url_ollama
                     : _embeddingProvider == 'openrouter'
@@ -902,13 +915,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                 icon: Icons.link_rounded,
                 controller: _embeddingBaseUrlController,
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: t.config_api_key,
                 icon: Icons.key_rounded,
                 controller: _embeddingApiKeyController,
                 obscure: true,
               ),
-              _GlassTextField(
+              GlassTextField(
                 label: _embeddingProvider == 'ollama'
                     ? t.config_embedding_model_ollama
                     : _embeddingProvider == 'openrouter'
@@ -919,25 +932,25 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: _GradientButton(
+                Expanded(child: GradientButton(
                   icon: Icons.save_rounded,
                   label: t.common_save,
                   onTap: _saveEmbeddingConfig,
                 )),
                 const SizedBox(width: 8),
-                Expanded(child: _OutlineButton(
+                Expanded(child: OutlineButton(
                   icon: _isTestingEmbedding ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
                   label: _isTestingEmbedding ? t.config_embedding_testing : t.common_test,
                   onTap: _isTestingEmbedding ? null : _testEmbedding,
                 )),
               ]),
               if (_embeddingTestResult != null)
-                _ResultBox(text: _embeddingTestResult!),
+                ResultBox(text: _embeddingTestResult!),
             ],
           )),
 
           // ── KI-Modell ──
-          SliverToBoxAdapter(child: _ExpandableSection(
+          SliverToBoxAdapter(child: ExpandableSection(
             title: t.config_provider,
             icon: Icons.auto_awesome_rounded,
             color: context.buddy.accent,
@@ -972,12 +985,12 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
 
               if (_llmProvider == 'ollama') ...[
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_base_url,
                   icon: Icons.link_rounded,
                   controller: _ollamaBaseUrlController,
                 ),
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _ollamaKeyController,
@@ -989,13 +1002,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   models: _ollamaModels,
                   controller: _ollamaModelController,
                 ),
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _ollamaFallbackController,
                 ),
               ] else if (_llmProvider == 'openrouter') ...[
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_openrouter_api_key,
                   icon: Icons.key_rounded,
                   controller: _openRouterKeyController,
@@ -1007,13 +1020,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   models: _openRouterModels,
                   controller: _openRouterModelController,
                 ),
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _openRouterFallbackController,
                 ),
               ] else if (_llmProvider == 'openai') ...[
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _openAIKeyController,
@@ -1025,13 +1038,13 @@ class _SettingsScreenState extends State<SettingsScreen>
                   models: _openAIModels,
                   controller: _openAIModelController,
                 ),
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _openAIFallbackController,
                 ),
               ] else if (_llmProvider == 'anthropic') ...[
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _anthropicKeyController,
@@ -1043,7 +1056,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   models: _anthropicModels,
                   controller: _anthropicModelController,
                 ),
-                _GlassTextField(
+                GlassTextField(
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _anthropicFallbackController,
@@ -1052,25 +1065,25 @@ class _SettingsScreenState extends State<SettingsScreen>
 
               const SizedBox(height: 8),
               Row(children: [
-                Expanded(child: _GradientButton(
+                Expanded(child: GradientButton(
                   icon: Icons.save_rounded,
                   label: t.common_save,
                   onTap: _saveOllamaConfig,
                 )),
                 const SizedBox(width: 8),
-                Expanded(child: _OutlineButton(
+                Expanded(child: OutlineButton(
                   icon: _isTestingOllama ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
                   label: _isTestingOllama ? t.config_embedding_testing : t.common_test,
                   onTap: _isTestingOllama ? null : _testOllama,
                 )),
               ]),
               if (_ollamaTestResult != null)
-                _ResultBox(text: _ollamaTestResult!),
+                ResultBox(text: _ollamaTestResult!),
             ],
           )),
 
           // ── Sprache ──
-          SliverToBoxAdapter(child: _ExpandableSection(
+          SliverToBoxAdapter(child: ExpandableSection(
             title: t.config_tts,
             icon: Icons.record_voice_over_rounded,
             color: context.buddy.accent,
@@ -1109,7 +1122,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   ],
                 ),
               ),
-              _Divider(),
+              SettingsDivider(),
 
               // Piper voice management (shown when Piper selected)
               if (_ttsEngine == TtsEngine.piper) ...[
@@ -1146,7 +1159,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                       ),
                     ),
                     const SizedBox(height: 8),
-                    ..._filteredPiperVoices.map((voice) => _PiperVoiceTile(
+                    ..._filteredPiperVoices.map((voice) => PiperVoiceTile(
                       voice: voice,
                       piper: piper,
                       isCurrent: piper.currentVoice == voice,
@@ -1225,7 +1238,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ),
                     const SizedBox(height: 8),
                     Row(children: [
-                      Expanded(child: _GradientButton(
+                      Expanded(child: GradientButton(
                         icon: Icons.save_rounded,
                         label: t.common_save,
                         onTap: _saveTtsConfig,
@@ -1244,7 +1257,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
-                  Expanded(child: _GradientButton(
+                  Expanded(child: GradientButton(
                     icon: Icons.save_rounded,
                     label: t.common_save,
                     onTap: _saveTtsConfig,
@@ -1258,42 +1271,42 @@ class _SettingsScreenState extends State<SettingsScreen>
 
 
           // ── Daten ──
-          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_data,
+          SliverToBoxAdapter(child: SectionHeader(t.settings_tab_data,
             expanded: _secData,
             onTap: () => setState(() => _secData = !_secData),
           )),
           if (_secData) ...[
-          SliverToBoxAdapter(child: _GlassCard(children: [
-            _ListTile(
+          SliverToBoxAdapter(child: GlassCard(children: [
+            SettingsListTile(
               icon: Icons.backup_outlined,
               title: t.data_backup_create,
               color: context.buddy.success,
               onTap: _createBackup,
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.restore_outlined,
               title: t.common_restore,
               color: context.buddy.accent,
               onTap: _restoreBackup,
             ),
-            _Divider(),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.delete_forever_outlined,
               title: t.data_chat_delete,
               color: context.buddy.error,
               onTap: _clearChatHistory,
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.memory_outlined,
               title: t.data_memories_delete,
               color: context.buddy.error,
               onTap: _clearMemories,
             ),
-            _Divider(),
-            _ListTile(
+            SettingsDivider(),
+            SettingsListTile(
               icon: Icons.restart_alt_rounded,
               title: t.data_reset,
               subtitle: t.data_reset_desc,
@@ -1304,21 +1317,21 @@ class _SettingsScreenState extends State<SettingsScreen>
           ],
 
           // ── Hintergrund-Tasks ──
-          SliverToBoxAdapter(child: _SectionHeader(t.bg_tasks_title,
+          SliverToBoxAdapter(child: SectionHeader(t.bg_tasks_title,
             expanded: _secScheduler,
             onTap: () => setState(() => _secScheduler = !_secScheduler),
           )),
-          if (_secScheduler) SliverToBoxAdapter(child: _SchedulerSection()),
+          if (_secScheduler) SliverToBoxAdapter(child: SchedulerSection()),
 
           // ── Über ──
-          SliverToBoxAdapter(child: _SectionHeader(t.about_title,
+          SliverToBoxAdapter(child: SectionHeader(t.about_title,
             expanded: _secAbout,
             onTap: () => setState(() => _secAbout = !_secAbout),
           )),
-          if (_secAbout) SliverToBoxAdapter(child: _GlassCard(children: [
+          if (_secAbout) SliverToBoxAdapter(child: GlassCard(children: [
             FutureBuilder<PackageInfo>(
               future: PackageInfo.fromPlatform(),
-              builder: (context, snap) => _ListTile(
+              builder: (context, snap) => SettingsListTile(
                 icon: Icons.favorite_rounded,
                 title: 'AI-Buddy',
                 // Echte Laufzeit-Version aus dem Build — die Konstante in
@@ -1427,101 +1440,16 @@ Widget _buildModelDropdown({
   required List<Map<String, String>> models,
   required TextEditingController controller,
 }) {
-  return _ModelDropdown(
+  return ModelDropdown(
     label: label,
     icon: icon,
     models: models,
     controller: controller,
+    onCustomModelTap: _showCustomModelDialog,
   );
 }
 
-class _ModelDropdown extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final List<Map<String, String>> models;
-  final TextEditingController controller;
-  const _ModelDropdown({
-    required this.label,
-    required this.icon,
-    required this.models,
-    required this.controller,
-  });
-  @override
-  State<_ModelDropdown> createState() => _ModelDropdownState();
-}
-
-class _ModelDropdownState extends State<_ModelDropdown> {
-  bool _focused = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final currentId = widget.controller.text;
-    final isCustom = !widget.models.any((m) => m['id'] == currentId);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-      child: Focus(
-        onFocusChange: (f) => setState(() => _focused = f),
-        child: DropdownButtonFormField<String>(
-          initialValue: isCustom ? '__custom__' : currentId,
-          icon: Icon(Icons.arrow_drop_down_rounded, color: context.buddy.t3),
-          decoration: InputDecoration(
-            hintText: widget.label,
-            hintStyle: TextStyle(color: context.buddy.t3.withValues(alpha: 0.5), fontSize: 15),
-            prefixIcon: Icon(widget.icon, size: 20, color: _focused
-              ? context.buddy.accent
-              : context.buddy.t3.withValues(alpha: 0.6)),
-            filled: true,
-            fillColor: _focused
-              ? context.buddy.card.withValues(alpha: 0.5)
-              : context.buddy.card.withValues(alpha: 0.3),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: context.buddy.border, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: context.buddy.accent.withValues(alpha: 0.6), width: 1.5),
-            ),
-            isDense: true,
-          ),
-          dropdownColor: context.buddy.card,
-          style: TextStyle(color: context.buddy.t1, fontSize: 15, fontWeight: FontWeight.w500),
-          items: [
-            ...widget.models.map((model) => DropdownMenuItem(
-              value: model['id'],
-              child: Text(model['name']!, style: TextStyle(color: context.buddy.t1, fontSize: 14)),
-            )),
-            DropdownMenuItem(
-              value: '__custom__',
-              child: Row(children: [
-                Icon(Icons.edit_rounded, size: 16, color: context.buddy.t3),
-                const SizedBox(width: 8),
-                Text(isCustom ? 'Eigene: ${currentId.length > 30 ? "${currentId.substring(0, 30)}…" : currentId}' : 'Eigene ID eingeben…',
-                  style: TextStyle(color: isCustom ? context.buddy.accent : context.buddy.t2, fontSize: 14)),
-              ]),
-            ),
-          ],
-          onChanged: (value) async {
-            if (value == '__custom__') {
-              final custom = await _showCustomModelDialog(context, widget.controller.text);
-              if (custom != null && custom.isNotEmpty) {
-                setState(() => widget.controller.text = custom);
-              }
-            } else if (value != null) {
-              setState(() => widget.controller.text = value);
-            }
-          },
-        ),
-      ),
-    );
-  }
-
-  Future<String?> _showCustomModelDialog(BuildContext context, String current) async {
+Future<String?> _showCustomModelDialog(BuildContext context, String current) async {
     final t = AppLocalizations.of(context);
     final controller = TextEditingController(text: current);
     try {
@@ -1560,900 +1488,3 @@ class _ModelDropdownState extends State<_ModelDropdown> {
       controller.dispose();
     }
   }
-}
-
-// ──── UI Widgets ────
-
-/// Klickbares Abschnitts-Label mit Chevron (klappbar).
-class _SectionHeader extends StatelessWidget {
-  final String text;
-  final bool expanded;
-  final VoidCallback onTap;
-  const _SectionHeader(this.text, {required this.expanded, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 18, 28, 4),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                text.toUpperCase(),
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.1,
-                  color: context.buddy.t2,
-                ),
-              ),
-            ),
-            AnimatedRotation(
-              turns: expanded ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
-              child: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: context.buddy.t2,
-                size: 18,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Kleines Abschnitts-Label über einer Karte (iOS-Settings-Stil).
-class _GlassCard extends StatelessWidget {
-  final List<Widget> children;
-  const _GlassCard({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: context.buddy.card.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.buddy.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
-    );
-  }
-}
-
-class _ExpandableSection extends StatefulWidget {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final bool expanded;
-  final VoidCallback onToggle;
-  final List<Widget> children;
-
-  const _ExpandableSection({
-    required this.title,
-    required this.icon,
-    required this.color,
-    required this.expanded,
-    required this.onToggle,
-    required this.children,
-  });
-
-  @override
-  State<_ExpandableSection> createState() => _ExpandableSectionState();
-}
-
-class _ExpandableSectionState extends State<_ExpandableSection> {
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOutCubic,
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      decoration: BoxDecoration(
-        color: context.buddy.card.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: context.buddy.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GestureDetector(
-          onTap: widget.onToggle,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: widget.color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(widget.icon, color: widget.color, size: 20),
-              ),
-              const SizedBox(width: 14),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(widget.title,
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: context.buddy.t1)),
-                const SizedBox(height: 2),
-                Text(widget.expanded ? 'Einklappen zur Bearbeitung' : 'Aufklappen zur Bearbeitung',
-                  style: TextStyle(fontSize: 12, color: context.buddy.t3)),
-              ])),
-              AnimatedRotation(
-                turns: widget.expanded ? 0.5 : 0,
-                duration: const Duration(milliseconds: 250),
-                child: Icon(Icons.keyboard_arrow_down_rounded,
-                  color: context.buddy.t2, size: 24),
-              ),
-            ]),
-          ),
-        ),
-        AnimatedCrossFade(
-          firstChild: Container(),
-          secondChild: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Column(children: [...widget.children, const SizedBox(height: 8)]),
-          ),
-          crossFadeState: widget.expanded
-            ? CrossFadeState.showSecond
-            : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 300),
-        ),
-      ]),
-    );
-  }
-}
-
-class _ListTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String? subtitle;
-  final Color? color;
-  final Widget? trailing;
-  final VoidCallback onTap;
-
-  const _ListTile({
-    required this.icon,
-    required this.title,
-    this.subtitle,
-    this.color,
-    this.trailing,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(children: [
-        Expanded(
-          child: Material(
-            color: Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(24),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 0),
-                child: Row(children: [
-                  Container(
-                    width: 40, height: 40,
-                    decoration: BoxDecoration(
-                      color: context.buddy.border,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: context.buddy.border),
-                    ),
-                    child: Icon(icon, size: 20, color: context.buddy.t2),
-                  ),
-                  const SizedBox(width: 14),
-                  Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.buddy.t1)),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(subtitle!,
-                        style: TextStyle(fontSize: 13, color: context.buddy.t2),
-                        maxLines: 2, overflow: TextOverflow.ellipsis),
-                    ],
-                  ])),
-                ]),
-              ),
-            ),
-          ),
-        ),
-        if (trailing != null) trailing!,
-      ]),
-    );
-  }
-}
-
-class _GlassTextField extends StatefulWidget {
-  final String label;
-  final IconData icon;
-  final TextEditingController controller;
-  final bool obscure;
-  const _GlassTextField({
-    required this.label,
-    required this.icon,
-    required this.controller,
-    this.obscure = false,
-  });
-
-  @override
-  State<_GlassTextField> createState() => _GlassTextFieldState();
-}
-
-class _GlassTextFieldState extends State<_GlassTextField> {
-  bool _focused = false;
-  bool _obscureText = true;
-
-  @override
-  Widget build(BuildContext context) {
-    final isObscure = widget.obscure && _obscureText;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 8, 4, 0),
-      child: Focus(
-        onFocusChange: (f) => setState(() => _focused = f),
-        child: TextField(
-          controller: widget.controller,
-          obscureText: isObscure,
-          style: TextStyle(color: context.buddy.t1, fontSize: 15, fontWeight: FontWeight.w500),
-          decoration: InputDecoration(
-            hintText: widget.label,
-            hintStyle: TextStyle(color: context.buddy.t3.withValues(alpha: 0.5), fontSize: 15),
-            prefixIcon: Icon(widget.icon, size: 20, color: _focused
-              ? context.buddy.accent
-              : context.buddy.t3.withValues(alpha: 0.6)),
-            suffixIcon: widget.obscure
-              ? IconButton(
-                  icon: Icon(_obscureText ? Icons.visibility_off_rounded : Icons.visibility_rounded,
-                    size: 18, color: context.buddy.t3),
-                  onPressed: () => setState(() => _obscureText = !_obscureText),
-                )
-              : null,
-            filled: true,
-            fillColor: _focused
-              ? context.buddy.card.withValues(alpha: 0.5)
-              : context.buddy.card.withValues(alpha: 0.3),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide.none,
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: context.buddy.border, width: 1),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(16),
-              borderSide: BorderSide(color: context.buddy.accent.withValues(alpha: 0.6), width: 1.5),
-            ),
-            isDense: true,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GradientButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  const _GradientButton({required this.icon, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: context.buddy.accent,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: onTap != null ? [
-            BoxShadow(
-              color: context.buddy.accent.withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ] : null,
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _OutlineButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback? onTap;
-  const _OutlineButton({required this.icon, required this.label, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(0, 8, 0, 16),
-        padding: const EdgeInsets.symmetric(vertical: 13),
-        decoration: BoxDecoration(
-          color: Colors.transparent,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: onTap == null
-              ? context.buddy.border
-              : context.buddy.chipBorder),
-        ),
-        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: onTap == null
-            ? context.buddy.t3
-            : context.buddy.t1),
-          const SizedBox(width: 8),
-          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600,
-            color: onTap == null ? context.buddy.t3 : context.buddy.t1)),
-        ]),
-      ),
-    );
-  }
-}
-
-class _ResultBox extends StatelessWidget {
-  final String text;
-  const _ResultBox({required this.text});
-
-  @override
-  Widget build(BuildContext context) {
-    final ok = !text.startsWith('Fehler');
-    return Container(
-      margin: const EdgeInsets.fromLTRB(0, 4, 0, 16),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: (ok ? context.buddy.success : context.buddy.error).withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: (ok ? context.buddy.success : context.buddy.error).withValues(alpha: 0.2)),
-      ),
-      child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(ok ? Icons.check_circle_rounded : Icons.error_rounded,
-          size: 18, color: ok ? context.buddy.success : context.buddy.error),
-        const SizedBox(width: 10),
-        Expanded(child: Text(text,
-          style: TextStyle(fontSize: 13, color: ok ? context.buddy.success : context.buddy.error, height: 1.4))),
-      ]),
-    );
-  }
-}
-
-class _Badge extends StatelessWidget {
-  final String text;
-  const _Badge(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: context.buddy.accent.withValues(alpha: 0.15),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(text, style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w700,
-        color: context.buddy.accent,
-      )),
-    );
-  }
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Divider(
-        color: context.buddy.border,
-        height: 1,
-      ),
-    );
-  }
-}
-
-class _PiperVoiceTile extends StatelessWidget {
-  final PiperVoice voice;
-  final PiperTtsService piper;
-  final bool isCurrent;
-  final VoidCallback onLoad;
-  final VoidCallback onDelete;
-  final VoidCallback onDownload;
-
-  const _PiperVoiceTile({
-    required this.voice,
-    required this.piper,
-    required this.isCurrent,
-    required this.onLoad,
-    required this.onDelete,
-    required this.onDownload,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return FutureBuilder<bool>(
-      future: piper.isVoiceDownloaded(voice),
-      builder: (context, snapshot) {
-        final isDownloaded = snapshot.data ?? false;
-        final isThisDownloading = piper.isDownloadingVoice(voice);
-        final isLoaded = piper.isLoaded && piper.currentVoice == voice;
-
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-          decoration: BoxDecoration(
-            color: isCurrent
-              ? context.buddy.accent.withValues(alpha: 0.15)
-              : context.buddy.card.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: isCurrent
-                ? context.buddy.accent.withValues(alpha: 0.5)
-                : context.buddy.border,
-            ),
-          ),
-          child: Row(children: [
-            Icon(
-              isLoaded ? Icons.record_voice_over_rounded
-                : isDownloaded ? Icons.download_done_rounded
-                : Icons.download_rounded,
-              size: 22,
-              color: isCurrent ? context.buddy.accent : context.buddy.t2,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(voice.displayName,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w600,
-                    color: isCurrent ? context.buddy.accent : context.buddy.t1,
-                  )),
-                Text(isThisDownloading
-                    ? 'Wird heruntergeladen… ${(piper.downloadProgress * 100).toStringAsFixed(0)}%'
-                    : isDownloaded ? 'Heruntergeladen'
-                    : 'Nicht heruntergeladen',
-                  style: TextStyle(fontSize: 12, color: context.buddy.t3)),
-                if (isCurrent) Text(t.config_piper_active,
-                  style: TextStyle(fontSize: 11, color: context.buddy.success, fontWeight: FontWeight.w600)),
-              ],
-            )),
-            if (isThisDownloading)
-              SizedBox(width: 18, height: 18,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
-                  color: context.buddy.accent,
-                  backgroundColor: context.buddy.accent.withValues(alpha: 0.2),
-                )),
-            if (!isThisDownloading) ...[
-              if (!isDownloaded)
-                _SmallButton(
-                  icon: Icons.download_rounded,
-                  label: t.common_download,
-                  onTap: onDownload,
-                  color: context.buddy.accent,
-                ),
-              if (isDownloaded && !isCurrent)
-                _SmallButton(
-                  icon: Icons.play_arrow_rounded,
-                  label: t.common_load,
-                  onTap: onLoad,
-                  color: context.buddy.success,
-                ),
-              if (isDownloaded && !isCurrent)
-                _SmallButton(
-                  icon: Icons.delete_outline_rounded,
-                  label: t.common_delete,
-                  onTap: onDelete,
-                  color: context.buddy.error,
-                ),
-            ],
-          ]),
-        );
-      },
-    );
-  }
-}
-
-class _SmallButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color color;
-
-  const _SmallButton({required this.icon, required this.label, required this.onTap, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: color.withValues(alpha: 0.3)),
-        ),
-        child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Icon(icon, size: 16, color: color),
-          const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: color, fontWeight: FontWeight.w700)),
-        ]),
-      ),
-    );
-  }
-}
-
-/// Settings section for background tasks (BuddyScheduler).
-class _SchedulerSection extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final scheduler = context.watch<BuddyScheduler>();
-    if (!scheduler.isInitialized) return const SizedBox.shrink();
-
-    return _GlassCard(children: [
-      Padding(
-        padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        child: Row(children: [
-          Icon(Icons.schedule_outlined, size: 20, color: context.buddy.accent),
-          const SizedBox(width: 8),
-          Text(t.bg_tasks_title,
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.buddy.accent)),
-        ]),
-      ),
-      const SizedBox(height: 4),
-      for (final entry in scheduler.tasks.entries) ...[
-        _SchedulerTaskTile(
-          taskId: entry.key,
-          config: entry.value,
-          lastRun: scheduler.getLastRun(entry.key),
-          onToggle: (enabled) => scheduler.setTaskEnabled(entry.key, enabled),
-          onRunNow: () => scheduler.runTaskNow(entry.key),
-        ),
-        if (entry.key != scheduler.tasks.keys.last) const _Divider(),
-      ],
-    ]);
-  }
-}
-
-class _SchedulerTaskTile extends StatelessWidget {
-  final String taskId;
-  final BuddyTaskConfig config;
-  final String? lastRun;
-  final ValueChanged<bool> onToggle;
-  final VoidCallback onRunNow;
-
-  const _SchedulerTaskTile({
-    required this.taskId,
-    required this.config,
-    this.lastRun,
-    required this.onToggle,
-    required this.onRunNow,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return ListTile(
-      leading: Icon(
-        taskId == 'self_optimization' ? Icons.auto_fix_high_outlined : Icons.wb_sunny_outlined,
-        color: config.enabled ? context.buddy.accent : context.buddy.t2,
-        size: 22,
-      ),
-      title: Text(config.name, style: TextStyle(
-        fontSize: 14, fontWeight: FontWeight.w600,
-        color: config.enabled ? context.buddy.t1 : context.buddy.t2,
-      )),
-      subtitle: Text(
-        '${config.description}\n${t.bg_tasks_every_minutes.replaceAll("{n}", config.frequency.inMinutes.toString())}${lastRun != null ? " · ${t.bg_tasks_last_run} ${_formatLastRun(lastRun!, t)}" : ""}',
-        style: TextStyle(fontSize: 12, color: context.buddy.t2),
-      ),
-      isThreeLine: true,
-      trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-        IconButton(
-          icon: const Icon(Icons.play_circle_outline, size: 20),
-          color: context.buddy.accent,
-          onPressed: onRunNow,
-          tooltip: t.bg_tasks_run_now,
-        ),
-        Switch(
-          value: config.enabled,
-          onChanged: onToggle,
-          activeThumbColor: context.buddy.accent,
-        ),
-      ]),
-    );
-  }
-
-  String _formatLastRun(String iso, AppLocalizations t) {
-    try {
-      final dt = DateTime.parse(iso);
-      final now = DateTime.now();
-      final diff = now.difference(dt);
-      if (diff.inMinutes < 1) return t.time_just_now;
-      if (diff.inMinutes < 60) return t.time_minutes_ago.replaceAll('{n}', diff.inMinutes.toString());
-      if (diff.inHours < 24) return t.time_hours_ago.replaceAll('{n}', diff.inHours.toString());
-      return t.time_days_ago.replaceAll('{n}', diff.inDays.toString());
-    } catch (_) {
-      return iso;
-    }
-  }
-}
-
-
-// ── Proaktivitäts-Level Widget ──
-
-class _ProactivityTile extends StatefulWidget {
-  const _ProactivityTile();
-
-  @override
-  State<_ProactivityTile> createState() => _ProactivityTileState();
-}
-
-class _ProactivityTileState extends State<_ProactivityTile> {
-  late AppLocalizations t;
-
-  List<String> get _labels => [t.config_proactivity_off, t.config_proactivity_low, t.config_proactivity_normal, t.config_proactivity_high];
-  List<String> get _hints => [
-    t.config_proactivity_off_desc,
-    t.config_proactivity_low_desc,
-    t.config_proactivity_normal_desc,
-    t.config_proactivity_high_desc,
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    t = AppLocalizations.of(context);
-    final config = context.read<SecureConfigService>();
-    return _ListTile(
-      icon: Icons.notifications_active_rounded,
-      title: t.config_proactivity,
-      subtitle: '${_labels[config.proactivityLevel]} · ${_hints[config.proactivityLevel]}',
-      color: context.buddy.accent,
-      trailing: DropdownButton<int>(
-        value: config.proactivityLevel,
-        underline: const SizedBox(),
-        style: TextStyle(color: context.buddy.t1, fontSize: 13),
-        items: [
-          DropdownMenuItem(value: 0, child: Text(t.config_proactivity_off)),
-          DropdownMenuItem(value: 1, child: Text(t.config_proactivity_low)),
-          DropdownMenuItem(value: 2, child: Text(t.config_proactivity_normal)),
-          DropdownMenuItem(value: 3, child: Text(t.config_proactivity_high)),
-        ],
-        onChanged: (v) async {
-          if (v == null) return;
-          await config.setProactivityLevel(v);
-          setState(() {});
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${t.config_proactivity}: ${_labels[v]}')),
-            );
-          }
-        },
-      ),
-      onTap: () {}, // DropdownButton is the primary interaction here
-    );
-  }
-}
-
-class _AppearanceSection extends StatelessWidget {
-  const _AppearanceSection();
-
-  static const _languages = <(String, String)>[
-    ('en', '🇬🇧 English'),
-    ('de', '🇩🇪 Deutsch'),
-    ('es', '🇪🇸 Español'),
-    ('ja', '🇯🇵 日本語'),
-    ('zh', '🇨🇳 中文'),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final c = context.buddy;
-    final settings = context.watch<SettingsService>();
-    final current = settings.themeMode;
-    final appLang = settings.appLanguage;
-    const options = <(ThemeMode, String, IconData)>[
-      (ThemeMode.system, 'System', Icons.brightness_auto_rounded),
-      (ThemeMode.light, 'Hell', Icons.light_mode_rounded),
-      (ThemeMode.dark, 'Dunkel', Icons.dark_mode_rounded),
-    ];
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(6),
-      decoration: BoxDecoration(
-        color: c.card.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: c.border),
-        boxShadow: c.cardShadow,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // App-Sprache
-          Padding(
-            padding: const EdgeInsets.fromLTRB(6, 4, 6, 8),
-            child: Row(
-              children: [
-                Icon(Icons.language, size: 17, color: c.t2),
-                const SizedBox(width: 8),
-                Text(t.appearance_language,
-                    style: TextStyle(color: c.t2, fontSize: 13, fontWeight: FontWeight.w600)),
-              ],
-            ),
-          ),
-          SizedBox(
-            height: 38,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                for (final (code, label) in _languages)
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8, left: 2),
-                    child: GestureDetector(
-                      onTap: () => context.read<SettingsService>().appLanguage = code,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: appLang == code
-                              ? c.accent.withValues(alpha: 0.15)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: appLang == code ? c.accent : c.border,
-                            width: appLang == code ? 1.5 : 1,
-                          ),
-                        ),
-                        child: Text(label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: appLang == code ? c.accent : c.t2,
-                            )),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              for (final (value, label, icon) in options)
-                Expanded(
-                  child: GestureDetector(
-                    onTap: () => context.read<SettingsService>().themeMode = value,
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      decoration: BoxDecoration(
-                        color: current == value ? context.buddy.accent : Colors.transparent,
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        children: [
-                          Icon(icon, size: 20, color: current == value ? Colors.white : c.t2),
-                          const SizedBox(height: 4),
-                          Text(label, style: TextStyle(
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w600,
-                            color: current == value ? Colors.white : c.t2,
-                          )),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          // Akzentfarbe Picker
-          _AccentColorPicker(),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccentColorPicker extends StatelessWidget {
-  static const _presets = <Color>[
-    Color(0xFF6B8DD6), // Periwinkle (default)
-    Color(0xFF5B9BD5), // Blue
-    Color(0xFF34C759), // Green
-    Color(0xFFFF9500), // Orange
-    Color(0xFFFF3B30), // Red
-    Color(0xFFFF6B9D), // Pink
-    Color(0xFFA855F7), // Purple
-    Color(0xFF64D2FF), // Cyan
-    Color(0xFFD4AF37), // Gold
-    Color(0xFF9BA0A3), // Gray
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    final c = context.buddy;
-    final current = context.watch<SettingsService>().accentColor;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(6, 0, 6, 6),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.palette_outlined, size: 14, color: c.t3),
-              const SizedBox(width: 6),
-              Text(t.appearance_accent_color, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.t2)),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: _presets.map((color) {
-              final isSelected = current.toARGB32() == color.toARGB32();
-              return GestureDetector(
-                onTap: () => context.read<SettingsService>().accentColor = color,
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? c.t1 : Colors.transparent,
-                      width: 2.5,
-                    ),
-                    boxShadow: isSelected
-                        ? [BoxShadow(color: color.withValues(alpha: 0.5), blurRadius: 6)]
-                        : null,
-                  ),
-                  child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 16)
-                      : null,
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-}

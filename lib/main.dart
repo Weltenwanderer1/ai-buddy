@@ -147,73 +147,69 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
   Future<void> _initServices() async {
     try {
+      // ── Phase 1: Foundation (sequential, everything else depends on these) ──
       try { await dotenv.load(fileName: '.env', isOptional: true); } catch (_) {}
       _secureConfig = SecureConfigService(); await _secureConfig.init();
       _settings = SettingsService(); await _settings.init();
       _applyAccentColor();
       _settings.addListener(_applyAccentColor);
+
+      // ── Phase 2: Construct all services (fast, no I/O) ──
       _memory = MemoryService(
         promotionThreshold: _settings['memory_promotion_threshold'] as int? ?? 3,
         ttl: Duration(minutes: _settings['memory_ttl_minutes'] as int? ?? 60),
       );
-      await _memory.init();
-
-      // Embedding service (separate from LLM provider)
       _embeddingService = EmbeddingService(
         baseUrl: _secureConfig.embeddingBaseUrl,
         model: _secureConfig.embeddingModel,
         apiKey: _secureConfig.embeddingApiKey,
         provider: _secureConfig.embeddingProvider,
       );
-      _memory.setEmbeddingService(_embeddingService);
-
-      _persona = PersonaService(); await _persona.init();
-      // Use buddy name from config if persona has no name
-      if (_persona.name.isEmpty) {
-        _persona.name = _secureConfig.buddyName;
-      }
-      _selfIdentity = SelfIdentityService(); await _selfIdentity.init();
-      _buddyNotes = BuddyNotesService(); await _buddyNotes.init();
-      _buddyCapabilities = BuddyCapabilitiesService(); await _buddyCapabilities.init();
-      _chatHistory = ChatHistoryService(); await _chatHistory.init();
+      _persona = PersonaService();
+      _selfIdentity = SelfIdentityService();
+      _buddyNotes = BuddyNotesService();
+      _buddyCapabilities = BuddyCapabilitiesService();
+      _chatHistory = ChatHistoryService();
       _piperTtsService = PiperTtsService();
       _ttsPlaybackService = TtsPlaybackService(_piperTtsService);
-      await _ttsPlaybackService.loadEnginePreference(_secureConfig);
       _personaEvolution = PersonaEvolutionService();
-      try { await _personaEvolution.init(); } catch (e) { debugPrint('Evolution init: $e'); }
       _notificationService = NotificationService();
-      try { await _notificationService.init(); } catch (e) { debugPrint('Notify init: $e'); }
-
       _timerService = TimerService();
-      try { await _timerService.init(); } catch (e) { debugPrint('Timer init: $e'); }
-
       _proactiveNotificationService = ProactiveNotificationService();
-      try { await _proactiveNotificationService.init(); } catch (e) { debugPrint('ProactiveNotify init: $e'); }
-
       _volumeService = VolumeService();
-
       _voiceRecorderService = VoiceRecorderService();
-
       _automationService = AutomationService();
-      try { await _automationService.init(); } catch (e) { debugPrint('Automation init: $e'); }
-
       _offlineSttService = OfflineSttService();
-      try { await _offlineSttService.checkOfflineAvailability(); } catch (e) { debugPrint('OfflineSTT init: $e'); }
-
       _toolLearning = ToolLearningService();
-      try { await _toolLearning.init(); } catch (e) { debugPrint('ToolLearning init: $e'); }
-
       _clipboardHistory = ClipboardHistoryService();
-      try { await _clipboardHistory.init(); } catch (e) { debugPrint('ClipboardHistory init: $e'); }
-      try { await _clipboardHistory.capture(); } catch (e) { debugPrint('Clipboard capture: $e'); }
-
       _buddyScheduler = BuddyScheduler();
-      try { await _buddyScheduler.init(); } catch (e) { debugPrint('Scheduler init: $e'); }
-
+      _locationService = LocationService();
       BuddyNotifier.init();
 
-      _locationService = LocationService();
+      // ── Phase 3: Parallel init of all independent services ──
+      await Future.wait([
+        _memory.init(),
+        _persona.init().then((_) {
+          if (_persona.name.isEmpty) _persona.name = _secureConfig.buddyName;
+        }),
+        _selfIdentity.init(),
+        _buddyNotes.init(),
+        _buddyCapabilities.init(),
+        _chatHistory.init(),
+        _ttsPlaybackService.loadEnginePreference(_secureConfig),
+        _personaEvolution.init().catchError((e) => debugPrint('Evolution init: $e')),
+        _notificationService.init().catchError((e) => debugPrint('Notify init: $e')),
+        _timerService.init().catchError((e) => debugPrint('Timer init: $e')),
+        _proactiveNotificationService.init().catchError((e) => debugPrint('ProactiveNotify init: $e')),
+        _automationService.init().catchError((e) => debugPrint('Automation init: $e')),
+        _offlineSttService.checkOfflineAvailability().catchError((e) { debugPrint('OfflineSTT init: $e'); return false; }),
+        _toolLearning.init().catchError((e) { debugPrint('ToolLearning init: $e'); return null; }),
+        _clipboardHistory.init().then((_) => _clipboardHistory.capture()).catchError((e) { debugPrint('ClipboardHistory init: $e'); return false; }),
+        _buddyScheduler.init().catchError((e) => debugPrint('Scheduler init: $e')),
+      ]);
 
+      // ── Phase 4: Wire dependencies (sequential, needs services from Phase 3) ──
+      _memory.setEmbeddingService(_embeddingService);
       _backupService = BackupService(
         memory: _memory,
         persona: _persona,
