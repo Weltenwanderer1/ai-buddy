@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../core/i18n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/buddy_colors.dart';
 import '../services/settings_service.dart';
@@ -89,26 +91,26 @@ class _SettingsScreenState extends State<SettingsScreen>
   String _piperLangFilter = 'all';
 
   // Cloud model presets
-  static const List<Map<String, String>> _ollamaModels = [
+  List<Map<String, String>> get _ollamaModels => [
     {'id': 'kimi-k2.6:cloud', 'name': 'Kimi K2.6 (Kontext: 262k)'},
     {'id': 'deepseek-chat-v4:cloud', 'name': 'DeepSeek Chat V4 (Kontext: 128k)'},
     {'id': 'deepseek-v4-flash:cloud', 'name': 'DeepSeek Flash V4 (Schnell)'},
   ];
-  static const List<Map<String, String>> _openRouterModels = [
+  List<Map<String, String>> get _openRouterModels => [
     {'id': 'openrouter/moonshotai/kimi-k2.6', 'name': 'Kimi K2.6 (262k Kontext)'},
     {'id': 'openrouter/deepseek/deepseek-chat-v4', 'name': 'DeepSeek V4 Pro (128k)'},
     {'id': 'anthropic/claude-3.5-sonnet', 'name': 'Claude 3.5 Sonnet (ausgewogen)'},
     {'id': 'google/gemini-2.0-flash-001', 'name': 'Gemini 2.0 Flash (schnell)'},
   ];
-  static const List<Map<String, String>> _openAIModels = [
+  List<Map<String, String>> get _openAIModels => [
     {'id': 'gpt-4o', 'name': 'GPT-4o (ausgewogen)'},
     {'id': 'gpt-4o-mini', 'name': 'GPT-4o mini (schnell)'},
     {'id': 'gpt-4.1', 'name': 'GPT-4.1 (kreativ)'},
     {'id': 'o4-mini', 'name': 'o4-mini (reasoning)'},
   ];
-  static const List<Map<String, String>> _anthropicModels = [
+  List<Map<String, String>> get _anthropicModels => [
     {'id': 'claude-sonnet-4-20250514', 'name': 'Claude Sonnet 4 (ausgewogen)'},
-    {'id': 'claude-opus-4-20250514', 'name': 'Claude Opus 4 (stärkster)'},
+    {'id': 'claude-opus-4-20250514', 'name': 'Claude Opus 4 (leistungsstark)'},
     {'id': 'claude-3-5-haiku-20241022', 'name': 'Claude 3.5 Haiku (schnell)'},
   ];
 
@@ -368,6 +370,7 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _testEmbedding() async {
+    final t = AppLocalizations.of(context);
     setState(() { _isTestingEmbedding = true; _embeddingTestResult = null; });
     try {
       final config = context.read<SecureConfigService>();
@@ -389,7 +392,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         if (result != null) {
           setState(() => _embeddingTestResult = 'Embedding OK — Vektor: ${result.length} Dimensionen');
         } else {
-          setState(() => _embeddingTestResult = 'Fehler: Kein Embedding erhalten');
+          setState(() => _embeddingTestResult = t.config_embedding_error);
         }
       } finally {
         embedding.dispose();
@@ -402,25 +405,27 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _clearChatHistory() async {
+    final t = AppLocalizations.of(context);
     final chatHistory = context.read<ChatHistoryService>();
-    final confirmed = await _confirm('Chat-Verlauf löschen?',
-        'Alle Nachrichten werden unwiderruflich gelöscht.');
+    final confirmed = await _confirm(t.data_chat_delete_confirm,
+        t.data_chat_delete_body);
     if (confirmed) {
       await chatHistory.clear();
       if (mounted) {
-        _showSnack('Chat-Verlauf gelöscht', context.buddy.error);
+        _showSnack(t.data_chat_deleted, context.buddy.error);
       }
     }
   }
 
   Future<void> _clearMemories() async {
+    final t = AppLocalizations.of(context);
     final memoryService = context.read<MemoryService>();
-    final confirmed = await _confirm('Erinnerungen löschen?',
-        'Alle gespeicherten Erinnerungen werden gelöscht.');
+    final confirmed = await _confirm(t.data_memories_delete_confirm,
+        t.data_memories_delete_body);
     if (confirmed) {
       await memoryService.clearAll();
       if (mounted) {
-        _showSnack('Erinnerungen gelöscht', context.buddy.error);
+        _showSnack(t.data_memories_deleted, context.buddy.error);
       }
     }
   }
@@ -446,9 +451,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _restoreBackup() async {
+    final t = AppLocalizations.of(context);
     final backupService = context.read<BackupService>();
     final confirmed = await _confirm('Backup wiederherstellen?',
-        'Aktuelle Daten werden überschrieben.');
+        t.data_backup_overwrite_warning);
     if (!confirmed) {
       return;
     }
@@ -468,14 +474,15 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Future<void> _resetApp() async {
+    final t = AppLocalizations.of(context);
     final chatHistory = context.read<ChatHistoryService>();
     final memoryService = context.read<MemoryService>();
     final selfIdentity = context.read<SelfIdentityService>();
     final persona = context.read<PersonaService>();
     final personaEvolution = context.read<PersonaEvolutionService>();
 
-    final confirmed = await _confirm('App komplett zurücksetzen?',
-        'Alles wird gelöscht: Chat, Erinnerungen, Selbstbild, Persona, KI-Entwicklung. Das kann nicht rückgängig gemacht werden.');
+    final confirmed = await _confirm(t.data_reset_confirm,
+        t.data_reset_warning);
     if (!confirmed) {
       return;
     }
@@ -486,7 +493,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       await persona.clear();
       await personaEvolution.clear();
       if (mounted) {
-        _showSnack('App zurückgesetzt — neu starten empfohlen', context.buddy.error);
+        _showSnack(t.data_reset_done, context.buddy.error);
       }
     } catch (e) {
       if (mounted) {
@@ -510,8 +517,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     ));
   }
 
-  Future<bool> _confirm(String title, String body) async =>
-      (await showDialog<bool>(
+  Future<bool> _confirm(String title, String body) async {
+    final t = AppLocalizations.of(context);
+    return (await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: context.buddy.elev,
@@ -534,7 +542,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, false),
-              child: Text('Abbrechen', style: TextStyle(
+              child: Text(t.common_cancel, style: TextStyle(
                 color: context.buddy.t2, fontWeight: FontWeight.w600))),
             ElevatedButton(
               onPressed: () => Navigator.pop(ctx, true),
@@ -545,16 +553,18 @@ class _SettingsScreenState extends State<SettingsScreen>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
               ),
-              child: const Text('Bestätigen', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: Text(t.common_confirm, style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ),
       )) == true;
+  }
 
   static String _trunc(String s, int max) =>
       s.length > max ? '${s.substring(0, max)}...' : s;
 
   void _showKIEntwicklung() {
+    final t = AppLocalizations.of(context);
     final traits = context.read<PersonaEvolutionService>().learnedTraits;
     showModalBottomSheet(
       context: context,
@@ -595,7 +605,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 Text('KI-Entwicklung',
                   style: TextStyle(color: context.buddy.t1, fontSize: 20, fontWeight: FontWeight.w800)),
                 const SizedBox(height: 2),
-                Text('${traits.length} gelernte Merkmale',
+                Text('${traits.length} ${t.buddy_evolution_traits}',
                   style: TextStyle(color: context.buddy.t2, fontSize: 13)),
               ])),
             ]),
@@ -606,10 +616,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Icon(Icons.psychology_alt_outlined,
                       size: 48, color: context.buddy.t3.withValues(alpha: 0.4)),
                     const SizedBox(height: 16),
-                    Text('Noch keine Merkmale gelernt',
+                    Text(t.buddy_evolution_empty,
                       style: TextStyle(color: context.buddy.t2, fontSize: 16, fontWeight: FontWeight.w600)),
                     const SizedBox(height: 6),
-                    Text('Dein Agent lernt mit jedem Gespräch mehr über dich.',
+                    Text(t.buddy_evolution_desc,
                       textAlign: TextAlign.center,
                       style: TextStyle(color: context.buddy.t3, fontSize: 13, height: 1.5)),
                   ]))
@@ -651,10 +661,23 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final persona = context.watch<PersonaService>();
     final evolution = context.watch<PersonaEvolutionService>();
 
-    return Scaffold(
+    final brightness = Theme.of(context).brightness;
+    final isLight = brightness == Brightness.light;
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: context.buddy.bg,
+        systemNavigationBarIconBrightness: isLight ? Brightness.dark : Brightness.light,
+        systemNavigationBarDividerColor: context.buddy.bg,
+      ),
+      sized: true,
+      child: Scaffold(
       backgroundColor: context.buddy.bg,
       body: CustomScrollView(
         physics: const BouncingScrollPhysics(),
@@ -665,7 +688,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               padding: EdgeInsets.fromLTRB(20, MediaQuery.paddingOf(context).top + 16, 20, 8),
               child: Row(
                 children: [
-                  Text('Einstellungen',
+                  Text(t.settings_title,
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800,
                       color: context.buddy.t1, letterSpacing: -0.5)),
                 ],
@@ -674,21 +697,21 @@ class _SettingsScreenState extends State<SettingsScreen>
           ),
 
           // ── Erscheinungsbild ──
-          SliverToBoxAdapter(child: _SectionHeader('Erscheinungsbild',
+          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_appearance,
             expanded: _secAppearance,
             onTap: () => setState(() => _secAppearance = !_secAppearance),
           )),
           if (_secAppearance) const SliverToBoxAdapter(child: _AppearanceSection()),
 
           // ── Buddy ──
-          SliverToBoxAdapter(child: _SectionHeader('Buddy',
+          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_buddy,
             expanded: _secBuddy,
             onTap: () => setState(() => _secBuddy = !_secBuddy),
           )),
           if (_secBuddy) SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.face_5_rounded,
-              title: 'Persona bearbeiten',
+              title: t.buddy_persona_edit,
               subtitle: persona.name.isEmpty ? 'Standard' : persona.name,
               color: context.buddy.accent,
               onTap: () => Navigator.push(
@@ -699,8 +722,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.self_improvement_rounded,
-              title: 'Mein Selbst',
-              subtitle: 'Wesen, Regeln, Ziele',
+              title: t.buddy_self_identity,
+              subtitle: t.buddy_persona_desc,
               color: context.buddy.accent,
               onTap: () => Navigator.push(
                 context,
@@ -710,8 +733,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.psychology_rounded,
-              title: 'KI-Entwicklung',
-              subtitle: '${evolution.learnedTraits.length} Merkmale gelernt',
+              title: t.buddy_evolution,
+              subtitle: '${evolution.learnedTraits.length} ${t.buddy_evolution_traits}',
               color: context.buddy.accent,
               trailing: _Badge('${evolution.learnedTraits.length}'),
               onTap: _showKIEntwicklung,
@@ -719,8 +742,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.memory_rounded,
-              title: 'Erinnerungen',
-              subtitle: 'Core, Langzeit, Kurzzeit',
+              title: t.buddy_memories,
+              subtitle: t.memory_core_long_short,
               color: context.buddy.accent,
               onTap: () => Navigator.push(
                 context,
@@ -732,15 +755,15 @@ class _SettingsScreenState extends State<SettingsScreen>
           ])),
 
           // ── Werkzeuge ──
-          SliverToBoxAdapter(child: _SectionHeader('Werkzeuge',
+          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_tools,
             expanded: _secTools,
             onTap: () => setState(() => _secTools = !_secTools),
           )),
           if (_secTools) SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.map_rounded,
-              title: 'Offline-Karten',
-              subtitle: 'Kacheln fuer Navigation ohne Netz',
+              title: t.buddy_offline_maps,
+              subtitle: t.buddy_offline_maps_desc,
               color: context.buddy.accent,
               trailing: FutureBuilder<bool>(
                 future: TileDownloadService.hasOfflineTiles(),
@@ -753,8 +776,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.notes_rounded,
-              title: 'Agent Notizen',
-              subtitle: 'Werkzeuge, Skills, Passwörter',
+              title: t.buddy_notes,
+              subtitle: t.tools_desc,
               color: context.buddy.accent,
               onTap: () => Navigator.push(
                 context,
@@ -764,8 +787,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.auto_fix_high_rounded,
-              title: 'Meine Fähigkeiten',
-              subtitle: 'Was die KI alles kann — editierbar',
+              title: t.buddy_capabilities,
+              subtitle: t.buddy_capabilities_desc,
               color: context.buddy.accent,
               onTap: () => Navigator.push(
                 context,
@@ -775,7 +798,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           ])),
 
           // ── Konfiguration ──
-          SliverToBoxAdapter(child: _SectionHeader('Konfiguration',
+          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_config,
             expanded: _secConfig,
             onTap: () => setState(() => _secConfig = !_secConfig),
           )),
@@ -783,7 +806,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Buddy-Name ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'Buddy-Name',
+            title: t.buddy_name,
             icon: Icons.person_rounded,
             color: context.buddy.accent,
             expanded: _buddyNameExpanded,
@@ -792,7 +815,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: _GlassTextField(
-                  label: 'Wie soll dein Buddy heißen?',
+                  label: t.buddy_name_hint,
                   icon: Icons.edit_rounded,
                   controller: _buddyNameController,
                 ),
@@ -801,7 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.save_rounded,
-                  label: 'Speichern',
+                  label: t.common_save,
                   onTap: _saveBuddyName,
                 )),
               ]),
@@ -810,30 +833,30 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── E-Mail (IMAP) ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'E-Mail (IMAP)',
+            title: t.config_email,
             icon: Icons.email_rounded,
             color: context.buddy.accent,
             expanded: _emailExpanded,
             onToggle: () => setState(() => _emailExpanded = !_emailExpanded),
             children: [
               _GlassTextField(
-                label: 'E-Mail-Adresse',
+                label: t.config_email_address,
                 icon: Icons.email_rounded,
                 controller: _emailAddressController,
               ),
               _GlassTextField(
-                label: 'Passwort / App-Passwort',
+                label: t.config_email_password,
                 icon: Icons.lock_rounded,
                 controller: _emailPasswordController,
                 obscure: true,
               ),
               _GlassTextField(
-                label: 'IMAP-Server (z.B. imap.gmail.com)',
+                label: t.config_email_server,
                 icon: Icons.dns_rounded,
                 controller: _imapServerController,
               ),
               _GlassTextField(
-                label: 'IMAP-Port (Standard: 993)',
+                label: t.config_email_port,
                 icon: Icons.pin_rounded,
                 controller: _imapPortController,
               ),
@@ -841,7 +864,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.save_rounded,
-                  label: 'Speichern',
+                  label: t.common_save,
                   onTap: _saveEmailConfig,
                 )),
               ]),
@@ -850,7 +873,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Embedding (Memory-Suche) ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'Embedding (Memory-Suche)',
+            title: t.config_embedding,
             icon: Icons.memory_rounded,
             color: context.buddy.accent,
             expanded: _embeddingExpanded,
@@ -875,25 +898,25 @@ class _SettingsScreenState extends State<SettingsScreen>
               ),
               _GlassTextField(
                 label: _embeddingProvider == 'ollama'
-                    ? 'Base URL (z.B. https://ollama.com/api)'
+                    ? t.config_base_url_ollama
                     : _embeddingProvider == 'openrouter'
-                        ? 'Base URL (Standard: https://openrouter.ai/api)'
-                        : 'Base URL (Standard: https://api.openai.com)',
+                        ? t.config_base_url_openrouter
+                        : t.config_base_url_openai,
                 icon: Icons.link_rounded,
                 controller: _embeddingBaseUrlController,
               ),
               _GlassTextField(
-                label: 'API Key',
+                label: t.config_api_key,
                 icon: Icons.key_rounded,
                 controller: _embeddingApiKeyController,
                 obscure: true,
               ),
               _GlassTextField(
                 label: _embeddingProvider == 'ollama'
-                    ? 'Modell (z.B. nomic-embed-text)'
+                    ? t.config_embedding_model_ollama
                     : _embeddingProvider == 'openrouter'
-                        ? 'Modell (z.B. qwen/qwen3-embedding-8b)'
-                        : 'Modell (z.B. text-embedding-3-small)',
+                        ? t.config_embedding_model_openrouter
+                        : t.config_embedding_model_openai,
                 icon: Icons.memory_rounded,
                 controller: _embeddingModelController,
               ),
@@ -901,13 +924,13 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.save_rounded,
-                  label: 'Speichern',
+                  label: t.common_save,
                   onTap: _saveEmbeddingConfig,
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: _OutlineButton(
                   icon: _isTestingEmbedding ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                  label: _isTestingEmbedding ? 'Teste…' : 'Testen',
+                  label: _isTestingEmbedding ? t.config_embedding_testing : t.common_test,
                   onTap: _isTestingEmbedding ? null : _testEmbedding,
                 )),
               ]),
@@ -918,7 +941,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── KI-Modell ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'KI-Modell',
+            title: t.config_provider,
             icon: Icons.auto_awesome_rounded,
             color: context.buddy.accent,
             expanded: _ollamaExpanded,
@@ -953,78 +976,78 @@ class _SettingsScreenState extends State<SettingsScreen>
 
               if (_llmProvider == 'ollama') ...[
                 _GlassTextField(
-                  label: 'Base URL',
+                  label: t.config_base_url,
                   icon: Icons.link_rounded,
                   controller: _ollamaBaseUrlController,
                 ),
                 _GlassTextField(
-                  label: 'API Key',
+                  label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _ollamaKeyController,
                   obscure: true,
                 ),
                 _buildModelDropdown(
-                  label: 'Modell',
+                  label: t.config_model,
                   icon: Icons.smart_toy_rounded,
                   models: _ollamaModels,
                   controller: _ollamaModelController,
                 ),
                 _GlassTextField(
-                  label: 'Fallback',
+                  label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _ollamaFallbackController,
                 ),
               ] else if (_llmProvider == 'openrouter') ...[
                 _GlassTextField(
-                  label: 'OpenRouter API Key',
+                  label: t.config_openrouter_api_key,
                   icon: Icons.key_rounded,
                   controller: _openRouterKeyController,
                   obscure: true,
                 ),
                 _buildModelDropdown(
-                  label: 'Modell',
+                  label: t.config_model,
                   icon: Icons.smart_toy_rounded,
                   models: _openRouterModels,
                   controller: _openRouterModelController,
                 ),
                 _GlassTextField(
-                  label: 'Fallback',
+                  label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _openRouterFallbackController,
                 ),
               ] else if (_llmProvider == 'openai') ...[
                 _GlassTextField(
-                  label: 'API Key',
+                  label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _openAIKeyController,
                   obscure: true,
                 ),
                 _buildModelDropdown(
-                  label: 'Modell',
+                  label: t.config_model,
                   icon: Icons.smart_toy_rounded,
                   models: _openAIModels,
                   controller: _openAIModelController,
                 ),
                 _GlassTextField(
-                  label: 'Fallback',
+                  label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _openAIFallbackController,
                 ),
               ] else if (_llmProvider == 'anthropic') ...[
                 _GlassTextField(
-                  label: 'API Key',
+                  label: t.config_api_key,
                   icon: Icons.key_rounded,
                   controller: _anthropicKeyController,
                   obscure: true,
                 ),
                 _buildModelDropdown(
-                  label: 'Modell',
+                  label: t.config_model,
                   icon: Icons.smart_toy_rounded,
                   models: _anthropicModels,
                   controller: _anthropicModelController,
                 ),
                 _GlassTextField(
-                  label: 'Fallback',
+                  label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _anthropicFallbackController,
                 ),
@@ -1034,13 +1057,13 @@ class _SettingsScreenState extends State<SettingsScreen>
               Row(children: [
                 Expanded(child: _GradientButton(
                   icon: Icons.save_rounded,
-                  label: 'Speichern',
+                  label: t.common_save,
                   onTap: _saveOllamaConfig,
                 )),
                 const SizedBox(width: 8),
                 Expanded(child: _OutlineButton(
                   icon: _isTestingOllama ? Icons.hourglass_empty_rounded : Icons.check_circle_rounded,
-                  label: _isTestingOllama ? 'Teste…' : 'Testen',
+                  label: _isTestingOllama ? t.config_embedding_testing : t.common_test,
                   onTap: _isTestingOllama ? null : _testOllama,
                 )),
               ]),
@@ -1051,7 +1074,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Sprache ──
           SliverToBoxAdapter(child: _ExpandableSection(
-            title: 'Sprachausgabe',
+            title: t.config_tts,
             icon: Icons.record_voice_over_rounded,
             color: context.buddy.accent,
             expanded: _elevenExpanded,
@@ -1062,7 +1085,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Row(
                   children: [
-                    Text('TTS Engine', style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text(t.config_tts_engine, style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
                     const SizedBox(width: 12),
                     ...TtsEngine.values.map((e) => Padding(
                       padding: const EdgeInsets.only(right: 8),
@@ -1100,7 +1123,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Align(alignment: Alignment.centerLeft,
-                        child: Text('Piper Stimmen (offline)', style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: Text(t.config_piper_voices, style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                     ),
                     // Language dropdown
@@ -1108,14 +1131,14 @@ class _SettingsScreenState extends State<SettingsScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                       child: Row(
                         children: [
-                          Text('Sprache: ', style: TextStyle(color: context.buddy.t2, fontSize: 13)),
+                          Text(t.config_piper_language, style: TextStyle(color: context.buddy.t2, fontSize: 13)),
                           Expanded(
                             child: DropdownButton<String>(
                               value: _piperLangFilter,
                               isExpanded: true,
                               underline: Container(height: 1, color: context.buddy.border),
                               items: [
-                                const DropdownMenuItem(value: 'all', child: Text('Alle Sprachen')),
+                                DropdownMenuItem(value: 'all', child: Text(t.config_piper_all_languages)),
                                 ...PiperVoice.supportedLanguages.map((code) =>
                                   DropdownMenuItem(value: code, child: Text(PiperVoice.languageNameFor(code)))),
                               ],
@@ -1160,7 +1183,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('Sprechgeschwindigkeit', style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
+                              Text(t.config_tts_speed, style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
                               Builder(builder: (context) {
                                 final tts = context.select<TtsPlaybackService, double>((s) => s.piperSpeed);
                                 return Text('${tts.toStringAsFixed(1)}x', style: TextStyle(color: context.buddy.accent, fontSize: 13, fontWeight: FontWeight.w600));
@@ -1196,8 +1219,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Text('langsam', style: TextStyle(color: context.buddy.t3, fontSize: 11)),
-                              Text('schnell', style: TextStyle(color: context.buddy.t3, fontSize: 11)),
+                              Text(t.speed_slow, style: TextStyle(color: context.buddy.t3, fontSize: 11)),
+                              Text(t.speed_fast, style: TextStyle(color: context.buddy.t3, fontSize: 11)),
                             ],
                           ),
                         ],
@@ -1207,7 +1230,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                     Row(children: [
                       Expanded(child: _GradientButton(
                         icon: Icons.save_rounded,
-                        label: 'Speichern',
+                        label: t.common_save,
                         onTap: _saveTtsConfig,
                       )),
                     ]),
@@ -1219,14 +1242,14 @@ class _SettingsScreenState extends State<SettingsScreen>
               if (_ttsEngine == TtsEngine.device) ...[
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Text('Verwendet die System-Sprachausgabe des Geräts. Kein Download nötig, aber Qualität variiert je nach Gerät.',
+                  child: Text(t.config_tts_device_desc,
                     style: TextStyle(color: context.buddy.t2, fontSize: 13, height: 1.5)),
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
                   Expanded(child: _GradientButton(
                     icon: Icons.save_rounded,
-                    label: 'Speichern',
+                    label: t.common_save,
                     onTap: _saveTtsConfig,
                   )),
                 ]),
@@ -1238,7 +1261,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
 
           // ── Daten ──
-          SliverToBoxAdapter(child: _SectionHeader('Daten',
+          SliverToBoxAdapter(child: _SectionHeader(t.settings_tab_data,
             expanded: _secData,
             onTap: () => setState(() => _secData = !_secData),
           )),
@@ -1246,14 +1269,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           SliverToBoxAdapter(child: _GlassCard(children: [
             _ListTile(
               icon: Icons.backup_outlined,
-              title: 'Backup erstellen',
+              title: t.data_backup_create,
               color: context.buddy.success,
               onTap: _createBackup,
             ),
             _Divider(),
             _ListTile(
               icon: Icons.restore_outlined,
-              title: 'Wiederherstellen',
+              title: t.common_restore,
               color: context.buddy.accent,
               onTap: _restoreBackup,
             ),
@@ -1261,22 +1284,22 @@ class _SettingsScreenState extends State<SettingsScreen>
             _Divider(),
             _ListTile(
               icon: Icons.delete_forever_outlined,
-              title: 'Chat löschen',
+              title: t.data_chat_delete,
               color: context.buddy.error,
               onTap: _clearChatHistory,
             ),
             _Divider(),
             _ListTile(
               icon: Icons.memory_outlined,
-              title: 'Erinnerungen löschen',
+              title: t.data_memories_delete,
               color: context.buddy.error,
               onTap: _clearMemories,
             ),
             _Divider(),
             _ListTile(
               icon: Icons.restart_alt_rounded,
-              title: 'App zurücksetzen',
-              subtitle: 'Alles löschen — wie neu installiert',
+              title: t.data_reset,
+              subtitle: t.data_reset_desc,
               color: context.buddy.error,
               onTap: _resetApp,
             ),
@@ -1284,14 +1307,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           ],
 
           // ── Hintergrund-Tasks ──
-          SliverToBoxAdapter(child: _SectionHeader('Hintergrund-Tasks',
+          SliverToBoxAdapter(child: _SectionHeader(t.bg_tasks_title,
             expanded: _secScheduler,
             onTap: () => setState(() => _secScheduler = !_secScheduler),
           )),
           if (_secScheduler) SliverToBoxAdapter(child: _SchedulerSection()),
 
           // ── Über ──
-          SliverToBoxAdapter(child: _SectionHeader('Über',
+          SliverToBoxAdapter(child: _SectionHeader(t.about_title,
             expanded: _secAbout,
             onTap: () => setState(() => _secAbout = !_secAbout),
           )),
@@ -1317,6 +1340,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 16),
           ),
         ],
+      ),
       ),
     );
   }
@@ -1501,6 +1525,7 @@ class _ModelDropdownState extends State<_ModelDropdown> {
   }
 
   Future<String?> _showCustomModelDialog(BuildContext context, String current) async {
+    final t = AppLocalizations.of(context);
     final controller = TextEditingController(text: current);
     try {
       return await showDialog<String>(
@@ -1508,7 +1533,7 @@ class _ModelDropdownState extends State<_ModelDropdown> {
       builder: (ctx) => AlertDialog(
         backgroundColor: context.buddy.card,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Modell-ID', style: TextStyle(color: context.buddy.t1, fontSize: 18, fontWeight: FontWeight.w700)),
+        title: Text(t.config_model_id, style: TextStyle(color: context.buddy.t1, fontSize: 18, fontWeight: FontWeight.w700)),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -1525,11 +1550,11 @@ class _ModelDropdownState extends State<_ModelDropdown> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, null),
-            child: Text('Abbrechen', style: TextStyle(color: context.buddy.t2)),
+            child: Text(t.common_cancel, style: TextStyle(color: context.buddy.t2)),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, controller.text.trim()),
-            child: Text('Speichern', style: TextStyle(color: context.buddy.accent, fontWeight: FontWeight.w700)),
+            child: Text(t.common_save, style: TextStyle(color: context.buddy.accent, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -1978,6 +2003,7 @@ class _PiperVoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return FutureBuilder<bool>(
       future: piper.isVoiceDownloaded(voice),
       builder: (context, snapshot) {
@@ -2022,7 +2048,7 @@ class _PiperVoiceTile extends StatelessWidget {
                     : isDownloaded ? 'Heruntergeladen'
                     : 'Nicht heruntergeladen',
                   style: TextStyle(fontSize: 12, color: context.buddy.t3)),
-                if (isCurrent) Text('✓ Aktiv',
+                if (isCurrent) Text(t.config_piper_active,
                   style: TextStyle(fontSize: 11, color: context.buddy.success, fontWeight: FontWeight.w600)),
               ],
             )),
@@ -2037,21 +2063,21 @@ class _PiperVoiceTile extends StatelessWidget {
               if (!isDownloaded)
                 _SmallButton(
                   icon: Icons.download_rounded,
-                  label: 'Download',
+                  label: t.common_download,
                   onTap: onDownload,
                   color: context.buddy.accent,
                 ),
               if (isDownloaded && !isCurrent)
                 _SmallButton(
                   icon: Icons.play_arrow_rounded,
-                  label: 'Laden',
+                  label: t.common_load,
                   onTap: onLoad,
                   color: context.buddy.success,
                 ),
               if (isDownloaded && !isCurrent)
                 _SmallButton(
                   icon: Icons.delete_outline_rounded,
-                  label: 'Löschen',
+                  label: t.common_delete,
                   onTap: onDelete,
                   color: context.buddy.error,
                 ),
@@ -2097,6 +2123,7 @@ class _SmallButton extends StatelessWidget {
 class _SchedulerSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final scheduler = context.watch<BuddyScheduler>();
     if (!scheduler.isInitialized) return const SizedBox.shrink();
 
@@ -2106,7 +2133,7 @@ class _SchedulerSection extends StatelessWidget {
         child: Row(children: [
           Icon(Icons.schedule_outlined, size: 20, color: context.buddy.accent),
           const SizedBox(width: 8),
-          Text('Hintergrund-Tasks',
+          Text(t.bg_tasks_title,
             style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: context.buddy.accent)),
         ]),
       ),
@@ -2142,6 +2169,7 @@ class _SchedulerTaskTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return ListTile(
       leading: Icon(
         taskId == 'self_optimization' ? Icons.auto_fix_high_outlined : Icons.wb_sunny_outlined,
@@ -2153,7 +2181,7 @@ class _SchedulerTaskTile extends StatelessWidget {
         color: config.enabled ? context.buddy.t1 : context.buddy.t2,
       )),
       subtitle: Text(
-        '${config.description}\nAlle ${config.frequency.inMinutes} Min${lastRun != null ? " · Letztmals ${_formatLastRun(lastRun!)}" : ""}',
+        '${config.description}\n${t.bg_tasks_every_minutes.replaceAll("{n}", config.frequency.inMinutes.toString())}${lastRun != null ? " · ${t.bg_tasks_last_run} ${_formatLastRun(lastRun!, t)}" : ""}',
         style: TextStyle(fontSize: 12, color: context.buddy.t2),
       ),
       isThreeLine: true,
@@ -2162,7 +2190,7 @@ class _SchedulerTaskTile extends StatelessWidget {
           icon: const Icon(Icons.play_circle_outline, size: 20),
           color: context.buddy.accent,
           onPressed: onRunNow,
-          tooltip: 'Jetzt ausführen',
+          tooltip: t.bg_tasks_run_now,
         ),
         Switch(
           value: config.enabled,
@@ -2173,15 +2201,15 @@ class _SchedulerTaskTile extends StatelessWidget {
     );
   }
 
-  String _formatLastRun(String iso) {
+  String _formatLastRun(String iso, AppLocalizations t) {
     try {
       final dt = DateTime.parse(iso);
       final now = DateTime.now();
       final diff = now.difference(dt);
-      if (diff.inMinutes < 1) return 'gerade eben';
-      if (diff.inMinutes < 60) return 'vor ${diff.inMinutes} Min';
-      if (diff.inHours < 24) return 'vor ${diff.inHours}h';
-      return 'vor ${diff.inDays}d';
+      if (diff.inMinutes < 1) return t.time_just_now;
+      if (diff.inMinutes < 60) return t.time_minutes_ago.replaceAll('{n}', diff.inMinutes.toString());
+      if (diff.inHours < 24) return t.time_hours_ago.replaceAll('{n}', diff.inHours.toString());
+      return t.time_days_ago.replaceAll('{n}', diff.inDays.toString());
     } catch (_) {
       return iso;
     }
@@ -2199,31 +2227,34 @@ class _ProactivityTile extends StatefulWidget {
 }
 
 class _ProactivityTileState extends State<_ProactivityTile> {
-  static const _labels = ['Aus', 'Niedrig', 'Normal', 'Hoch'];
-  static const _hints = [
-    'Keine proaktiven Nachrichten',
-    'Nur dringende Erinnerungen',
-    'Zeit, Ort + Routinen',
-    'Alles + Lernen',
+  late AppLocalizations t;
+
+  List<String> get _labels => [t.config_proactivity_off, t.config_proactivity_low, t.config_proactivity_normal, t.config_proactivity_high];
+  List<String> get _hints => [
+    t.config_proactivity_off_desc,
+    t.config_proactivity_low_desc,
+    t.config_proactivity_normal_desc,
+    t.config_proactivity_high_desc,
   ];
 
   @override
   Widget build(BuildContext context) {
+    t = AppLocalizations.of(context);
     final config = context.read<SecureConfigService>();
     return _ListTile(
       icon: Icons.notifications_active_rounded,
-      title: 'Proaktivität',
+      title: t.config_proactivity,
       subtitle: '${_labels[config.proactivityLevel]} · ${_hints[config.proactivityLevel]}',
       color: context.buddy.accent,
       trailing: DropdownButton<int>(
         value: config.proactivityLevel,
         underline: const SizedBox(),
         style: TextStyle(color: context.buddy.t1, fontSize: 13),
-        items: const [
-          DropdownMenuItem(value: 0, child: Text('Aus')),
-          DropdownMenuItem(value: 1, child: Text('Niedrig')),
-          DropdownMenuItem(value: 2, child: Text('Normal')),
-          DropdownMenuItem(value: 3, child: Text('Hoch')),
+        items: [
+          DropdownMenuItem(value: 0, child: Text(t.config_proactivity_off)),
+          DropdownMenuItem(value: 1, child: Text(t.config_proactivity_low)),
+          DropdownMenuItem(value: 2, child: Text(t.config_proactivity_normal)),
+          DropdownMenuItem(value: 3, child: Text(t.config_proactivity_high)),
         ],
         onChanged: (v) async {
           if (v == null) return;
@@ -2231,7 +2262,7 @@ class _ProactivityTileState extends State<_ProactivityTile> {
           setState(() {});
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Proaktivität: ${_labels[v]}')),
+              SnackBar(content: Text('${t.config_proactivity}: ${_labels[v]}')),
             );
           }
         },
@@ -2254,6 +2285,7 @@ class _AppearanceSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final c = context.buddy;
     final settings = context.watch<SettingsService>();
     final current = settings.themeMode;
@@ -2282,7 +2314,7 @@ class _AppearanceSection extends StatelessWidget {
               children: [
                 Icon(Icons.language, size: 17, color: c.t2),
                 const SizedBox(width: 8),
-                Text('Sprache / Language',
+                Text(t.appearance_language,
                     style: TextStyle(color: c.t2, fontSize: 13, fontWeight: FontWeight.w600)),
               ],
             ),
@@ -2378,6 +2410,7 @@ class _AccentColorPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     final c = context.buddy;
     final current = context.watch<SettingsService>().accentColor;
     return Padding(
@@ -2389,7 +2422,7 @@ class _AccentColorPicker extends StatelessWidget {
             children: [
               Icon(Icons.palette_outlined, size: 14, color: c.t3),
               const SizedBox(width: 6),
-              Text('Akzentfarbe', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.t2)),
+              Text(t.appearance_accent_color, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c.t2)),
             ],
           ),
           const SizedBox(height: 8),

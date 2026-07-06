@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../core/i18n/app_localizations.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -751,6 +752,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   Widget _buildMultiSelectHeader() {
+    final t = AppLocalizations.of(context);
     final c = context.buddy;
     return SafeArea(
       bottom: false,
@@ -779,7 +781,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                '${_selectedIndices.length} ausgewählt',
+                t.chat_selected_count.replaceAll('{count}', _selectedIndices.length.toString()),
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
@@ -1112,13 +1114,14 @@ class _LiveStatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppLocalizations.of(context);
     return ListenableBuilder(
       listenable: liveVoice,
       builder: (context, _) {
         final state = liveVoice.state;
         final stateLabel = switch (state) {
           LiveVoiceState.idle => 'Bereit',
-          LiveVoiceState.listening => 'Ich höre zu...',
+          LiveVoiceState.listening => t.chat_voice_listening,
           LiveVoiceState.thinking => 'Denkt nach...',
           LiveVoiceState.speaking => 'Spricht...',
           LiveVoiceState.error => 'Fehler',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/i18n/app_localizations.dart';
 import 'dart:ui';
 import 'package:provider/provider.dart';
 import '../services/live_voice_service.dart';
@@ -42,6 +43,7 @@ class MessageInput extends StatefulWidget {
 
 class _MessageInputState extends State<MessageInput> {
   final _controller = TextEditingController();
+  late AppLocalizations t;
   bool _hasText = false;
   bool _isDictating = false;
 
@@ -71,7 +73,7 @@ class _MessageInputState extends State<MessageInput> {
     }
     if (text == '/hilfe') {
       _controller.clear();
-      widget.onSend('Was kannst du alles für mich tun? Welche Tools und Features hast du?');
+      widget.onSend(t.chat_initial_prompt);
       return;
     }
 
@@ -85,7 +87,7 @@ class _MessageInputState extends State<MessageInput> {
     final stt = widget.sttService;
     if (stt == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Spracherkennung nicht verfügbar')),
+        SnackBar(content: Text(t.stt_not_available)),
       );
       return;
     }
@@ -100,7 +102,7 @@ class _MessageInputState extends State<MessageInput> {
         if (!ok) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Mikrofon-Berechtigung benötigt')),
+              SnackBar(content: Text(t.stt_permission_needed)),
             );
           }
           return;
@@ -152,6 +154,7 @@ class _MessageInputState extends State<MessageInput> {
 
   @override
   Widget build(BuildContext context) {
+    t = AppLocalizations.of(context);
     return widget.isLiveModeActive ? _buildLiveModeInput() : _buildNormalInput();
   }
 
@@ -256,7 +259,7 @@ class _MessageInputState extends State<MessageInput> {
     final state = widget.liveVoiceState;
     final stateLabel = switch (state) {
       LiveVoiceState.idle => 'Bereit',
-      LiveVoiceState.listening => 'Ich höre zu…',
+      LiveVoiceState.listening => t.chat_voice_listening,
       LiveVoiceState.thinking => 'Denkt nach…',
       LiveVoiceState.speaking => 'Spricht…',
       LiveVoiceState.error => 'Fehler',
