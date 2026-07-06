@@ -119,6 +119,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   @override
   void dispose() {
     if (_initialized) {
+      _settings.removeListener(_applyAccentColor);
       _persona.removeListener(_onPersonaChanged);
       _ttsPlaybackService.dispose();
       _settings.dispose(); _memory.dispose(); _persona.dispose();

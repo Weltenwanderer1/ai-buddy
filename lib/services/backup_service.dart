@@ -237,5 +237,11 @@ class BackupService {
         await personaEvolution!.importData(evo);
       }
     }
+    if (bundle['self_identity'] != null && selfIdentity != null) {
+      final si = bundle['self_identity'];
+      if (si is Map<String, dynamic>) {
+        await selfIdentity!.importData(si);
+      }
+    }
   }
 }

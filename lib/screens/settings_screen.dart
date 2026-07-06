@@ -460,11 +460,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
     try {
       final path = await backupService.importBackupWithPicker();
-      if (path != null) {
-        await backupService.importBackup(path);
-        if (mounted) {
-          _showSnack('Backup eingespielt ✅', context.buddy.success);
-        }
+      if (path != null && mounted) {
+        _showSnack('Backup eingespielt ✅', context.buddy.success);
       }
     } catch (e) {
       if (mounted) {

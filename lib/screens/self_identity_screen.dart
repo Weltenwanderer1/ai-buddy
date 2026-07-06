@@ -51,6 +51,7 @@ class _SelfIdentityScreenState extends State<SelfIdentityScreen> {
     await self.updatePurpose(_purposeCtl.text);
     await self.updateBehaviorRules(_rules);
     await self.updateOngoingGoals(_goals);
+    if (!mounted) return;
     setState(() => _isEditing = false);
     _showSnack('Selbstbild gespeichert ✓', AppColors.success);
   }

@@ -31,6 +31,7 @@ class _BuddyCapabilitiesScreenState extends State<BuddyCapabilitiesScreen> {
 
   Future<void> _save() async {
     await context.read<BuddyCapabilitiesService>().updateCapabilities(_ctl.text);
+    if (!mounted) return;
     setState(() => _dirty = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

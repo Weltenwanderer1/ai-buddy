@@ -394,6 +394,8 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
   }
 
   void _scrollToBottom() {
+    if (!_scrollController.hasClients) return;
+    if (_scrollController.position.isScrollingNotifier.value) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
@@ -567,6 +569,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                       ? () => _toggleSelection(index)
                       : null,
                     child: MessageBubble(
+                      key: ValueKey(message.id),
                       message: message,
                       isSelected: isSelected,
                       onToggleSelection: _isMultiSelectMode || _selectedIndices.isEmpty

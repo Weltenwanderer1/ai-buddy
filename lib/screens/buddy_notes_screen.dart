@@ -31,6 +31,7 @@ class _BuddyNotesScreenState extends State<BuddyNotesScreen> {
 
   Future<void> _save() async {
     await context.read<BuddyNotesService>().updateNotes(_ctl.text);
+    if (!mounted) return;
     setState(() => _dirty = false);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(

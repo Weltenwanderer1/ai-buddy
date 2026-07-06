@@ -136,6 +136,7 @@ class MessageBubble extends StatelessWidget {
                         fit: BoxFit.cover,
                         width: 200,
                         height: 200,
+                        cacheWidth: 400,
                         errorBuilder: (_, __, ___) => Container(
                           width: 200,
                           height: 100,
