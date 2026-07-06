@@ -53,13 +53,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Default model based on provider
-    _modelController.text = 'kimi-k2.6:cloud';
+    // Load existing model from config, or use provider default
+    final existingModel = widget.secureConfig.activeModel;
+    _modelController.text = existingModel.isNotEmpty ? existingModel : 'kimi-k2.6:cloud';
     _embeddingModelController.text = widget.secureConfig.embeddingModel;
     _buddyNameController.text = widget.secureConfig.buddyName;
     if (_buddyNameController.text == 'Buddy') {
       _buddyNameController.clear();
     }
+    // Load existing provider selection
+    _provider = widget.secureConfig.llmProvider;
     _themeMode = widget.settings['theme_mode'] as String? ?? 'system';
     _accentColor = widget.settings.accentColor;
   }
@@ -86,39 +89,45 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   }
 
   Future<void> _finish() async {
+    // Capture localization before any async gaps
+    final t = AppLocalizations.of(context);
+
     // Save language
     widget.settings.appLanguage = _selectedLang;
 
     // Save provider config
     if (_provider != 'skip') {
       await widget.secureConfig.setLlmProvider(_provider);
-      if (_apiKeyController.text.isNotEmpty) {
+      final apiKey = _apiKeyController.text.trim();
+      if (apiKey.isNotEmpty) {
         switch (_provider) {
           case 'ollama':
-            await widget.secureConfig.setOllamaApiKey(_apiKeyController.text);
+            await widget.secureConfig.setOllamaApiKey(apiKey);
           case 'openrouter':
-            await widget.secureConfig.setOpenRouterApiKey(_apiKeyController.text);
+            await widget.secureConfig.setOpenRouterApiKey(apiKey);
           case 'openai':
-            await widget.secureConfig.setOpenAIApiKey(_apiKeyController.text);
+            await widget.secureConfig.setOpenAIApiKey(apiKey);
           case 'anthropic':
-            await widget.secureConfig.setAnthropicApiKey(_apiKeyController.text);
+            await widget.secureConfig.setAnthropicApiKey(apiKey);
         }
       }
-      if (_modelController.text.isNotEmpty) {
+      final model = _modelController.text.trim();
+      if (model.isNotEmpty) {
         switch (_provider) {
           case 'ollama':
-            await widget.secureConfig.setOllamaModel(_modelController.text);
+            await widget.secureConfig.setOllamaModel(model);
           case 'openrouter':
-            await widget.secureConfig.setOpenRouterModel(_modelController.text);
+            await widget.secureConfig.setOpenRouterModel(model);
           case 'openai':
-            await widget.secureConfig.setOpenAIModel(_modelController.text);
+            await widget.secureConfig.setOpenAIModel(model);
           case 'anthropic':
-            await widget.secureConfig.setAnthropicModel(_modelController.text);
+            await widget.secureConfig.setAnthropicModel(model);
         }
       }
       // Embedding model (shared across providers — uses same provider's API)
-      if (_embeddingModelController.text.isNotEmpty) {
-        await widget.secureConfig.setEmbeddingModel(_embeddingModelController.text);
+      final embeddingModel = _embeddingModelController.text.trim();
+      if (embeddingModel.isNotEmpty) {
+        await widget.secureConfig.setEmbeddingModel(embeddingModel);
       }
     }
 
@@ -126,11 +135,16 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     final buddyName = _buddyNameController.text.trim();
     if (buddyName.isNotEmpty) {
       await widget.secureConfig.setBuddyName(buddyName);
-      // Save to persona so it's immediately available everywhere
-      widget.persona.save(
+      // Save to persona with localized defaults (t captured at top of method)
+      final traits = t.welcome_default_personality
+          .split(',')
+          .map((s) => s.trim())
+          .where((s) => s.isNotEmpty)
+          .toList();
+      await widget.persona.save(
         name: buddyName,
-        personality: const ['freundlich', 'neugierig', 'hilfsbereit'],
-        greeting: 'Hallo! Wie kann ich dir helfen?',
+        personality: traits,
+        greeting: t.welcome_default_greeting,
       );
     }
 
@@ -141,6 +155,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     // Mark onboarding complete
     widget.settings.onboardingComplete = true;
 
+    if (!mounted) return;
     widget.onComplete();
   }
 
@@ -149,6 +164,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
       _testing = true;
       _testResult = null;
     });
+    HttpClient? client;
     try {
       final baseUrl = switch (_provider) {
         'openrouter' => 'https://openrouter.ai/api',
@@ -158,20 +174,23 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         // unter /v1/models (mit /api würde /api/v1/models 404 liefern).
         _ => 'https://ollama.com',
       };
-      final apiKey = _apiKeyController.text;
+      final apiKey = _apiKeyController.text.trim();
       // Simple connectivity test: fetch models endpoint
       final url = Uri.parse('$baseUrl/v1/models');
-      final client = HttpClient();
+      client = HttpClient();
+      client.connectionTimeout = const Duration(seconds: 10);
       final req = await client.getUrl(url);
       if (apiKey.isNotEmpty) {
-        req.headers.set('Authorization', 'Bearer $apiKey');
         if (_provider == 'anthropic') {
           req.headers.set('x-api-key', apiKey);
           req.headers.set('anthropic-version', '2023-06-01');
+        } else {
+          req.headers.set('Authorization', 'Bearer $apiKey');
         }
       }
-      final res = await req.close();
-      client.close();
+      final res = await req.close().timeout(
+        const Duration(seconds: 15),
+      );
       if (!mounted) return;
       setState(() {
         _testing = false;
@@ -183,6 +202,8 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         _testing = false;
         _testResult = 'fail';
       });
+    } finally {
+      client?.close();
     }
   }
 
@@ -196,9 +217,9 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         AppLocalizations.delegate,
         ...GlobalMaterialLocalizations.delegates,
       ],
-      theme: AppTheme.light(AppColors.primary),
+      theme: AppTheme.dark(AppColors.primary),
       darkTheme: AppTheme.dark(AppColors.primary),
-      themeMode: ThemeMode.system,
+      themeMode: ThemeMode.dark,
       // Builder resolves `t` from the INNER context so tapping a language
       // updates the wizard text immediately (the outer app's locale is stale).
       home: Builder(builder: (innerContext) {
@@ -314,7 +335,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             }),
           ),
           _ProviderTile(
-            label: 'OpenAI',
+            label: t.welcome_provider_openai,
             icon: Icons.psychology,
             selected: _provider == 'openai',
             onTap: () => setState(() {
@@ -323,7 +344,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             }),
           ),
           _ProviderTile(
-            label: 'Anthropic',
+            label: t.welcome_provider_anthropic,
             icon: Icons.auto_awesome,
             selected: _provider == 'anthropic',
             onTap: () => setState(() {
@@ -821,6 +842,8 @@ class _TextField extends StatelessWidget {
           child: TextField(
             controller: controller,
             obscureText: obscure,
+            autocorrect: false,
+            enableSuggestions: !obscure,
             style: TextStyle(color: AppColors.textPrimary, fontSize: 15),
             decoration: InputDecoration(
               hintText: hint,

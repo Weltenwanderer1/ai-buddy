@@ -67,6 +67,8 @@ class AppLocalizations {
   String get welcome_model_hint => _t('welcome_model_hint');
   String get welcome_embedding_model => _t('welcome_embedding_model');
   String get welcome_embedding_model_hint => _t('welcome_embedding_model_hint');
+  String get welcome_default_personality => _t('welcome_default_personality');
+  String get welcome_default_greeting => _t('welcome_default_greeting');
   String get welcome_buddy_name => _t('welcome_buddy_name');
   String get welcome_buddy_name_hint => _t('welcome_buddy_name_hint');
   String get welcome_skip => _t('welcome_skip');
@@ -88,6 +90,8 @@ class AppLocalizations {
   String get welcome_testing => _t('welcome_testing');
   String get welcome_provider_ollama => _t('welcome_provider_ollama');
   String get welcome_provider_openrouter => _t('welcome_provider_openrouter');
+  String get welcome_provider_openai => _t('welcome_provider_openai');
+  String get welcome_provider_anthropic => _t('welcome_provider_anthropic');
   String get welcome_provider_skip => _t('welcome_provider_skip');
   String get welcome_done_title => _t('welcome_done_title');
   String get welcome_done_body => _t('welcome_done_body');
@@ -369,6 +373,8 @@ const translations = <String, Map<String, String>>{
     'welcome_model_hint': 'e.g. kimi-k2:cloud, llama3.3:70b',
     'welcome_embedding_model': 'Embedding Model',
     'welcome_embedding_model_hint': 'e.g. nomic-embed-text',
+    'welcome_default_personality': 'friendly, curious, helpful',
+    'welcome_default_greeting': 'Hello! How can I help you?',
     'welcome_buddy_name': 'Buddy Name',
     'welcome_buddy_name_hint': 'What should your AI call itself?',
     'welcome_skip': 'Skip for now',
@@ -390,6 +396,8 @@ const translations = <String, Map<String, String>>{
     'welcome_testing': 'Testing…',
     'welcome_provider_ollama': 'Ollama Cloud',
     'welcome_provider_openrouter': 'OpenRouter',
+    'welcome_provider_openai': 'OpenAI',
+    'welcome_provider_anthropic': 'Anthropic',
     'welcome_provider_skip': 'Configure later',
     'welcome_done_title': 'You\'re all set!',
     'welcome_done_body': 'AI-Buddy is ready to go. You can adjust everything in Settings later.',
@@ -634,6 +642,8 @@ const translations = <String, Map<String, String>>{
     'welcome_model_hint': 'z.B. kimi-k2:cloud, llama3.3:70b',
     'welcome_embedding_model': 'Embedding-Modell',
     'welcome_embedding_model_hint': 'z.B. nomic-embed-text',
+    'welcome_default_personality': 'freundlich, neugierig, hilfsbereit',
+    'welcome_default_greeting': 'Hallo! Wie kann ich dir helfen?',
     'welcome_buddy_name': 'Buddy-Name',
     'welcome_buddy_name_hint': 'Wie soll dein KI heissen?',
     'welcome_skip': 'Später konfigurieren',
@@ -655,6 +665,8 @@ const translations = <String, Map<String, String>>{
     'welcome_testing': 'Teste…',
     'welcome_provider_ollama': 'Ollama Cloud',
     'welcome_provider_openrouter': 'OpenRouter',
+    'welcome_provider_openai': 'OpenAI',
+    'welcome_provider_anthropic': 'Anthropic',
     'welcome_provider_skip': 'Später konfigurieren',
     'welcome_done_title': 'Alles bereit!',
     'welcome_done_body': 'AI-Buddy ist startklar. Alles kann später in den Einstellungen angepasst werden.',
@@ -899,6 +911,8 @@ const translations = <String, Map<String, String>>{
     'welcome_model_hint': 'ej. kimi-k2:cloud, llama3.3:70b',
     'welcome_embedding_model': 'Modelo de Embedding',
     'welcome_embedding_model_hint': 'ej. nomic-embed-text',
+    'welcome_default_personality': 'amable, curioso, servicial',
+    'welcome_default_greeting': '¡Hola! ¿Cómo puedo ayudarte?',
     'welcome_buddy_name': 'Nombre del Buddy',
     'welcome_buddy_name_hint': '¿Cómo debería llamarse tu IA?',
     'welcome_skip': 'Configurar más tarde',
@@ -920,6 +934,8 @@ const translations = <String, Map<String, String>>{
     'welcome_testing': 'Probando…',
     'welcome_provider_ollama': 'Ollama Cloud',
     'welcome_provider_openrouter': 'OpenRouter',
+    'welcome_provider_openai': 'OpenAI',
+    'welcome_provider_anthropic': 'Anthropic',
     'welcome_provider_skip': 'Configurar más tarde',
     'welcome_done_title': '¡Todo listo!',
     'welcome_done_body': 'AI-Buddy está listo. Puedes ajustar todo en Ajustes más tarde.',
@@ -1164,6 +1180,8 @@ const translations = <String, Map<String, String>>{
     'welcome_model_hint': '例: kimi-k2:cloud, llama3.3:70b',
     'welcome_embedding_model': 'エンベディングモデル',
     'welcome_embedding_model_hint': '例: nomic-embed-text',
+    'welcome_default_personality': '友好的, 好奇心旺盛, 役に立つ',
+    'welcome_default_greeting': 'こんにちは！何かお手伝いしましょうか？',
     'welcome_buddy_name': 'バディー名',
     'welcome_buddy_name_hint': 'AIの名前は何にしますか？',
     'welcome_skip': '後で設定',
@@ -1185,6 +1203,8 @@ const translations = <String, Map<String, String>>{
     'welcome_testing': 'テスト中…',
     'welcome_provider_ollama': 'Ollama Cloud',
     'welcome_provider_openrouter': 'OpenRouter',
+    'welcome_provider_openai': 'OpenAI',
+    'welcome_provider_anthropic': 'Anthropic',
     'welcome_provider_skip': '後で設定',
     'welcome_done_title': '準備完了！',
     'welcome_done_body': 'AI-Buddyの準備ができました。設定で後から調整できます。',
@@ -1429,6 +1449,8 @@ const translations = <String, Map<String, String>>{
     'welcome_model_hint': '例如 kimi-k2:cloud, llama3.3:70b',
     'welcome_embedding_model': '嵌入模型',
     'welcome_embedding_model_hint': '例如 nomic-embed-text',
+    'welcome_default_personality': '友好, 好奇, 乐于助人',
+    'welcome_default_greeting': '你好！我能帮你什么？',
     'welcome_buddy_name': '伙伴名称',
     'welcome_buddy_name_hint': '你的AI叫什么名字？',
     'welcome_skip': '稍后配置',
@@ -1450,6 +1472,8 @@ const translations = <String, Map<String, String>>{
     'welcome_testing': '测试中…',
     'welcome_provider_ollama': 'Ollama Cloud',
     'welcome_provider_openrouter': 'OpenRouter',
+    'welcome_provider_openai': 'OpenAI',
+    'welcome_provider_anthropic': 'Anthropic',
     'welcome_provider_skip': '稍后配置',
     'welcome_done_title': '一切就绪！',
     'welcome_done_body': 'AI-Buddy 已准备就绪。稍后可在设置中调整所有内容。',
