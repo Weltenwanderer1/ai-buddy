@@ -45,12 +45,11 @@ class _ProactivityTileState extends State<ProactivityTile> {
         onChanged: (v) async {
           if (v == null) return;
           await config.setProactivityLevel(v);
+          if (!context.mounted) return;
           setState(() {});
-          if (context.mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${t.config_proactivity}: ${_labels[v]}')),
-            );
-          }
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${t.config_proactivity}: ${_labels[v]}')),
+          );
         },
       ),
       onTap: () {}, // DropdownButton is the primary interaction here

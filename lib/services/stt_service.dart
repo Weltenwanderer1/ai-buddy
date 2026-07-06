@@ -53,8 +53,14 @@ class SttService {
           _isListening = false;
           // Das finale onResult kann kurz NACH 'done' eintreffen — kleine
           // Gnadenfrist, dann mit dem bisherigen Text abschließen.
+          // WICHTIG: Completer der AKTUELLEN Session einfangen — sonst
+          // würde der Timer eine inzwischen gestartete neue listenonce-
+          // Session (Live-Modus startet sofort neu) fälschlich beenden.
+          final session = _activeCompleter;
           Future.delayed(const Duration(milliseconds: 600), () {
-            _finishActive(_accumulated.isNotEmpty ? _accumulated : null);
+            if (session != null && identical(session, _activeCompleter)) {
+              _finishActive(_accumulated.isNotEmpty ? _accumulated : null);
+            }
           });
         }
       },

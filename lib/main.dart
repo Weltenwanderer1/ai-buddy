@@ -198,9 +198,17 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         _chatHistory.init(),
         _ttsPlaybackService.loadEnginePreference(_secureConfig),
         _personaEvolution.init().catchError((e) => debugPrint('Evolution init: $e')),
-        _notificationService.init().catchError((e) => debugPrint('Notify init: $e')),
+        // Notification VOR Proactive sequenzieren: beide registrieren den
+        // Tap-Handler am selben Plugin-Singleton, der letzte gewinnt. Der
+        // Proactive-Handler MUSS gewinnen (Tap-to-Reply/Action-Buttons) —
+        // bei paralleler Init wäre der Gewinner zufaellig.
+        _notificationService
+            .init()
+            .catchError((e) => debugPrint('Notify init: $e'))
+            .then((_) => _proactiveNotificationService
+                .init()
+                .catchError((e) => debugPrint('ProactiveNotify init: $e'))),
         _timerService.init().catchError((e) => debugPrint('Timer init: $e')),
-        _proactiveNotificationService.init().catchError((e) => debugPrint('ProactiveNotify init: $e')),
         _automationService.init().catchError((e) => debugPrint('Automation init: $e')),
         _offlineSttService.checkOfflineAvailability().catchError((e) { debugPrint('OfflineSTT init: $e'); return false; }),
         _toolLearning.init().catchError((e) { debugPrint('ToolLearning init: $e'); return null; }),

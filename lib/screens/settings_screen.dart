@@ -403,9 +403,12 @@ class _SettingsScreenState extends State<SettingsScreen>
         final result = await embedding.getEmbedding('Hallo Welt');
         if (!mounted) return;
         if (result != null) {
-          setState(() => _embeddingTestResult = 'Embedding OK — Vektor: ${result.length} Dimensionen');
+          setState(() => _embeddingTestResult =
+              t.config_embedding_ok.replaceFirst('{dim}', '${result.length}'));
         } else {
-          setState(() => _embeddingTestResult = t.config_embedding_error);
+          // Platzhalter füllen — sonst stünde wortwörtlich "Error: {msg}" da.
+          setState(() => _embeddingTestResult =
+              t.config_embedding_error.replaceFirst('{msg}', 'No embedding received'));
         }
       } finally {
         embedding.dispose();

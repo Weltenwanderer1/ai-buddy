@@ -4,11 +4,6 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
-// Firebase nur aktivieren, wenn google-services.json vorhanden ist —
-// ein frischer Clone ohne eigenes Firebase-Projekt muss trotzdem bauen.
-if (file("google-services.json").exists()) {
-    apply plugin: "com.google.gms.google-services"
-}
 
 def keystorePropertiesFile = rootProject.file("key.properties")
 def keystoreProperties = new Properties()

@@ -84,6 +84,7 @@ class _ModelDropdownState extends State<ModelDropdown> {
             if (value == '__custom__') {
               if (widget.onCustomModelTap != null) {
                 final custom = await widget.onCustomModelTap!(context, widget.controller.text);
+                if (!mounted) return;
                 if (custom != null && custom.isNotEmpty) {
                   setState(() => widget.controller.text = custom);
                 }

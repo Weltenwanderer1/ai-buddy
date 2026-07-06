@@ -112,6 +112,9 @@ class _MessageInputState extends State<MessageInput> {
       // Add placeholder while listening
       final currentText = _controller.text;
       final result = await stt.listenonce(localeId: locale);
+      // Diktat kann bis zu 120s laufen — Widget kann längst disposed sein,
+      // dann wäre der Controller-Zugriff ein Use-after-dispose.
+      if (!mounted) return;
       if (result != null && result.isNotEmpty) {
         final separator = currentText.isNotEmpty ? ' ' : '';
         _controller.text = currentText + separator + result;

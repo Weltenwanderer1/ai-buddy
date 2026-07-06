@@ -6,9 +6,14 @@ class ResultBox extends StatelessWidget {
 
   const ResultBox({super.key, required this.text});
 
+  /// Fehler-Präfixe aller unterstützten Sprachen (config_*_error/_fail) —
+  /// nur auf 'Fehler' zu prüfen färbte englische/japanische/chinesische
+  /// Fehlermeldungen grün als Erfolg.
+  static const _errorPrefixes = ['Fehler', 'Error', 'エラー', '错误'];
+
   @override
   Widget build(BuildContext context) {
-    final ok = !text.startsWith('Fehler');
+    final ok = !_errorPrefixes.any(text.startsWith);
     return Container(
       margin: const EdgeInsets.fromLTRB(0, 4, 0, 16),
       padding: const EdgeInsets.all(14),

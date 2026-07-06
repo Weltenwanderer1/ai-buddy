@@ -13,7 +13,7 @@ Built with Flutter. Works with the LLM provider of your choice (Ollama Cloud, Op
 - 🛠️ **45+ tools** — calendar (read/create/update/delete), contacts, SMS/WhatsApp/e-mail (IMAP read + send), phone calls, timers & reminders, navigation with offline maps (OpenStreetMap), weather, web search (DuckDuckGo, no API key), file sandbox, clipboard, app launcher, device settings, shopping list (Bring! integration), automation rules, and more
 - 🔔 **Proactive engine** — optional time/location/routine-based suggestions with feedback learning (adjustable, 0–3)
 - 🌍 **5 languages** — English (default), German, Spanish, Japanese, Mandarin; first-launch setup wizard, and the assistant replies in your chosen language
-- ☁️ **Backup** — local export/import; optional Firebase cloud backup (bring your own Firebase project)
+- ☁️ **Backup** — full local export/import (memory, chat, persona, settings)
 - 🔒 **Privacy-first** — all data (memory, chat, persona) stays on the device; API keys live in Android secure storage
 
 ## Download
@@ -41,7 +41,6 @@ The project builds out of the box — no secrets required. Optional integrations
 | Optional file | Purpose |
 |---|---|
 | `.env` (see `.env.example`) | Pre-seed API keys for development. Normally you just enter keys in **Settings → AI Model** inside the app. |
-| `android/app/google-services.json` | Enables Firebase cloud backup. Without it the app runs normally and cloud backup is simply disabled. |
 | `android/key.properties` | Your release signing key. Without it, release builds are signed with the debug key. |
 
 None of these files belong in git — they are covered by `.gitignore`.
@@ -78,7 +77,6 @@ GitHub Actions runs `flutter analyze` and the test suite on every push. A debug 
 - No telemetry, no analytics, no project-owned backend.
 - Conversations go directly from your device to the LLM provider **you** configure.
 - Memory, chat history, persona and notes are stored locally (app documents dir).
-- Optional Firebase backup writes to **your own** Firebase project, with secrets redacted.
 
 ## License
 
