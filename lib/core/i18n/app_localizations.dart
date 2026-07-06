@@ -65,6 +65,8 @@ class AppLocalizations {
   String get welcome_api_key_hint => _t('welcome_api_key_hint');
   String get welcome_model => _t('welcome_model');
   String get welcome_model_hint => _t('welcome_model_hint');
+  String get welcome_embedding_model => _t('welcome_embedding_model');
+  String get welcome_embedding_model_hint => _t('welcome_embedding_model_hint');
   String get welcome_buddy_name => _t('welcome_buddy_name');
   String get welcome_buddy_name_hint => _t('welcome_buddy_name_hint');
   String get welcome_skip => _t('welcome_skip');
@@ -365,6 +367,8 @@ const translations = <String, Map<String, String>>{
     'welcome_api_key_hint': 'Your API key (stored securely on device)',
     'welcome_model': 'Model',
     'welcome_model_hint': 'e.g. kimi-k2:cloud, llama3.3:70b',
+    'welcome_embedding_model': 'Embedding Model',
+    'welcome_embedding_model_hint': 'e.g. nomic-embed-text',
     'welcome_buddy_name': 'Buddy Name',
     'welcome_buddy_name_hint': 'What should your AI call itself?',
     'welcome_skip': 'Skip for now',
@@ -628,6 +632,8 @@ const translations = <String, Map<String, String>>{
     'welcome_api_key_hint': 'Dein API-Schlüssel (sicher auf dem Gerät gespeichert)',
     'welcome_model': 'Modell',
     'welcome_model_hint': 'z.B. kimi-k2:cloud, llama3.3:70b',
+    'welcome_embedding_model': 'Embedding-Modell',
+    'welcome_embedding_model_hint': 'z.B. nomic-embed-text',
     'welcome_buddy_name': 'Buddy-Name',
     'welcome_buddy_name_hint': 'Wie soll dein KI heissen?',
     'welcome_skip': 'Später konfigurieren',
@@ -891,6 +897,8 @@ const translations = <String, Map<String, String>>{
     'welcome_api_key_hint': 'Tu clave API (guardada de forma segura en el dispositivo)',
     'welcome_model': 'Modelo',
     'welcome_model_hint': 'ej. kimi-k2:cloud, llama3.3:70b',
+    'welcome_embedding_model': 'Modelo de Embedding',
+    'welcome_embedding_model_hint': 'ej. nomic-embed-text',
     'welcome_buddy_name': 'Nombre del Buddy',
     'welcome_buddy_name_hint': '¿Cómo debería llamarse tu IA?',
     'welcome_skip': 'Configurar más tarde',
@@ -1154,6 +1162,8 @@ const translations = <String, Map<String, String>>{
     'welcome_api_key_hint': 'APIキー（デバイスに安全に保存）',
     'welcome_model': 'モデル',
     'welcome_model_hint': '例: kimi-k2:cloud, llama3.3:70b',
+    'welcome_embedding_model': 'エンベディングモデル',
+    'welcome_embedding_model_hint': '例: nomic-embed-text',
     'welcome_buddy_name': 'バディー名',
     'welcome_buddy_name_hint': 'AIの名前は何にしますか？',
     'welcome_skip': '後で設定',
@@ -1417,6 +1427,8 @@ const translations = <String, Map<String, String>>{
     'welcome_api_key_hint': '你的API密钥（安全存储在设备上）',
     'welcome_model': '模型',
     'welcome_model_hint': '例如 kimi-k2:cloud, llama3.3:70b',
+    'welcome_embedding_model': '嵌入模型',
+    'welcome_embedding_model_hint': '例如 nomic-embed-text',
     'welcome_buddy_name': '伙伴名称',
     'welcome_buddy_name_hint': '你的AI叫什么名字？',
     'welcome_skip': '稍后配置',

@@ -4,6 +4,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import '../core/i18n/app_localizations.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
+import '../services/persona_service.dart';
 import '../services/secure_config_service.dart';
 import '../services/settings_service.dart';
 
@@ -12,12 +13,14 @@ import '../services/settings_service.dart';
 class WelcomeScreen extends StatefulWidget {
   final SettingsService settings;
   final SecureConfigService secureConfig;
+  final PersonaService persona;
   final VoidCallback onComplete;
 
   const WelcomeScreen({
     super.key,
     required this.settings,
     required this.secureConfig,
+    required this.persona,
     required this.onComplete,
   });
 
@@ -36,6 +39,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   String _provider = 'ollama'; // ollama | openrouter | openai | anthropic | skip
   final _apiKeyController = TextEditingController();
   final _modelController = TextEditingController();
+  final _embeddingModelController = TextEditingController();
   bool _testing = false;
   String? _testResult;
 
@@ -51,6 +55,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
     super.initState();
     // Default model based on provider
     _modelController.text = 'kimi-k2.6:cloud';
+    _embeddingModelController.text = widget.secureConfig.embeddingModel;
     _buddyNameController.text = widget.secureConfig.buddyName;
     if (_buddyNameController.text == 'Buddy') {
       _buddyNameController.clear();
@@ -63,6 +68,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   void dispose() {
     _apiKeyController.dispose();
     _modelController.dispose();
+    _embeddingModelController.dispose();
     _buddyNameController.dispose();
     super.dispose();
   }
@@ -110,11 +116,22 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             await widget.secureConfig.setAnthropicModel(_modelController.text);
         }
       }
+      // Embedding model (shared across providers — uses same provider's API)
+      if (_embeddingModelController.text.isNotEmpty) {
+        await widget.secureConfig.setEmbeddingModel(_embeddingModelController.text);
+      }
     }
 
-    // Buddy name
-    if (_buddyNameController.text.isNotEmpty) {
-      await widget.secureConfig.setBuddyName(_buddyNameController.text);
+    // Buddy name → secureConfig + persona
+    final buddyName = _buddyNameController.text.trim();
+    if (buddyName.isNotEmpty) {
+      await widget.secureConfig.setBuddyName(buddyName);
+      // Save to persona so it's immediately available everywhere
+      widget.persona.save(
+        name: buddyName,
+        personality: const ['freundlich', 'neugierig', 'hilfsbereit'],
+        greeting: 'Hallo! Wie kann ich dir helfen?',
+      );
     }
 
     // Theme
@@ -335,6 +352,13 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
               label: t.welcome_model,
               hint: t.welcome_model_hint,
               icon: Icons.model_training,
+            ),
+            const SizedBox(height: 16),
+            _TextField(
+              controller: _embeddingModelController,
+              label: t.welcome_embedding_model,
+              hint: t.welcome_embedding_model_hint,
+              icon: Icons.memory,
             ),
             const SizedBox(height: 16),
             // Test button

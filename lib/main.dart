@@ -190,7 +190,12 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       await Future.wait([
         _memory.init(),
         _persona.init().then((_) {
-          if (_persona.name.isEmpty) _persona.name = _secureConfig.buddyName;
+          // After init, _isComplete is true only if save() was called
+          // (either from settings persona editor or welcome screen).
+          // If not complete, apply buddyName from secureConfig as default.
+          if (!_persona.isComplete && _secureConfig.buddyName.isNotEmpty) {
+            _persona.name = _secureConfig.buddyName;
+          }
         }),
         _selfIdentity.init(),
         _buddyNotes.init(),
@@ -799,6 +804,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
                 : WelcomeScreen(
                     settings: settings,
                     secureConfig: _secureConfig,
+                    persona: _persona,
                     onComplete: () => setState(() {}),
                   ),
           );
