@@ -452,9 +452,9 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
           avAudioSessionMode: AVAudioSessionMode.defaultMode,
           androidAudioAttributes: AndroidAudioAttributes(
             contentType: AndroidAudioContentType.speech,
-            usage: AndroidAudioUsage.media,
+            usage: AndroidAudioUsage.assistant,
           ),
-          androidAudioFocusGainType: AndroidAudioFocusGainType.gain,
+          androidAudioFocusGainType: AndroidAudioFocusGainType.gainTransientMayDuck,
         ));
       }
       await session.setActive(true);
@@ -1163,67 +1163,68 @@ class _LiveStatusBar extends StatelessWidget {
               top: BorderSide(color: stateColor.withValues(alpha: 0.3)),
             ),
           ),
-          child: Row(
-            children: [
-              if (state == LiveVoiceState.listening)
-                _PulsingIcon(icon: Icons.mic_rounded, color: stateColor, size: 22)
-              else
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    color: stateColor.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    switch (state) {
-                      LiveVoiceState.thinking => Icons.psychology_rounded,
-                      LiveVoiceState.speaking => Icons.volume_up_rounded,
-                      LiveVoiceState.error => Icons.error_outline_rounded,
-                      _ => Icons.mic_none_rounded,
-                    },
-                    size: 18, color: stateColor,
-                  ),
-                ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+          child: state == LiveVoiceState.thinking
+              ? _buildThinkingBubble(context, stateColor)
+              : Row(
                   children: [
-                    Text(stateLabel, style: TextStyle(
-                      fontSize: 15, fontWeight: FontWeight.w700, color: stateColor)),
-                    if (liveVoice.lastTranscript != null &&
-                        (state == LiveVoiceState.thinking || state == LiveVoiceState.speaking))
-                      Text(
-                        '"${_trunc(liveVoice.lastTranscript!, 60)}"',
-                        style: TextStyle(
-                          fontSize: 12, fontStyle: FontStyle.italic,
-                          color: context.buddy.t2.withValues(alpha: 0.8)),
-                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                    if (state == LiveVoiceState.listening)
+                      _PulsingIcon(icon: Icons.mic_rounded, color: stateColor, size: 22)
+                    else
+                      Container(
+                        width: 36, height: 36,
+                        decoration: BoxDecoration(
+                          color: stateColor.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          switch (state) {
+                            LiveVoiceState.speaking => Icons.volume_up_rounded,
+                            LiveVoiceState.error => Icons.error_outline_rounded,
+                            _ => Icons.mic_none_rounded,
+                          },
+                          size: 18, color: stateColor,
+                        ),
                       ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(stateLabel, style: TextStyle(
+                            fontSize: 15, fontWeight: FontWeight.w700, color: stateColor)),
+                          if (liveVoice.lastTranscript != null &&
+                              (state == LiveVoiceState.speaking))
+                            Text(
+                              '"${_trunc(liveVoice.lastTranscript!, 60)}"',
+                              style: TextStyle(
+                                fontSize: 12, fontStyle: FontStyle.italic,
+                                color: context.buddy.t2.withValues(alpha: 0.8)),
+                              maxLines: 1, overflow: TextOverflow.ellipsis,
+                            ),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: onStop,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [AppColors.error.withValues(alpha: 0.3), AppColors.error.withValues(alpha: 0.15)],
+                          ),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(mainAxisSize: MainAxisSize.min, children: const [
+                          Icon(Icons.stop_rounded, size: 16, color: AppColors.error),
+                          SizedBox(width: 6),
+                          Text('Stop', style: TextStyle(
+                            color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 13)),
+                        ]),
+                      ),
+                    ),
                   ],
                 ),
-              ),
-              GestureDetector(
-                onTap: onStop,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [AppColors.error.withValues(alpha: 0.3), AppColors.error.withValues(alpha: 0.15)],
-                    ),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                    Icon(Icons.stop_rounded, size: 16, color: AppColors.error),
-                    SizedBox(width: 6),
-                    Text('Stop', style: TextStyle(
-                      color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 13)),
-                  ]),
-                ),
-              ),
-            ],
-          ),
         );
       },
     );
@@ -1231,6 +1232,30 @@ class _LiveStatusBar extends StatelessWidget {
 
   String _trunc(String s, int max) =>
       s.length > max ? '${s.substring(0, max)}...' : s;
+
+  /// Zentrierte Thinking-Bubble — gleiches Design wie [_ThinkingBar] im Standard-Chat.
+  Widget _buildThinkingBubble(BuildContext context, Color stateColor) {
+    final c = context.buddy;
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: c.aiBubble,
+          boxShadow: c.cardShadow,
+          border: Border.all(color: c.aiBubbleBorder),
+          borderRadius: BorderRadius.circular(18),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.psychology_rounded, size: 18, color: stateColor),
+            const SizedBox(width: 10),
+            const _AnimatedDots(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 // ─── Pulsing Icon ───
