@@ -15,7 +15,7 @@ class SecureConfigService {
   static const keyOpenRouterApiKey = 'OPENROUTER_API_KEY';
   static const keyOpenRouterModel = 'OPENROUTER_MODEL';
   static const keyOpenRouterFallbackModel = 'OPENROUTER_FALLBACK_MODEL';
-  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', 'openai', 'anthropic'
+  static const keyLlmProvider = 'LLM_PROVIDER';  // 'ollama', 'openrouter', 'openai', 'anthropic', 'opencode-go'
   static const keyTavilyApiKey = 'TAVILY_API_KEY';
 
   // OpenAI (direct API — OpenAI-compatible)
@@ -29,6 +29,12 @@ class SecureConfigService {
   static const keyAnthropicApiKey = 'ANTHROPIC_API_KEY';
   static const keyAnthropicModel = 'ANTHROPIC_MODEL';
   static const keyAnthropicFallbackModel = 'ANTHROPIC_FALLBACK_MODEL';
+
+  // OpenCode Go (OpenAI-compatible API)
+  static const keyOpenCodeGoBaseUrl = 'OPENCODE_GO_BASE_URL';
+  static const keyOpenCodeGoApiKey = 'OPENCODE_GO_API_KEY';
+  static const keyOpenCodeGoModel = 'OPENCODE_GO_MODEL';
+  static const keyOpenCodeGoFallbackModel = 'OPENCODE_GO_FALLBACK_MODEL';
 
   // Email (IMAP)
   static const keyImapServer = 'IMAP_SERVER';
@@ -76,6 +82,10 @@ class SecureConfigService {
       keyAnthropicApiKey,
       keyAnthropicModel,
       keyAnthropicFallbackModel,
+      keyOpenCodeGoBaseUrl,
+      keyOpenCodeGoApiKey,
+      keyOpenCodeGoModel,
+      keyOpenCodeGoFallbackModel,
       keyImapServer,
       keyImapPort,
       keyEmailAddress,
@@ -138,6 +148,7 @@ class SecureConfigService {
   bool get useLocalModel => llmProvider == 'local';
   bool get useOpenAI => llmProvider == 'openai';
   bool get useAnthropic => llmProvider == 'anthropic';
+  bool get useOpenCodeGo => llmProvider == 'opencode-go';
 
   // OpenAI getters
   String get openAIBaseUrl =>
@@ -159,12 +170,23 @@ class SecureConfigService {
   String get anthropicFallbackModel =>
       _cache[keyAnthropicFallbackModel] ?? _env(keyAnthropicFallbackModel) ?? 'claude-3-5-haiku-20241022';
 
+  // OpenCode Go getters
+  String get openCodeGoBaseUrl =>
+      _cache[keyOpenCodeGoBaseUrl] ?? _env(keyOpenCodeGoBaseUrl) ?? 'https://api.opencode.ai';
+  String get openCodeGoApiKey =>
+      _cache[keyOpenCodeGoApiKey] ?? _env(keyOpenCodeGoApiKey) ?? '';
+  String get openCodeGoModel =>
+      _cache[keyOpenCodeGoModel] ?? _env(keyOpenCodeGoModel) ?? 'glm-5.2';
+  String get openCodeGoFallbackModel =>
+      _cache[keyOpenCodeGoFallbackModel] ?? _env(keyOpenCodeGoFallbackModel) ?? 'mimo-v2.5-pro';
+
   /// Active config — resolves based on the selected LLM provider.
   String get activeBaseUrl {
     switch (llmProvider) {
       case 'openrouter': return openRouterBaseUrl;
       case 'openai': return openAIBaseUrl;
       case 'anthropic': return anthropicBaseUrl;
+      case 'opencode-go': return openCodeGoBaseUrl;
       default: return ollamaBaseUrl;
     }
   }
@@ -173,6 +195,7 @@ class SecureConfigService {
       case 'openrouter': return openRouterApiKey;
       case 'openai': return openAIApiKey;
       case 'anthropic': return anthropicApiKey;
+      case 'opencode-go': return openCodeGoApiKey;
       default: return ollamaApiKey;
     }
   }
@@ -181,6 +204,7 @@ class SecureConfigService {
       case 'openrouter': return openRouterModel;
       case 'openai': return openAIModel;
       case 'anthropic': return anthropicModel;
+      case 'opencode-go': return openCodeGoModel;
       default: return ollamaModel;
     }
   }
@@ -189,6 +213,7 @@ class SecureConfigService {
       case 'openrouter': return openRouterFallbackModel;
       case 'openai': return openAIFallbackModel;
       case 'anthropic': return anthropicFallbackModel;
+      case 'opencode-go': return openCodeGoFallbackModel;
       default: return ollamaFallbackModel;
     }
   }
@@ -329,6 +354,24 @@ class SecureConfigService {
     _cache[keyAnthropicFallbackModel] = value;
   }
 
+  // OpenCode Go setters
+  Future<void> setOpenCodeGoBaseUrl(String value) async {
+    await _storage.write(key: keyOpenCodeGoBaseUrl, value: value);
+    _cache[keyOpenCodeGoBaseUrl] = value;
+  }
+  Future<void> setOpenCodeGoApiKey(String value) async {
+    await _storage.write(key: keyOpenCodeGoApiKey, value: value);
+    _cache[keyOpenCodeGoApiKey] = value;
+  }
+  Future<void> setOpenCodeGoModel(String value) async {
+    await _storage.write(key: keyOpenCodeGoModel, value: value);
+    _cache[keyOpenCodeGoModel] = value;
+  }
+  Future<void> setOpenCodeGoFallbackModel(String value) async {
+    await _storage.write(key: keyOpenCodeGoFallbackModel, value: value);
+    _cache[keyOpenCodeGoFallbackModel] = value;
+  }
+
   Future<void> setTavilyApiKey(String value) async {
     await _storage.write(key: keyTavilyApiKey, value: value);
     _cache[keyTavilyApiKey] = value;
@@ -401,4 +444,5 @@ class SecureConfigService {
   bool get isOpenRouterConfigured => openRouterApiKey.isNotEmpty;
   bool get isOpenAIConfigured => openAIApiKey.isNotEmpty;
   bool get isAnthropicConfigured => anthropicApiKey.isNotEmpty;
+  bool get isOpenCodeGoConfigured => openCodeGoApiKey.isNotEmpty;
 }

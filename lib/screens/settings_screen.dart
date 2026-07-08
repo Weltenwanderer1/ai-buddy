@@ -67,6 +67,10 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _anthropicKeyController = TextEditingController();
   final _anthropicModelController = TextEditingController();
   final _anthropicFallbackController = TextEditingController();
+  // OpenCode Go controllers
+  final _openCodeGoKeyController = TextEditingController();
+  final _openCodeGoModelController = TextEditingController();
+  final _openCodeGoFallbackController = TextEditingController();
   // Buddy name controller
   final _buddyNameController = TextEditingController();
   // Email controllers
@@ -126,6 +130,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     {'id': 'claude-opus-4-20250514', 'name': 'Claude Opus 4 (leistungsstark)'},
     {'id': 'claude-3-5-haiku-20241022', 'name': 'Claude 3.5 Haiku (schnell)'},
   ];
+  List<Map<String, String>> get _openCodeGoModels => [
+    {'id': 'glm-5.2', 'name': 'GLM-5.2 (Standard)'},
+    {'id': 'mimo-v2.5-pro', 'name': 'Mimo V2.5 Pro (Fallback)'},
+  ];
 
   @override
   void initState() {
@@ -148,6 +156,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     _anthropicKeyController.text = config.anthropicApiKey;
     _anthropicModelController.text = config.anthropicModel;
     _anthropicFallbackController.text = config.anthropicFallbackModel;
+    _openCodeGoKeyController.text = config.openCodeGoApiKey;
+    _openCodeGoModelController.text = config.openCodeGoModel;
+    _openCodeGoFallbackController.text = config.openCodeGoFallbackModel;
     _buddyNameController.text = config.buddyName;
     _emailAddressController.text = config.emailAddress;
     _emailPasswordController.text = config.emailPassword;
@@ -179,6 +190,9 @@ class _SettingsScreenState extends State<SettingsScreen>
     _anthropicKeyController.dispose();
     _anthropicModelController.dispose();
     _anthropicFallbackController.dispose();
+    _openCodeGoKeyController.dispose();
+    _openCodeGoModelController.dispose();
+    _openCodeGoFallbackController.dispose();
     _buddyNameController.dispose();
     _emailAddressController.dispose();
     _emailPasswordController.dispose();
@@ -245,11 +259,15 @@ class _SettingsScreenState extends State<SettingsScreen>
     await config.setAnthropicApiKey(_anthropicKeyController.text.trim());
     await config.setAnthropicModel(_anthropicModelController.text.trim());
     await config.setAnthropicFallbackModel(_anthropicFallbackController.text.trim());
+    await config.setOpenCodeGoApiKey(_openCodeGoKeyController.text.trim());
+    await config.setOpenCodeGoModel(_openCodeGoModelController.text.trim());
+    await config.setOpenCodeGoFallbackModel(_openCodeGoFallbackController.text.trim());
 
     final providerLabel = switch (_llmProvider) {
       'openrouter' => 'OpenRouter',
       'openai' => 'OpenAI',
       'anthropic' => 'Anthropic',
+      'opencode-go' => 'OpenCode Go',
       _ => 'Ollama',
     };
     if (mounted) _showSnack('$providerLabel gespeichert ✅', context.buddy.success);
@@ -305,6 +323,7 @@ class _SettingsScreenState extends State<SettingsScreen>
         'openrouter' => 'OpenRouter',
         'openai' => 'OpenAI',
         'anthropic' => 'Anthropic',
+        'opencode-go' => 'OpenCode Go',
         _ => 'Ollama',
       };
 
@@ -339,21 +358,25 @@ class _SettingsScreenState extends State<SettingsScreen>
         final baseUrl = switch (_llmProvider) {
           'openrouter' => config.openRouterBaseUrl,
           'openai' => config.openAIBaseUrl,
+          'opencode-go' => config.openCodeGoBaseUrl,
           _ => config.ollamaBaseUrl,
         };
         final apiKey = switch (_llmProvider) {
           'openrouter' => (_openRouterKeyController.text.trim().isNotEmpty ? _openRouterKeyController.text.trim() : config.openRouterApiKey),
           'openai' => (_openAIKeyController.text.trim().isNotEmpty ? _openAIKeyController.text.trim() : config.openAIApiKey),
+          'opencode-go' => (_openCodeGoKeyController.text.trim().isNotEmpty ? _openCodeGoKeyController.text.trim() : config.openCodeGoApiKey),
           _ => (_ollamaKeyController.text.trim().isNotEmpty ? _ollamaKeyController.text.trim() : config.ollamaApiKey),
         };
         final model = switch (_llmProvider) {
           'openrouter' => (_openRouterModelController.text.trim().isNotEmpty ? _openRouterModelController.text.trim() : config.openRouterModel),
           'openai' => (_openAIModelController.text.trim().isNotEmpty ? _openAIModelController.text.trim() : config.openAIModel),
+          'opencode-go' => (_openCodeGoModelController.text.trim().isNotEmpty ? _openCodeGoModelController.text.trim() : config.openCodeGoModel),
           _ => (_ollamaModelController.text.trim().isNotEmpty ? _ollamaModelController.text.trim() : config.ollamaModel),
         };
         final fallback = switch (_llmProvider) {
           'openrouter' => (_openRouterFallbackController.text.trim().isNotEmpty ? _openRouterFallbackController.text.trim() : config.openRouterFallbackModel),
           'openai' => (_openAIFallbackController.text.trim().isNotEmpty ? _openAIFallbackController.text.trim() : config.openAIFallbackModel),
+          'opencode-go' => (_openCodeGoFallbackController.text.trim().isNotEmpty ? _openCodeGoFallbackController.text.trim() : config.openCodeGoFallbackModel),
           _ => (_ollamaFallbackController.text.trim().isNotEmpty ? _ollamaFallbackController.text.trim() : config.ollamaFallbackModel),
         };
         final cloud = OllamaCloudService(
@@ -983,6 +1006,12 @@ class _SettingsScreenState extends State<SettingsScreen>
                         _providerTab('Anthropic', 'anthropic'),
                       ],
                     ),
+                    Row(
+                      children: [
+                        _providerTab('OpenCode Go', 'opencode-go'),
+                        const Spacer(),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -1063,6 +1092,24 @@ class _SettingsScreenState extends State<SettingsScreen>
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
                   controller: _anthropicFallbackController,
+                ),
+              ] else if (_llmProvider == 'opencode-go') ...[
+                GlassTextField(
+                  label: t.config_api_key,
+                  icon: Icons.key_rounded,
+                  controller: _openCodeGoKeyController,
+                  obscure: true,
+                ),
+                _buildModelDropdown(
+                  label: t.config_model,
+                  icon: Icons.smart_toy_rounded,
+                  models: _openCodeGoModels,
+                  controller: _openCodeGoModelController,
+                ),
+                GlassTextField(
+                  label: t.config_fallback,
+                  icon: Icons.backup_rounded,
+                  controller: _openCodeGoFallbackController,
                 ),
               ],
 

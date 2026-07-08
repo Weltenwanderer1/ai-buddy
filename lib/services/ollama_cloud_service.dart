@@ -100,7 +100,8 @@ class OllamaCloudService extends ChangeNotifier {
     // (/api/chat) laufen, sonst 404/Format-Fehler.
     if (trimmed.contains('openrouter') ||
         trimmed.contains('openai') ||
-        trimmed.contains('anthropic')) {
+        trimmed.contains('anthropic') ||
+        trimmed.contains('opencode')) {
       return false;
     }
     return trimmed.endsWith('/api');
