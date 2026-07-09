@@ -59,7 +59,8 @@ class _LiveVoiceOverlayState extends State<LiveVoiceOverlay>
     final c = context.buddy;
     return switch (s) {
       LiveVoiceState.idle => c.accent,
-      LiveVoiceState.listening => c.success,
+      // Blue instead of green for the "listening" state (per design request).
+      LiveVoiceState.listening => const Color(0xFF4C8DFF),
       LiveVoiceState.thinking => const Color(0xFF64D2FF),
       LiveVoiceState.speaking => c.accent,
       LiveVoiceState.error => c.error,

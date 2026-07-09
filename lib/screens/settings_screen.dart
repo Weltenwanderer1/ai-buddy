@@ -733,6 +733,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Erscheinungsbild ──
           SliverToBoxAdapter(child: SectionHeader(t.settings_tab_appearance,
+            icon: Icons.palette_rounded,
             expanded: _secAppearance,
             onTap: () => setState(() => _secAppearance = !_secAppearance),
           )),
@@ -740,6 +741,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Buddy ──
           SliverToBoxAdapter(child: SectionHeader(t.settings_tab_buddy,
+            icon: Icons.smart_toy_rounded,
             expanded: _secBuddy,
             onTap: () => setState(() => _secBuddy = !_secBuddy),
           )),
@@ -787,6 +789,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Werkzeuge ──
           SliverToBoxAdapter(child: SectionHeader(t.settings_tab_tools,
+            icon: Icons.build_rounded,
             expanded: _secTools,
             onTap: () => setState(() => _secTools = !_secTools),
           )),
@@ -828,6 +831,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Konfiguration ──
           SliverToBoxAdapter(child: SectionHeader(t.settings_tab_config,
+            icon: Icons.tune_rounded,
             expanded: _secConfig,
             onTap: () => setState(() => _secConfig = !_secConfig),
           )),
@@ -1315,6 +1319,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Daten ──
           SliverToBoxAdapter(child: SectionHeader(t.settings_tab_data,
+            icon: Icons.folder_rounded,
             expanded: _secData,
             onTap: () => setState(() => _secData = !_secData),
           )),
@@ -1356,6 +1361,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Hintergrund-Tasks ──
           SliverToBoxAdapter(child: SectionHeader(t.bg_tasks_title,
+            icon: Icons.schedule_rounded,
             expanded: _secScheduler,
             onTap: () => setState(() => _secScheduler = !_secScheduler),
           )),
@@ -1363,6 +1369,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
           // ── Über ──
           SliverToBoxAdapter(child: SectionHeader(t.about_title,
+            icon: Icons.info_rounded,
             expanded: _secAbout,
             onTap: () => setState(() => _secAbout = !_secAbout),
           )),
