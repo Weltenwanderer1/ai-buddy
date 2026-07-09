@@ -28,6 +28,8 @@ class MainActivity : FlutterActivity() {
     private val offlineSttChannel = "com.aibuddy.app/offline_stt"
     private val settingsChannel = "com.aibuddy.app/settings"
     private val filesChannel = "com.aibuddy.app/files"
+    private val accessibilityChannel = "com.aibuddy.app/accessibility"
+    private val mediaChannel = "com.aibuddy.app/media"
     private var mediaRecorder: MediaRecorder? = null
     private var speechRecognizer: android.speech.SpeechRecognizer? = null
     private var sttResult: String? = null
@@ -249,9 +251,208 @@ class MainActivity : FlutterActivity() {
                     val mimeType = call.argument<String>("mimeType") ?: "*/*"
                     result.success(openFileWithMime(filePath, mimeType))
                 }
+                "hasAllFilesAccess" -> {
+                    result.success(hasAllFilesAccess())
+                }
+                "requestAllFilesAccess" -> {
+                    result.success(requestAllFilesAccess())
+                }
                 else -> result.notImplemented()
             }
         }
+
+        // Accessibility / cross-app automation channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, accessibilityChannel).setMethodCallHandler { call, result ->
+            val service = BuddyAccessibilityService.instance
+            when (call.method) {
+                "isEnabled" -> result.success(service != null)
+                "openSettings" -> {
+                    try {
+                        val intent = Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS)
+                        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        startActivity(intent)
+                        result.success(true)
+                    } catch (e: Exception) {
+                        Log.e("A11y", "openSettings error: $e")
+                        result.success(false)
+                    }
+                }
+                "readScreen" -> {
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.readScreen())
+                }
+                "currentPackage" -> {
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.currentPackage())
+                }
+                "tapText" -> {
+                    val text = call.argument<String>("text")?.trim().orEmpty()
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.tapByText(text))
+                }
+                "tapAt" -> {
+                    val x = call.argument<Int>("x") ?: 0
+                    val y = call.argument<Int>("y") ?: 0
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.tapAt(x, y))
+                }
+                "inputText" -> {
+                    val text = call.argument<String>("text").orEmpty()
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.inputText(text))
+                }
+                "scroll" -> {
+                    val forward = call.argument<Boolean>("forward") ?: true
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.scroll(forward))
+                }
+                "globalAction" -> {
+                    val action = call.argument<String>("action").orEmpty()
+                    if (service == null) {
+                        result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    } else {
+                        val ok = when (action) {
+                            "back" -> service.back()
+                            "home" -> service.home()
+                            "recents" -> service.recents()
+                            "notifications" -> service.notifications()
+                            else -> false
+                        }
+                        result.success(ok)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+
+        // Media / photo search channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, mediaChannel).setMethodCallHandler { call, result ->
+            when (call.method) {
+                "searchPhotos" -> {
+                    val query = call.argument<String>("query")?.trim().orEmpty()
+                    val limit = call.argument<Int>("limit") ?: 30
+                    val daysBack = call.argument<Int>("daysBack") ?: 0
+                    if (checkSelfPermission(mediaImagesPermission()) == PackageManager.PERMISSION_GRANTED) {
+                        result.success(searchPhotos(query, limit, daysBack))
+                    } else {
+                        result.error("PERMISSION_DENIED", "Media images permission not granted", null)
+                    }
+                }
+                else -> result.notImplemented()
+            }
+        }
+    }
+
+    // ── All-Files Access (broad filesystem) ──
+
+    private fun hasAllFilesAccess(): Boolean {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            android.os.Environment.isExternalStorageManager()
+        } else {
+            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    private fun requestAllFilesAccess(): Boolean {
+        return try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                val intent = Intent(
+                    android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                    android.net.Uri.parse("package:$packageName")
+                )
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                true
+            } else {
+                false
+            }
+        } catch (e: Exception) {
+            Log.e("Files", "requestAllFilesAccess error: $e")
+            // Fall back to the general all-files-access list.
+            try {
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                startActivity(intent)
+                true
+            } catch (e2: Exception) {
+                Log.e("Files", "requestAllFilesAccess fallback error: $e2")
+                false
+            }
+        }
+    }
+
+    // ── Photo Search (MediaStore) ──
+
+    private fun mediaImagesPermission(): String {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+    }
+
+    private fun searchPhotos(query: String, limit: Int, daysBack: Int): List<Map<String, Any>> {
+        val results = mutableListOf<Map<String, Any>>()
+        val projection = arrayOf(
+            android.provider.MediaStore.Images.Media._ID,
+            android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+            android.provider.MediaStore.Images.Media.DATA,
+            android.provider.MediaStore.Images.Media.DATE_TAKEN,
+            android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME
+        )
+        val selectionParts = mutableListOf<String>()
+        val args = mutableListOf<String>()
+        if (query.isNotEmpty()) {
+            selectionParts.add(
+                "(${android.provider.MediaStore.Images.Media.DISPLAY_NAME} LIKE ? OR " +
+                    "${android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME} LIKE ?)"
+            )
+            args.add("%$query%")
+            args.add("%$query%")
+        }
+        if (daysBack > 0) {
+            val since = System.currentTimeMillis() - daysBack.toLong() * 24L * 60L * 60L * 1000L
+            selectionParts.add("${android.provider.MediaStore.Images.Media.DATE_TAKEN} >= ?")
+            args.add(since.toString())
+        }
+        val selection = if (selectionParts.isEmpty()) null else selectionParts.joinToString(" AND ")
+        val sortOrder = "${android.provider.MediaStore.Images.Media.DATE_TAKEN} DESC"
+
+        try {
+            contentResolver.query(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                selection,
+                if (args.isEmpty()) null else args.toTypedArray(),
+                sortOrder
+            )?.use { cursor ->
+                val idCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media._ID)
+                val nameCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DISPLAY_NAME)
+                val dataCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATA)
+                val dateCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.DATE_TAKEN)
+                val bucketCol = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Images.Media.BUCKET_DISPLAY_NAME)
+                var count = 0
+                while (cursor.moveToNext() && count < limit) {
+                    val id = cursor.getLong(idCol)
+                    val uri = android.content.ContentUris.withAppendedId(
+                        android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI, id
+                    )
+                    results.add(
+                        mapOf(
+                            "name" to (cursor.getString(nameCol) ?: ""),
+                            "path" to (cursor.getString(dataCol) ?: ""),
+                            "uri" to uri.toString(),
+                            "dateTaken" to cursor.getLong(dateCol),
+                            "album" to (cursor.getString(bucketCol) ?: "")
+                        )
+                    )
+                    count++
+                }
+            }
+        } catch (e: Exception) {
+            Log.e("PhotoSearch", "searchPhotos error: $e")
+        }
+        return results
     }
 
     private fun searchContacts(query: String, limit: Int): List<Map<String, Any>> {

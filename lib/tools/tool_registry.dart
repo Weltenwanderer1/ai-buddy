@@ -60,6 +60,10 @@ import 'open_file_tool.dart';
 import 'manage_password_tool.dart';
 import 'check_update_tool.dart';
 import 'manage_apps_tool.dart';
+import 'control_screen_tool.dart';
+import 'set_alarm_tool.dart';
+import 'search_photos_tool.dart';
+import 'storage_access_tool.dart';
 
 class ToolRegistry {
   final Map<String, ToolInterface> _tools = {};
@@ -211,6 +215,12 @@ class ToolRegistry {
     r.register(ManagePasswordTool());
     r.register(CheckUpdateTool());
     r.register(ManageAppsTool());
+    // Deep device integration: operate other apps, real alarms, photo search,
+    // full-storage access.
+    r.register(ControlScreenTool());
+    r.register(SetAlarmTool());
+    r.register(SearchPhotosTool());
+    r.register(StorageAccessTool());
     return r;
   }
 }

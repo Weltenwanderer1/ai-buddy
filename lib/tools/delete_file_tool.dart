@@ -42,7 +42,7 @@ class DeleteFileTool implements ToolInterface {
 
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
-      final fullPath = resolveSandboxPath(root, subPath);
+      final fullPath = resolveFsPath(root, subPath);
       if (fullPath == null) {
         return ToolResult(
           toolName: definition.name,

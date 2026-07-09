@@ -49,12 +49,12 @@ class RenameFileTool implements ToolInterface {
 
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
-      final oldPath = resolveSandboxPath(root, subPath);
+      final oldPath = resolveFsPath(root, subPath);
 
       // Determine new path: if newName contains /, treat as full relative path
       String? newPath;
       if (newName.contains('/')) {
-        newPath = resolveSandboxPath(root, newName);
+        newPath = resolveFsPath(root, newName);
       } else if (oldPath != null && newName != '..') {
         final parent = File(oldPath).parent.path;
         newPath = '$parent/$newName';
