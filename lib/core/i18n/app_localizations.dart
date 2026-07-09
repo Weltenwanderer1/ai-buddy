@@ -279,6 +279,8 @@ class AppLocalizations {
   String get chat_voice_thinking => _t('chat_voice_thinking');
   String get chat_voice_speaking => _t('chat_voice_speaking');
   String get chat_voice_error => _t('chat_voice_error');
+  String get chat_voice_live_badge => _t('chat_voice_live_badge');
+  String get chat_voice_hint => _t('chat_voice_hint');
   String get chat_stop => _t('chat_stop');
 
   // ─── Time ───
@@ -581,6 +583,8 @@ const translations = <String, Map<String, String>>{
     'chat_from_gallery': 'From Gallery',
     'chat_osm_navigation': 'OSM Navigation',
     'chat_voice_ready': 'Ready',
+    'chat_voice_live_badge': 'LIVE',
+    'chat_voice_hint': 'Just start talking — I\'m listening live.',
     'chat_voice_listening': 'I\'m listening...',
     'chat_voice_thinking': 'Thinking...',
     'chat_voice_speaking': 'Speaking...',
@@ -850,6 +854,8 @@ const translations = <String, Map<String, String>>{
     'chat_from_gallery': 'Aus Galerie',
     'chat_osm_navigation': 'OSM Navigation',
     'chat_voice_ready': 'Bereit',
+    'chat_voice_live_badge': 'LIVE',
+    'chat_voice_hint': 'Sprich einfach los — ich höre live zu.',
     'chat_voice_listening': 'Ich höre zu...',
     'chat_voice_thinking': 'Denkt nach...',
     'chat_voice_speaking': 'Spricht...',
@@ -1119,6 +1125,8 @@ const translations = <String, Map<String, String>>{
     'chat_from_gallery': 'De la galería',
     'chat_osm_navigation': 'Navegación OSM',
     'chat_voice_ready': 'Listo',
+    'chat_voice_live_badge': 'EN VIVO',
+    'chat_voice_hint': 'Empieza a hablar — te escucho en vivo.',
     'chat_voice_listening': 'Escuchando...',
     'chat_voice_thinking': 'Pensando...',
     'chat_voice_speaking': 'Hablando...',
@@ -1388,6 +1396,8 @@ const translations = <String, Map<String, String>>{
     'chat_from_gallery': 'ギャラリーから',
     'chat_osm_navigation': 'OSMナビゲーション',
     'chat_voice_ready': '準備完了',
+    'chat_voice_live_badge': 'ライブ',
+    'chat_voice_hint': '話しかけてください — ライブで聞いています。',
     'chat_voice_listening': '聞いています...',
     'chat_voice_thinking': '考え中...',
     'chat_voice_speaking': '話しています...',
@@ -1657,6 +1667,8 @@ const translations = <String, Map<String, String>>{
     'chat_from_gallery': '从相册',
     'chat_osm_navigation': 'OSM导航',
     'chat_voice_ready': '就绪',
+    'chat_voice_live_badge': '实时',
+    'chat_voice_hint': '直接说话吧 — 我在实时聆听。',
     'chat_voice_listening': '正在听...',
     'chat_voice_thinking': '思考中...',
     'chat_voice_speaking': '说话中...',

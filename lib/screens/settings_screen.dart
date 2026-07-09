@@ -30,9 +30,8 @@ import '../tools/tool_registry.dart';
 import '../tools/read_email_tool.dart';
 import '../widgets/settings/model_dropdown.dart';
 import '../widgets/settings/section_header.dart';
-import '../widgets/settings/glass_card.dart';
 import '../widgets/settings/expandable_section.dart';
-import '../widgets/settings/list_tile.dart';
+import '../widgets/settings/settings_button.dart';
 import '../widgets/settings/glass_text_field.dart';
 import '../widgets/settings/gradient_button.dart';
 import '../widgets/settings/outline_button.dart';
@@ -744,8 +743,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _secBuddy,
             onTap: () => setState(() => _secBuddy = !_secBuddy),
           )),
-          if (_secBuddy) SliverToBoxAdapter(child: GlassCard(children: [
-            SettingsListTile(
+          if (_secBuddy) SliverToBoxAdapter(child: Column(children: [
+            SettingsButton(
               icon: Icons.face_5_rounded,
               title: t.buddy_persona_edit,
               subtitle: persona.name.isEmpty ? 'Standard' : persona.name,
@@ -755,8 +754,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const PersonaEditorScreen()),
               ),
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.self_improvement_rounded,
               title: t.buddy_self_identity,
               subtitle: t.buddy_persona_desc,
@@ -766,8 +764,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const SelfIdentityScreen()),
               ),
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.psychology_rounded,
               title: t.buddy_evolution,
               subtitle: '${evolution.learnedTraits.length} ${t.buddy_evolution_traits}',
@@ -775,8 +772,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               trailing: SettingsBadge('${evolution.learnedTraits.length}'),
               onTap: _showKIEntwicklung,
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.memory_rounded,
               title: t.buddy_memories,
               subtitle: t.memory_core_long_short,
@@ -786,7 +782,6 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const MemoryBrowserScreen()),
               ),
             ),
-            SettingsDivider(),
             ProactivityTile(),
           ])),
 
@@ -795,8 +790,8 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _secTools,
             onTap: () => setState(() => _secTools = !_secTools),
           )),
-          if (_secTools) SliverToBoxAdapter(child: GlassCard(children: [
-            SettingsListTile(
+          if (_secTools) SliverToBoxAdapter(child: Column(children: [
+            SettingsButton(
               icon: Icons.map_rounded,
               title: t.buddy_offline_maps,
               subtitle: t.buddy_offline_maps_desc,
@@ -804,13 +799,12 @@ class _SettingsScreenState extends State<SettingsScreen>
               trailing: FutureBuilder<bool>(
                 future: TileDownloadService.hasOfflineTiles(),
                 builder: (_, snap) => snap.hasData && snap.data == true
-                  ? Icon(Icons.check_circle, color: context.buddy.success, size: 20)
-                  : Icon(Icons.download_for_offline, color: context.buddy.t3, size: 20),
+                  ? Icon(Icons.check_circle, color: context.buddy.success, size: 22)
+                  : Icon(Icons.download_for_offline, color: context.buddy.t3, size: 22),
               ),
               onTap: () => showDialog(context: context, builder: (_) => const OfflineMapDialog()),
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.notes_rounded,
               title: t.buddy_notes,
               subtitle: t.tools_desc,
@@ -820,8 +814,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
               ),
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.auto_fix_high_rounded,
               title: t.buddy_capabilities,
               subtitle: t.buddy_capabilities_desc,
@@ -1326,37 +1319,32 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () => setState(() => _secData = !_secData),
           )),
           if (_secData) ...[
-          SliverToBoxAdapter(child: GlassCard(children: [
-            SettingsListTile(
+          SliverToBoxAdapter(child: Column(children: [
+            SettingsButton(
               icon: Icons.backup_outlined,
               title: t.data_backup_create,
               color: context.buddy.success,
               onTap: _createBackup,
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.restore_outlined,
               title: t.common_restore,
               color: context.buddy.accent,
               onTap: _restoreBackup,
             ),
-            SettingsDivider(),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.delete_forever_outlined,
               title: t.data_chat_delete,
               color: context.buddy.error,
               onTap: _clearChatHistory,
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.memory_outlined,
               title: t.data_memories_delete,
               color: context.buddy.error,
               onTap: _clearMemories,
             ),
-            SettingsDivider(),
-            SettingsListTile(
+            SettingsButton(
               icon: Icons.restart_alt_rounded,
               title: t.data_reset,
               subtitle: t.data_reset_desc,
@@ -1378,10 +1366,10 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _secAbout,
             onTap: () => setState(() => _secAbout = !_secAbout),
           )),
-          if (_secAbout) SliverToBoxAdapter(child: GlassCard(children: [
-            FutureBuilder<PackageInfo>(
+          if (_secAbout) SliverToBoxAdapter(
+            child: FutureBuilder<PackageInfo>(
               future: PackageInfo.fromPlatform(),
-              builder: (context, snap) => SettingsListTile(
+              builder: (context, snap) => SettingsButton(
                 icon: Icons.favorite_rounded,
                 title: 'AI-Buddy',
                 // Echte Laufzeit-Version aus dem Build — die Konstante in
@@ -1390,10 +1378,11 @@ class _SettingsScreenState extends State<SettingsScreen>
                     ? 'Version ${snap.data!.version}+${snap.data!.buildNumber}'
                     : 'Version $appVersion',
                 color: context.buddy.accent,
+                trailing: const SizedBox.shrink(),
                 onTap: () {},
               ),
             ),
-          ])),
+          ),
           const SliverToBoxAdapter(child: SizedBox(height: 40)),
           // Bottom SafeArea padding
           SliverToBoxAdapter(
