@@ -10,10 +10,12 @@ class ListFilesTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'list_files',
-    description: 'Listet Dateien und Ordner im angegebenen Pfad auf.',
+    description:
+        'Listet Dateien und Ordner im angegebenen Pfad auf. Pfad relativ zum '
+        'Buddy-Ordner ODER absolut (z.B. /storage/emulated/0/Download) wenn Dateizugriff erlaubt ist.',
     parametersSchema: {
       'type': 'object',
-      'properties': {'path': {'type': 'string', 'description': 'Pfad (leer = Stammverzeichnis)'}},
+      'properties': {'path': {'type': 'string', 'description': 'Relativer oder absoluter Pfad (leer = Stammverzeichnis)'}},
       'required': [],
     },
   );
@@ -26,7 +28,7 @@ class ListFilesTool implements ToolInterface {
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
       final subPath = (parameters['path'] as String?) ?? '';
-      final fullPath = subPath.isEmpty ? root : resolveSandboxPath(root, subPath);
+      final fullPath = subPath.isEmpty ? root : resolveFsPath(root, subPath);
       if (fullPath == null) {
         return ToolResult(toolName: definition.name, parameters: parameters, result: 'Ungültiger Pfad: $subPath', isError: true, displayText: 'Ungültiger Pfad');
       }

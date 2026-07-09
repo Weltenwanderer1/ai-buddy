@@ -46,3 +46,7 @@ export 'delete_calendar_event_tool.dart';
 export 'record_voice_memo_tool.dart';
 export 'automation_rule_tool.dart';
 export 'offline_stt_tool.dart';
+export 'control_screen_tool.dart';
+export 'set_alarm_tool.dart';
+export 'search_photos_tool.dart';
+export 'storage_access_tool.dart';

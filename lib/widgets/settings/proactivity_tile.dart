@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/i18n/app_localizations.dart';
 import '../../core/theme/buddy_colors.dart';
 import '../../services/secure_config_service.dart';
-import 'list_tile.dart';
+import 'settings_button.dart';
 
 class ProactivityTile extends StatefulWidget {
   const ProactivityTile({super.key});
@@ -27,7 +27,7 @@ class _ProactivityTileState extends State<ProactivityTile> {
   Widget build(BuildContext context) {
     t = AppLocalizations.of(context);
     final config = context.read<SecureConfigService>();
-    return SettingsListTile(
+    return SettingsButton(
       icon: Icons.notifications_active_rounded,
       title: t.config_proactivity,
       subtitle: '${_labels[config.proactivityLevel]} · ${_hints[config.proactivityLevel]}',

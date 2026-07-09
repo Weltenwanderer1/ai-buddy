@@ -38,6 +38,7 @@ import '../services/timer_service.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/buddy_colors.dart';
 import '../widgets/active_timer_bar.dart';
+import '../widgets/live_voice_overlay.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -581,15 +582,16 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
               ),
             ),
 
-            // ─── Header (top overlay) ───
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: _isMultiSelectMode
-                ? _buildMultiSelectHeader()
-                : _buildHeader(persona, isLiveActive),
-            ),
+            // ─── Header (top overlay) — hidden during immersive live mode ───
+            if (!isLiveActive)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: _isMultiSelectMode
+                  ? _buildMultiSelectHeader()
+                  : _buildHeader(persona, isLiveActive),
+              ),
 
             // ─── Bottom bar (transparent overlay) ───
             Positioned(
@@ -601,18 +603,12 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // ─── Live Status Bar ───
-                    if (isLiveActive) _LiveStatusBar(
-                      liveVoice: _liveVoice!,
-                      onStop: _toggleLiveVoice,
-                    ),
-
                     // ─── Thinking Indicator ───
-                    if (showThinking)
+                    if (showThinking && !isLiveActive)
                       const _ThinkingBar(),
 
                     // ─── Streaming Bubble ───
-                    if (showStreaming)
+                    if (showStreaming && !isLiveActive)
                       _StreamingBubble(text: _streamingText),
 
                     // ─── Timer Overlay ───
@@ -653,21 +649,37 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                         ),
                       ),
 
-                    MessageInput(
-                      onSend: _sendMessage,
-                      onMenuTap: _showAttachmentMenu,
-                      isSending: _isSending,
-                      isLiveModeActive: isLiveActive,
-                      onToggleLiveMode: _toggleLiveVoice,
-                      liveVoiceState: liveState,
-                      sttService: _sttService,
-                      useEarpiece: _useEarpiece,
-                      onToggleEarpiece: _toggleEarpiece,
-                    ),
+                    // Input hidden during immersive live mode (overlay takes over).
+                    if (!isLiveActive)
+                      MessageInput(
+                        onSend: _sendMessage,
+                        onMenuTap: _showAttachmentMenu,
+                        isSending: _isSending,
+                        isLiveModeActive: isLiveActive,
+                        onToggleLiveMode: _toggleLiveVoice,
+                        liveVoiceState: liveState,
+                        sttService: _sttService,
+                        useEarpiece: _useEarpiece,
+                        onToggleEarpiece: _toggleEarpiece,
+                      ),
                   ],
                 ),
               ),
             ),
+
+            // ─── Immersive Live-Voice Overlay (top-most) ───
+            if (isLiveActive && _liveVoice != null)
+              Positioned.fill(
+                child: LiveVoiceOverlay(
+                  liveVoice: _liveVoice!,
+                  buddyName: persona.name.isNotEmpty
+                      ? persona.name
+                      : context.read<SecureConfigService>().buddyName,
+                  useEarpiece: _useEarpiece,
+                  onStop: _toggleLiveVoice,
+                  onToggleEarpiece: _toggleEarpiece,
+                ),
+              ),
           ],
         ),
     ),
@@ -1102,202 +1114,6 @@ class _StreamingBubble extends StatelessWidget {
             height: 1.4,
           ),
         ),
-      ),
-    );
-  }
-}
-
-// ─── Live Status Bar ───
-
-class _LiveStatusBar extends StatelessWidget {
-  final LiveVoiceService liveVoice;
-  final VoidCallback onStop;
-
-  const _LiveStatusBar({required this.liveVoice, required this.onStop});
-
-  @override
-  Widget build(BuildContext context) {
-    final t = AppLocalizations.of(context);
-    return ListenableBuilder(
-      listenable: liveVoice,
-      builder: (context, _) {
-        final state = liveVoice.state;
-        final stateLabel = switch (state) {
-          LiveVoiceState.idle => 'Bereit',
-          LiveVoiceState.listening => t.chat_voice_listening,
-          LiveVoiceState.thinking => 'Denkt nach...',
-          LiveVoiceState.speaking => 'Spricht...',
-          LiveVoiceState.error => 'Fehler',
-        };
-        final stateColor = switch (state) {
-          LiveVoiceState.idle => context.buddy.t3,
-          LiveVoiceState.listening => AppColors.success,
-          LiveVoiceState.thinking => AppColors.secondary,
-          LiveVoiceState.speaking => AppColors.primary,
-          LiveVoiceState.error => AppColors.error,
-        };
-        final gradient = switch (state) {
-          LiveVoiceState.listening => LinearGradient(
-            colors: [AppColors.success.withValues(alpha: 0.2), AppColors.success.withValues(alpha: 0.05)],
-          ),
-          LiveVoiceState.thinking => LinearGradient(
-            colors: [AppColors.secondary.withValues(alpha: 0.2), AppColors.secondary.withValues(alpha: 0.05)],
-          ),
-          LiveVoiceState.speaking => LinearGradient(
-            colors: [AppColors.primary.withValues(alpha: 0.2), AppColors.primary.withValues(alpha: 0.05)],
-          ),
-          LiveVoiceState.error => LinearGradient(
-            colors: [AppColors.error.withValues(alpha: 0.2), AppColors.error.withValues(alpha: 0.05)],
-          ),
-          _ => null,
-        };
-
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 400),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-          decoration: BoxDecoration(
-            gradient: gradient,
-            color: gradient == null ? context.buddy.elev.withValues(alpha: 0.5) : null,
-            border: Border(
-              top: BorderSide(color: stateColor.withValues(alpha: 0.3)),
-            ),
-          ),
-          child: state == LiveVoiceState.thinking
-              ? _buildThinkingBubble(context, stateColor)
-              : Row(
-                  children: [
-                    if (state == LiveVoiceState.listening)
-                      _PulsingIcon(icon: Icons.mic_rounded, color: stateColor, size: 22)
-                    else
-                      Container(
-                        width: 36, height: 36,
-                        decoration: BoxDecoration(
-                          color: stateColor.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          switch (state) {
-                            LiveVoiceState.speaking => Icons.volume_up_rounded,
-                            LiveVoiceState.error => Icons.error_outline_rounded,
-                            _ => Icons.mic_none_rounded,
-                          },
-                          size: 18, color: stateColor,
-                        ),
-                      ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(stateLabel, style: TextStyle(
-                            fontSize: 15, fontWeight: FontWeight.w700, color: stateColor)),
-                          if (liveVoice.lastTranscript != null &&
-                              (state == LiveVoiceState.speaking))
-                            Text(
-                              '"${_trunc(liveVoice.lastTranscript!, 60)}"',
-                              style: TextStyle(
-                                fontSize: 12, fontStyle: FontStyle.italic,
-                                color: context.buddy.t2.withValues(alpha: 0.8)),
-                              maxLines: 1, overflow: TextOverflow.ellipsis,
-                            ),
-                        ],
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: onStop,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [AppColors.error.withValues(alpha: 0.3), AppColors.error.withValues(alpha: 0.15)],
-                          ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Row(mainAxisSize: MainAxisSize.min, children: const [
-                          Icon(Icons.stop_rounded, size: 16, color: AppColors.error),
-                          SizedBox(width: 6),
-                          Text('Stop', style: TextStyle(
-                            color: AppColors.error, fontWeight: FontWeight.w700, fontSize: 13)),
-                        ]),
-                      ),
-                    ),
-                  ],
-                ),
-        );
-      },
-    );
-  }
-
-  String _trunc(String s, int max) =>
-      s.length > max ? '${s.substring(0, max)}...' : s;
-
-  /// Zentrierte Thinking-Bubble — gleiches Design wie [_ThinkingBar] im Standard-Chat.
-  Widget _buildThinkingBubble(BuildContext context, Color stateColor) {
-    final c = context.buddy;
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: c.aiBubble,
-          boxShadow: c.cardShadow,
-          border: Border.all(color: c.aiBubbleBorder),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.psychology_rounded, size: 18, color: stateColor),
-            const SizedBox(width: 10),
-            const _AnimatedDots(),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Pulsing Icon ───
-
-class _PulsingIcon extends StatefulWidget {
-  final IconData icon; final Color color; final double size;
-  const _PulsingIcon({required this.icon, required this.color, required this.size});
-
-  @override
-  State<_PulsingIcon> createState() => _PulsingIconState();
-}
-
-class _PulsingIconState extends State<_PulsingIcon> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 1200),
-    )..repeat(reverse: true);
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: Tween(begin: 0.75, end: 1.15).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-      ),
-      child: Container(
-        width: 36, height: 36,
-        decoration: BoxDecoration(
-          color: widget.color.withValues(alpha: 0.15),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(widget.icon, size: widget.size, color: widget.color),
       ),
     );
   }

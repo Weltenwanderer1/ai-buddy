@@ -10,10 +10,13 @@ class ReadFileTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'read_file',
-    description: 'Liest den Inhalt einer Textdatei (max 5000 Zeichen).',
+    description:
+        'Liest den Inhalt einer Textdatei (max 5000 Zeichen). '
+        'Pfad relativ zum Buddy-Ordner ODER absolut (z.B. /storage/emulated/0/Download/notiz.txt) '
+        'wenn Dateizugriff erlaubt ist.',
     parametersSchema: {
       'type': 'object',
-      'properties': {'path': {'type': 'string', 'description': 'Relativer Pfad zur Datei'}},
+      'properties': {'path': {'type': 'string', 'description': 'Relativer oder absoluter Pfad zur Datei'}},
       'required': ['path'],
     },
   );
@@ -26,7 +29,7 @@ class ReadFileTool implements ToolInterface {
     try {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
       final subPath = parameters['path'] as String? ?? '';
-      final fullPath = resolveSandboxPath(root, subPath);
+      final fullPath = resolveFsPath(root, subPath);
       if (fullPath == null) {
         return ToolResult(toolName: definition.name, parameters: parameters, result: 'Ungültiger Pfad: $subPath', isError: true, displayText: 'Ungültiger Pfad');
       }

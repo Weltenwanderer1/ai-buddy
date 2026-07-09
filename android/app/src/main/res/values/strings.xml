@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">Allows AI-Buddy to read the current screen and operate other apps on your behalf (tap, type, scroll, navigate) when you ask it to. All actions run on-device; nothing is sent anywhere.</string>
+</resources>

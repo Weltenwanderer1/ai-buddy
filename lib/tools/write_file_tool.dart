@@ -10,11 +10,13 @@ class WriteFileTool implements ToolInterface {
 
   static const _definition = ToolDefinition(
     name: 'write_file',
-    description: 'Erstellt/ueberschreibt eine Textdatei.',
+    description:
+        'Erstellt/ueberschreibt eine Textdatei. Pfad relativ zum Buddy-Ordner '
+        'ODER absolut (z.B. /storage/emulated/0/Download/liste.txt) wenn Dateizugriff erlaubt ist.',
     parametersSchema: {
       'type': 'object',
       'properties': {
-        'path': {'type': 'string', 'description': 'Relativer Pfad'},
+        'path': {'type': 'string', 'description': 'Relativer oder absoluter Pfad'},
         'content': {'type': 'string', 'description': 'Inhalt'},
       },
       'required': ['path', 'content'],
@@ -30,7 +32,7 @@ class WriteFileTool implements ToolInterface {
       final root = getRootPath?.call() ?? '/storage/emulated/0';
       final subPath = parameters['path'] as String? ?? '';
       final content = parameters['content'] as String? ?? '';
-      final fullPath = resolveSandboxPath(root, subPath);
+      final fullPath = resolveFsPath(root, subPath);
       if (fullPath == null) {
         return ToolResult(toolName: definition.name, parameters: parameters, result: 'Ungültiger Pfad: $subPath', isError: true, displayText: 'Ungültiger Pfad');
       }
