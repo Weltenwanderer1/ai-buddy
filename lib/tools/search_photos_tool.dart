@@ -1,4 +1,5 @@
 import 'package:flutter/services.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'open_file_tool.dart';
 import 'tool_definition.dart';
 import 'tool_interface.dart';
@@ -51,6 +52,27 @@ class SearchPhotosTool implements ToolInterface {
     final daysBack = _readInt(parameters['days_back']) ?? 0;
     final limit = (_readInt(parameters['limit']) ?? 30).clamp(1, 200);
     final open = parameters['open'] as bool? ?? false;
+
+    // Request the media permission up front (like the other tools do) so the
+    // first use actually works instead of bouncing the user into settings.
+    // Permission.photos maps to READ_MEDIA_IMAGES on Android 13+; on older
+    // versions Permission.storage covers READ_EXTERNAL_STORAGE.
+    if (!await Permission.photos.isGranted && !await Permission.storage.isGranted) {
+      var status = await Permission.photos.request();
+      if (!status.isGranted) {
+        status = await Permission.storage.request();
+      }
+      if (!status.isGranted) {
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result:
+              'Keine Foto-Berechtigung erhalten. Bitte in den App-Einstellungen den Zugriff auf Fotos/Medien fuer AI-Buddy erlauben.',
+          isError: true,
+          displayText: '❌ Keine Foto-Berechtigung',
+        );
+      }
+    }
 
     try {
       final raw = await _channel.invokeMethod('searchPhotos', {
