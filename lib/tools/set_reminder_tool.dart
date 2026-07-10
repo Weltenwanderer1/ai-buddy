@@ -47,11 +47,13 @@ class SetReminderTool implements ToolInterface {
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
-    final title = (parameters['title'] as String? ?? '').trim();
-    final body = parameters['body'] as String? ?? '';
+    // Coerce with toString — the LLM occasionally sends non-string values,
+    // and `as String?` would throw an uncaught TypeError (no try/catch here).
+    final title = (parameters['title']?.toString() ?? '').trim();
+    final body = parameters['body']?.toString() ?? '';
     final minutesFromNow = _readInt(parameters['minutes_from_now']) ??
         _readInt(parameters['delay_minutes']) ??
-        _parseRelativeMinutes(parameters['relative_time'] as String?) ??
+        _parseRelativeMinutes(parameters['relative_time']?.toString()) ??
         5;
 
     if (title.isEmpty) {
@@ -64,9 +66,9 @@ class SetReminderTool implements ToolInterface {
       );
     }
 
-    final dateTimeParam = parameters['datetime'] as String? ??
-        parameters['scheduled_time'] as String? ??
-        parameters['time'] as String?;
+    final dateTimeParam = parameters['datetime']?.toString() ??
+        parameters['scheduled_time']?.toString() ??
+        parameters['time']?.toString();
     final parsedDateTime = dateTimeParam == null || dateTimeParam.trim().isEmpty
         ? null
         : DateTime.tryParse(dateTimeParam.trim());

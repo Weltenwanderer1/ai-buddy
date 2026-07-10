@@ -70,7 +70,12 @@ class ManageAppsTool implements ToolInterface {
       final dynamic result = await _channel.invokeMethod('getInstalledApps', {
         'includeSystem': includeSystem,
       });
-      final apps = (result as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+      // MethodChannel returns List<Object?> of Map<Object?,Object?> — .cast to
+      // Map<String,dynamic> would throw at first access. Rebuild the maps.
+      final apps = (result as List<dynamic>?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ??
+          [];
 
       if (apps.isEmpty) {
         return ToolResult(
@@ -127,7 +132,8 @@ class ManageAppsTool implements ToolInterface {
       final dynamic result = await _channel.invokeMethod('getAppDetails', {
         'packageName': packageName,
       });
-      final details = result as Map<String, dynamic>?;
+      // Channel returns Map<Object?,Object?>; rebuild as Map<String,dynamic>.
+      final details = result == null ? null : Map<String, dynamic>.from(result as Map);
 
       if (details == null) {
         return ToolResult(
@@ -148,7 +154,10 @@ class ManageAppsTool implements ToolInterface {
       info.writeln('Target SDK: ${details['targetSdk']}');
       final installRaw = details['firstInstallTime'];
       if (installRaw != null) {
-        final installDate = DateTime.tryParse(installRaw.toString());
+        // firstInstallTime is epoch milliseconds (a Long), not an ISO string.
+        final installDate = installRaw is num
+            ? DateTime.fromMillisecondsSinceEpoch(installRaw.toInt())
+            : DateTime.tryParse(installRaw.toString());
         if (installDate != null) {
           info.writeln('Installiert: ${installDate.year}-${installDate.month.toString().padLeft(2, '0')}-${installDate.day.toString().padLeft(2, '0')}');
         }

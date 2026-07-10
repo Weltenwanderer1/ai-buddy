@@ -203,7 +203,10 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
         _testResult = 'fail';
       });
     } finally {
-      client?.close();
+      // force: true releases the socket even though we never drained the
+      // response body (we only need the status code) — otherwise the
+      // connection lingers until timeout on every test tap.
+      client?.close(force: true);
     }
   }
 

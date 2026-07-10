@@ -109,7 +109,10 @@ class OllamaCloudProvider implements LlmProvider {
 
     return _cloud.chatStream(
       systemPrompt: systemPrompt,
-      messages: cloudMessages.cast<Map<String, String>>(),
+      // Values are dynamic (content can be a list for vision), so casting to
+      // Map<String,String> would throw a TypeError the moment the stream
+      // iterates the messages.
+      messages: cloudMessages.cast<Map<String, dynamic>>(),
       temperature: temperature,
     );
   }

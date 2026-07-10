@@ -82,6 +82,11 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _embeddingApiKeyController = TextEditingController();
   final _embeddingModelController = TextEditingController();
 
+  // Cached futures — creating these inline in build() re-runs the
+  // filesystem/platform-channel call on every rebuild (every expand/collapse).
+  late final Future<PackageInfo> _packageInfoFuture = PackageInfo.fromPlatform();
+  Future<bool> _offlineTilesFuture = TileDownloadService.hasOfflineTiles();
+
   bool _isTestingOllama = false;
   String? _ollamaTestResult;
   bool _isTestingEmbedding = false;
@@ -800,12 +805,18 @@ class _SettingsScreenState extends State<SettingsScreen>
               subtitle: t.buddy_offline_maps_desc,
               color: context.buddy.accent,
               trailing: FutureBuilder<bool>(
-                future: TileDownloadService.hasOfflineTiles(),
+                future: _offlineTilesFuture,
                 builder: (_, snap) => snap.hasData && snap.data == true
                   ? Icon(Icons.check_circle, color: context.buddy.success, size: 22)
                   : Icon(Icons.download_for_offline, color: context.buddy.t3, size: 22),
               ),
-              onTap: () => showDialog(context: context, builder: (_) => const OfflineMapDialog()),
+              onTap: () async {
+                await showDialog(context: context, builder: (_) => const OfflineMapDialog());
+                // Refresh the cached status so a fresh download shows its check.
+                if (mounted) {
+                  setState(() => _offlineTilesFuture = TileDownloadService.hasOfflineTiles());
+                }
+              },
             ),
             SettingsButton(
               icon: Icons.notes_rounded,
@@ -1375,7 +1386,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
           if (_secAbout) SliverToBoxAdapter(
             child: FutureBuilder<PackageInfo>(
-              future: PackageInfo.fromPlatform(),
+              future: _packageInfoFuture,
               builder: (context, snap) => SettingsButton(
                 icon: Icons.favorite_rounded,
                 title: 'AI-Buddy',

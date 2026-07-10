@@ -347,10 +347,12 @@ class MessageBubble extends StatelessWidget {
       route = null;
     }
     
-    final target = LatLng(
-      (targetData['lat'] as num).toDouble(),
-      (targetData['lon'] as num).toDouble(),
-    );
+    // Guard the lat/lon casts — this runs outside the try above, so a target
+    // without numeric lat/lon would throw during build and show a red error.
+    final lat = targetData['lat'];
+    final lon = targetData['lon'];
+    if (lat is! num || lon is! num) return _aiBubble(context);
+    final target = LatLng(lat.toDouble(), lon.toDouble());
     final destinationName = md['destination_name'] as String? ?? 'Ziel';
     final modeIcon = route?.profile == 'cycling' ? '🚲' : '🚶';
 

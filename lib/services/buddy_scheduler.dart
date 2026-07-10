@@ -29,14 +29,24 @@ Future<bool> _runSelfOptimization(Map<String, dynamic>? input) async {
   try {
     final prefs = await SharedPreferences.getInstance();
 
-    // 1. Clean up old fired-once markers (proactive engine)
-    final keys = prefs.getKeys().where((k) => k.startsWith('proactive_')).toList();
+    // 1. Clean up old fired-once markers (proactive engine).
+    // ONLY the dated daily markers — NOT state like proactive_pois,
+    // proactive_feedback_history, proactive_last_* or settings, which also
+    // start with "proactive_" and would otherwise be wiped (data loss +
+    // debounce reset). Daily markers store a date string as their value.
+    bool isDailyMarker(String k) =>
+        k.startsWith('proactive_poi_') ||
+        k == 'proactive_morning' ||
+        k == 'proactive_evening_recap';
+    final keys = prefs.getKeys().where(isDailyMarker).toList();
     int cleaned = 0;
     final nowDate = DateTime.now();
     final today = '${nowDate.year}-${nowDate.month.toString().padLeft(2, '0')}-${nowDate.day.toString().padLeft(2, '0')}';
     for (final key in keys) {
       final val = prefs.getString(key);
-      if (val != null && val != today) {
+      // POI markers use ISO yyyy-MM-dd; morning/evening use the same today
+      // format. Remove only when the stored date is not today.
+      if (val != null && val != today && !val.startsWith(today)) {
         await prefs.remove(key);
         cleaned++;
       }

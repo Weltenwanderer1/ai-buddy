@@ -88,7 +88,7 @@ class AddCalendarEventTool implements ToolInterface {
     // Recurrence params
     final recurrence = parameters['recurrence'] as String?;
     final recurrenceEndParam = parameters['recurrence_end'];
-    final recurrenceCount = (parameters['recurrence_count'] as int?) ?? 
+    final recurrenceCount = (parameters['recurrence_count'] as num?)?.toInt() ??
         ((recurrence != null && recurrenceEndParam == null) ? 52 : null);
     final recurrenceEndStr = parameters['recurrence_end'] as String?;
     final recurrenceEnd = recurrenceEndStr != null ? DateTime.tryParse(recurrenceEndStr) : null;
