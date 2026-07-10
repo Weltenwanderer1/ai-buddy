@@ -38,6 +38,7 @@ class AccentColorPicker extends StatelessWidget {
             runSpacing: 10,
             children: _presets.map((color) {
               final isSelected = current.toARGB32() == color.toARGB32();
+              final isLight = color.computeLuminance() > 0.5;
               return GestureDetector(
                 onTap: () => context.read<SettingsService>().accentColor = color,
                 child: AnimatedContainer(
@@ -48,7 +49,7 @@ class AccentColorPicker extends StatelessWidget {
                     color: color,
                     shape: BoxShape.circle,
                     border: Border.all(
-                      color: isSelected ? c.t1 : Colors.transparent,
+                      color: isSelected ? (isLight ? Colors.black : c.t1) : Colors.transparent,
                       width: 2.5,
                     ),
                     boxShadow: isSelected
@@ -56,7 +57,7 @@ class AccentColorPicker extends StatelessWidget {
                         : null,
                   ),
                   child: isSelected
-                      ? const Icon(Icons.check, color: Colors.white, size: 16)
+                      ? Icon(Icons.check, color: isLight ? Colors.black : Colors.white, size: 16)
                       : null,
                 ),
               );

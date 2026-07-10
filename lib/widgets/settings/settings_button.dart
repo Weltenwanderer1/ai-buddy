@@ -64,16 +64,18 @@ class SettingsButton extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: nested ? 12 : 16, vertical: nested ? 10 : 14),
             child: Row(
               children: [
-                Container(
-                  width: iconSize,
-                  height: iconSize,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(iconRadius),
+                if (!nested) ...[
+                  Container(
+                    width: iconSize,
+                    height: iconSize,
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(iconRadius),
+                    ),
+                    child: Icon(icon, color: color, size: nested ? 18 : 21),
                   ),
-                  child: Icon(icon, color: color, size: nested ? 18 : 21),
-                ),
-                const SizedBox(width: 14),
+                  const SizedBox(width: 14),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
