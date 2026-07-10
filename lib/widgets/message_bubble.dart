@@ -155,8 +155,8 @@ class MessageBubble extends StatelessWidget {
                   if (message.text.isNotEmpty)
                     Text(
                       message.text,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppColors.onPrimary,
                         fontSize: 15,
                         height: 1.4,
                         fontWeight: FontWeight.w400,

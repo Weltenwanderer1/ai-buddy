@@ -24,6 +24,15 @@ class AppColors {
 
   static Color get primaryGlow => primary.withValues(alpha: 0.25);
 
+  /// Readable foreground for user-selectable accent colors. Light accents such
+  /// as Warm Cream need dark content; white remains clearer on dark accents.
+  static Color foregroundFor(Color background) =>
+      background.computeLuminance() > 0.5
+          ? const Color(0xFF14151A)
+          : Colors.white;
+
+  static Color get onPrimary => foregroundFor(primary);
+
   // -- Secondary Accent --
   static const Color secondary     = Color(0xFF64D2FF);  // Helles Cyan
   static const Color secondaryDark = Color(0xFF52B8E8);

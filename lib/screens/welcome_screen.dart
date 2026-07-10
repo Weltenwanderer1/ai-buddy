@@ -510,6 +510,7 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             runSpacing: 12,
             children: _accentColors.map((c) {
               final selected = _accentColor.toARGB32() == c.toARGB32();
+              final foreground = AppColors.foregroundFor(c);
               return GestureDetector(
                 onTap: () => setState(() => _accentColor = c),
                 child: Container(
@@ -519,14 +520,14 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                     color: c,
                     shape: BoxShape.circle,
                     border: selected
-                        ? Border.all(color: Colors.white, width: 3)
+                        ? Border.all(color: foreground, width: 3)
                         : null,
                     boxShadow: selected
                         ? [BoxShadow(color: c.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)]
                         : null,
                   ),
                   child: selected
-                      ? const Icon(Icons.check, color: Colors.white, size: 20)
+                      ? Icon(Icons.check, color: foreground, size: 20)
                       : null,
                 ),
               );
@@ -905,14 +906,9 @@ class _ThemeChip extends StatelessWidget {
 
 // ── Accent color presets (same as settings) ──
 const _accentColors = <Color>[
-  Color(0xFF6B8DD6), // Periwinkle
-  Color(0xFF5B9BD5), // Blue
-  Color(0xFF34C759), // Green
-  Color(0xFFFF9500), // Orange
-  Color(0xFFFF3B30), // Red
-  Color(0xFFFF6B9D), // Pink
-  Color(0xFFA855F7), // Purple
-  Color(0xFF64D2FF), // Cyan
-  Color(0xFFD4AF37), // Gold
-  Color(0xFF9BA0A3), // Gray
+  Color(0xFF1B1F2E), // Deep Navy
+  Color(0xFF2D6B6B), // Dark Teal
+  Color(0xFFF5E6CC), // Warm Cream
+  Color(0xFFF27A1A), // Vivid Orange
+  Color(0xFF6B2D1A), // Dark Rust
 ];

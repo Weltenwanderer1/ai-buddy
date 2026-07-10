@@ -7,6 +7,7 @@ import 'package:latlong2/latlong.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/buddy_colors.dart';
+import '../core/theme/app_colors.dart';
 import '../services/navigation_service.dart';
 import '../services/location_service.dart';
 import '../services/tile_download_service.dart';
@@ -547,7 +548,10 @@ class _NavigationMapScreenState extends State<NavigationMapScreen>
                     _mapController.move(_userLocation!, 16);
                   }
                 },
-                child: const Icon(Icons.my_location, color: Colors.white),
+                child: Icon(
+                  Icons.my_location,
+                  color: AppColors.foregroundFor(context.buddy.accent),
+                ),
               ),
             ),
 

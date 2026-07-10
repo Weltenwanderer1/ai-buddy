@@ -10,6 +10,7 @@ class OpenAppTool implements ToolInterface {
     'whatsapp': 'com.whatsapp',
     'telegram': 'org.telegram.messenger',
     'youtube': 'com.google.android.youtube',
+    'youtube music': 'com.google.android.apps.youtube.music',
     'maps': 'com.google.android.apps.maps',
     'google maps': 'com.google.android.apps.maps',
     'chrome': 'com.android.chrome',

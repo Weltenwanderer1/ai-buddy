@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/buddy_colors.dart';
+import '../../core/theme/app_colors.dart';
 
 class GradientButton extends StatelessWidget {
   final IconData icon;
@@ -10,6 +11,7 @@ class GradientButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final foreground = AppColors.foregroundFor(context.buddy.accent);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -27,9 +29,9 @@ class GradientButton extends StatelessWidget {
           ] : null,
         ),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Icon(icon, size: 18, color: Colors.white),
+          Icon(icon, size: 18, color: foreground),
           const SizedBox(width: 8),
-          Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+          Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: foreground)),
         ]),
       ),
     );

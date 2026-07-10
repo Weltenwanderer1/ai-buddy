@@ -24,6 +24,7 @@ class OllamaCloudService extends ChangeNotifier {
   String fallbackModel;
 
   final http.Client _client;
+  final HttpClient _streamClient;
   bool _preconnected = false;
 
   OllamaCloudService({
@@ -31,7 +32,8 @@ class OllamaCloudService extends ChangeNotifier {
     required this.apiKey,
     required this.defaultModel,
     required this.fallbackModel,
-  }) : _client = _createClient();
+  })  : _client = _createClient(),
+        _streamClient = _createStreamClient();
 
   /// Create an http.Client with connection and response timeouts.
   static http.Client _createClient() {
@@ -39,6 +41,13 @@ class OllamaCloudService extends ChangeNotifier {
     ioClient.connectionTimeout = const Duration(seconds: 30);
     ioClient.idleTimeout = const Duration(seconds: 120);
     return IOClient(ioClient);
+  }
+
+  static HttpClient _createStreamClient() {
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 30);
+    client.idleTimeout = const Duration(seconds: 120);
+    return client;
   }
 
   static const _timeout = Duration(seconds: 120);
@@ -359,15 +368,10 @@ class OllamaCloudService extends ChangeNotifier {
     Map<String, dynamic> body,
     bool isOllamaNative,
   ) async* {
-    HttpClient? client;
     HttpClientRequest? request;
-    HttpClientResponse? response;
 
     try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 30);
-      client.idleTimeout = const Duration(seconds: 120);
-      request = await client.postUrl(url);
+      request = await _streamClient.postUrl(url);
       for (final entry in headers.entries) {
         request.headers.set(entry.key, entry.value);
       }
@@ -375,7 +379,8 @@ class OllamaCloudService extends ChangeNotifier {
       final jsonStr = jsonEncode(body);
       final bytes = utf8.encode(jsonStr);
       request.add(bytes);
-      response = await request.close().timeout(const Duration(seconds: 120));
+      final response =
+          await request.close().timeout(const Duration(seconds: 120));
 
       if (response.statusCode != 200) {
         final errorBody = await response.transform(utf8.decoder).join();
@@ -412,16 +417,6 @@ class OllamaCloudService extends ChangeNotifier {
     } catch (e) {
       if (e is OllamaApiException) rethrow;
       throw Exception('Streaming failed: $e');
-    } finally {
-      // detachSocket() liefert ein Future — Fehler dort dürfen nicht als
-      // unhandled async error hochblubbern.
-      try {
-        unawaited(response
-            ?.detachSocket()
-            .then((socket) => socket.destroy())
-            .catchError((_) {}));
-      } catch (_) {}
-      client?.close();
     }
   }
 
@@ -433,19 +428,14 @@ class OllamaCloudService extends ChangeNotifier {
     Map<String, dynamic> body,
     Map<int, ToolCallDraft> drafts,
   ) async* {
-    HttpClient? client;
-    HttpClientResponse? response;
-
     try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 30);
-      client.idleTimeout = const Duration(seconds: 120);
-      final request = await client.postUrl(url);
+      final request = await _streamClient.postUrl(url);
       for (final entry in headers.entries) {
         request.headers.set(entry.key, entry.value);
       }
       request.add(utf8.encode(jsonEncode(body)));
-      response = await request.close().timeout(const Duration(seconds: 120));
+      final response =
+          await request.close().timeout(const Duration(seconds: 120));
 
       if (response.statusCode != 200) {
         final errorBody = await response.transform(utf8.decoder).join();
@@ -478,14 +468,6 @@ class OllamaCloudService extends ChangeNotifier {
     } catch (e) {
       if (e is OllamaApiException) rethrow;
       throw Exception('Streaming failed: $e');
-    } finally {
-      try {
-        unawaited(response
-            ?.detachSocket()
-            .then((socket) => socket.destroy())
-            .catchError((_) {}));
-      } catch (_) {}
-      client?.close();
     }
   }
 
@@ -1016,6 +998,7 @@ class OllamaCloudService extends ChangeNotifier {
   @override
   void dispose() {
     _client.close();
+    _streamClient.close(force: true);
     super.dispose();
   }
 }

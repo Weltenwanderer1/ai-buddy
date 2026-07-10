@@ -325,6 +325,8 @@ void main() {
 
     test('resolves known app names', () {
       expect(OpenAppTool.resolvePackageName('spotify'), 'com.spotify.music');
+      expect(OpenAppTool.resolvePackageName('youtube music'),
+          'com.google.android.apps.youtube.music');
       expect(OpenAppTool.resolvePackageName('whatsapp'), 'com.whatsapp');
       expect(OpenAppTool.resolvePackageName('google maps'),
           'com.google.android.apps.maps');

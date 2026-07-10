@@ -12,6 +12,7 @@ class SettingsService extends ChangeNotifier {
   final Map<String, dynamic> _data = {};
   final _saveController = PublishSubject<void>();
   StreamSubscription<void>? _saveSubscription;
+  Future<void> _saveTail = Future<void>.value();
 
   late File _file;
 
@@ -27,7 +28,7 @@ class SettingsService extends ChangeNotifier {
     _file = File('${dir.path}/ai_buddy/settings.json');
     _saveSubscription = _saveController
         .debounceTime(const Duration(milliseconds: _saveDebounceMs))
-        .listen((_) => _doSave());
+        .listen((_) => _enqueueSaveSilently());
     await _load();
     _setDefaults();
     notifyListeners();
@@ -59,9 +60,26 @@ class SettingsService extends ChangeNotifier {
     _saveController.add(null);
   }
 
-  Future<void> _doSave() async {
+  Future<void> _enqueueSave() {
+    final snapshot = Map<String, dynamic>.from(_data);
+    _saveTail = _saveTail
+        .catchError((_) {})
+        .then((_) => _doSave(snapshot));
+    return _saveTail;
+  }
+
+  void _enqueueSaveSilently() {
+    unawaited(_enqueueSave().catchError((_) {}));
+  }
+
+  Future<void> _doSave(Map<String, dynamic> snapshot) async {
     await _file.parent.create(recursive: true);
-    await _file.writeAsString(const JsonEncoder.withIndent('  ').convert(_data));
+    final temp = File('${_file.path}.tmp');
+    await temp.writeAsString(
+      const JsonEncoder.withIndent('  ').convert(snapshot),
+      flush: true,
+    );
+    await temp.rename(_file.path);
   }
 
   Future<void> _load() async {
@@ -126,12 +144,13 @@ class SettingsService extends ChangeNotifier {
     _data.clear();
     _data.addAll(data);
     notifyListeners();
-    await _doSave();
+    await _enqueueSave();
   }
 
   @override
   void dispose() {
     _saveSubscription?.cancel();
+    _enqueueSaveSilently();
     _saveController.close();
     super.dispose();
   }

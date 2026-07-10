@@ -252,46 +252,68 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     HapticFeedback.selectionClick();
     _scrollToBottom();
 
+    var streamToolStarted = false;
     try {
       final chatService = ChatService(cloudService: cloudService, anthropicService: anthropicService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities, appLanguage: appLanguage);
-      // Use sendMessage (with tool support) as primary path
-      final result = await chatService.sendMessage(
-        userMessage: text,
-        persona: persona,
-        memory: memory,
-        history: chatHistory.messages,
-        personaEvolution: personaEvolution,
-        onToolActivity: (msg) {
-          if (mounted) {
-            chatHistory.add(msg);
-            _scrollToBottom();
-          }
-        },
-        fileMetadata: fileMetadata,
+      // Stream first: show the first tokens immediately instead of waiting for
+      // the complete model response.
+      await _sendMessageStream(
+        chatService,
+        text,
+        persona,
+        memory,
+        chatHistory,
+        personaEvolution,
+        buddyName,
+        fileMetadata,
+        onToolStarted: () => streamToolStarted = true,
       );
-      final assistantMsg = ChatMessage(
-        text: result.text,
-        isUser: false,
-        metadata: result.metadata,
-      );
-      await chatHistory.add(assistantMsg);
-      _scrollToBottom();
-
-      // Notify in taskbar if app is in background
-      if (_isAppInBackground) {
-        await BuddyNotifier.notifyBuddyReply(
-          buddyName: buddyName,
-          message: result.text,
-          appInBackground: true,
-        );
-      }
     } catch (e) {
-      debugPrint('sendMessage failed: $e, falling back to streaming');
+      debugPrint('Streaming failed: $e, falling back to regular response');
+      // If streaming already showed text, retrying would duplicate the answer
+      // and potentially execute tools twice. Keep the partial response instead.
+      if (_streamingText.isNotEmpty || streamToolStarted) {
+        final partial = _streamingText.isNotEmpty
+            ? _streamingText
+            : 'Die Aktion wurde ausgeführt, aber die abschließende Antwort ist abgebrochen.';
+        await chatHistory.add(ChatMessage(
+          text: partial,
+          isUser: false,
+          type: MessageType.error,
+        ));
+        return;
+      }
       try {
         final chatService = ChatService(cloudService: cloudService, anthropicService: anthropicService, configService: configService, toolRegistry: _toolRegistry, selfIdentity: selfIdentity, locationService: locationService, buddyCapabilities: buddyCapabilities, appLanguage: appLanguage);
-        await _sendMessageStream(chatService, text, persona, memory, chatHistory, personaEvolution, buddyName, fileMetadata);
+        final result = await chatService.sendMessage(
+          userMessage: text,
+          persona: persona,
+          memory: memory,
+          history: chatHistory.messages,
+          personaEvolution: personaEvolution,
+          onToolActivity: (msg) {
+            if (mounted) {
+              chatHistory.add(msg);
+              _scrollToBottom();
+            }
+          },
+          fileMetadata: fileMetadata,
+        );
+        await chatHistory.add(ChatMessage(
+          text: result.text,
+          isUser: false,
+          metadata: result.metadata,
+        ));
+        _scrollToBottom();
+        if (_isAppInBackground) {
+          await BuddyNotifier.notifyBuddyReply(
+            buddyName: buddyName,
+            message: result.text,
+            appInBackground: true,
+          );
+        }
       } catch (e2) {
-        debugPrint('Non-streaming fallback also failed: $e2');
+        debugPrint('Regular fallback also failed: $e2');
         final errorMsg = e2.toString().contains('Timeout')
             ? 'Die Anfrage hat zu lange gedauert. Bitte versuche es erneut.'
             : 'Es ist ein Fehler aufgetreten. Bitte versuche es erneut.';
@@ -322,8 +344,9 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     ChatHistoryService chatHistory,
     PersonaEvolutionService? personaEvolution,
     String buddyName,
-    Map<String, dynamic>? fileMetadata,
-  ) async {
+    Map<String, dynamic>? fileMetadata, {
+    VoidCallback? onToolStarted,
+  }) async {
     // Wird erst nach fehlgeschlagenem sendMessage (also nach awaits) gerufen
     // — der State kann bereits disposed sein.
     if (mounted) {
@@ -335,6 +358,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     }
     _scrollToBottom();
 
+    Map<String, dynamic>? responseMetadata;
     final stream = chatService.streamResponse(
       userMessage: text,
       persona: persona,
@@ -342,11 +366,13 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
       history: chatHistory.messages,
       personaEvolution: personaEvolution,
       onToolActivity: (msg) {
+        onToolStarted?.call();
         if (mounted) {
           chatHistory.add(msg);
           _scrollToBottom();
         }
       },
+      onMetadata: (value) => responseMetadata = value,
       fileMetadata: fileMetadata,
     );
 
@@ -370,7 +396,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
 
     final fullReply = buffer.toString();
     if (fullReply.isNotEmpty) {
-      final assistantMsg = ChatMessage(text: fullReply, isUser: false);
+      final assistantMsg = ChatMessage(
+        text: fullReply,
+        isUser: false,
+        metadata: responseMetadata,
+      );
       await chatHistory.add(assistantMsg);
 
       // Notify in taskbar if app is in background

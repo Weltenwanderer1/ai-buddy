@@ -110,6 +110,9 @@ class MemoryService extends ChangeNotifier {
 
   EmbeddingService? get embeddingService => _embeddingService;
 
+  @visibleForTesting
+  static const semanticLookupBudget = Duration(milliseconds: 800);
+
   Future<void> init() async {
     _dataDir = _dataDirOverride ?? await _getDataDir();
     await _loadCore();
@@ -265,7 +268,11 @@ class MemoryService extends ChangeNotifier {
     if (tier.isEmpty) return [];
 
     if (_embeddingService != null) {
-      final queryEmbedding = await _getOrComputeEmbedding(query);
+      // Remote embeddings must not hold the visible response hostage.
+      final queryEmbedding = await _getOrComputeEmbedding(query).timeout(
+        semanticLookupBudget,
+        onTimeout: () => null,
+      );
       if (queryEmbedding != null) {
         return _searchWithEmbeddings(tier, query, queryEmbedding, limit: limit);
       }

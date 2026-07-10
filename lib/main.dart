@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -268,6 +269,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         defaultModel: _secureConfig.activeModel,
         fallbackModel: _secureConfig.activeFallbackModel,
       );
+      // Warm TCP/TLS in the background so the first chat request starts faster.
+      unawaited(_cloudService.preconnect());
       _anthropicService = AnthropicService(
         baseUrl: _secureConfig.anthropicBaseUrl,
         apiKey: _secureConfig.anthropicApiKey,

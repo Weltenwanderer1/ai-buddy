@@ -23,19 +23,28 @@ class AnthropicService extends ChangeNotifier {
   String fallbackModel;
 
   final http.Client _client;
+  final HttpClient _streamClient;
 
   AnthropicService({
     required this.baseUrl,
     required this.apiKey,
     required this.defaultModel,
     required this.fallbackModel,
-  }) : _client = _createClient();
+  })  : _client = _createClient(),
+        _streamClient = _createStreamClient();
 
   static http.Client _createClient() {
     final ioClient = HttpClient();
     ioClient.connectionTimeout = const Duration(seconds: 30);
     ioClient.idleTimeout = const Duration(seconds: 120);
     return IOClient(ioClient);
+  }
+
+  static HttpClient _createStreamClient() {
+    final client = HttpClient();
+    client.connectionTimeout = const Duration(seconds: 30);
+    client.idleTimeout = const Duration(seconds: 120);
+    return client;
   }
 
   static const _timeout = Duration(seconds: 120);
@@ -151,11 +160,8 @@ class AnthropicService extends ChangeNotifier {
       'stream': true,
     };
 
-    HttpClient? client;
     try {
-      client = HttpClient();
-      client.connectionTimeout = const Duration(seconds: 30);
-      final request = await client.postUrl(url);
+      final request = await _streamClient.postUrl(url);
       request.headers.set('Content-Type', 'application/json');
       request.headers.set('x-api-key', apiKey);
       request.headers.set('anthropic-version', '2023-06-01');
@@ -190,11 +196,6 @@ class AnthropicService extends ChangeNotifier {
     } catch (e) {
       if (e is OllamaApiException) rethrow;
       throw Exception('Anthropic streaming failed: $e');
-    } finally {
-      // force: true reißt auch eine noch laufende Antwort ab, wenn der
-      // Listener mitten im Stream abbricht — sonst hängt die Verbindung
-      // bis zum Idle-Timeout offen.
-      client?.close(force: true);
     }
   }
 
@@ -403,6 +404,7 @@ class AnthropicService extends ChangeNotifier {
   @override
   void dispose() {
     _client.close();
+    _streamClient.close(force: true);
     super.dispose();
   }
 }

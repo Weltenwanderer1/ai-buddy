@@ -9,6 +9,10 @@ void main() {
       expect(s, isNotNull);
     });
 
+    test('semantic lookup budget stays below one second', () {
+      expect(MemoryService.semanticLookupBudget, lessThan(const Duration(seconds: 1)));
+    });
+
     test('export/import roundtrip works', () async {
       final tempDir = Directory.systemTemp.createTempSync();
       final s = MemoryService(dataDirOverride: tempDir);

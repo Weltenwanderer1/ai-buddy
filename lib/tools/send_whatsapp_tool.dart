@@ -43,7 +43,19 @@ class SendWhatsAppTool implements ToolInterface {
       }
       var url = 'https://wa.me/$phone';
       if (message.isNotEmpty) url += '?text=${Uri.encodeComponent(message)}';
-      await launchUrl(Uri.parse(url));
+      final opened = await launchUrl(
+        Uri.parse(url),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!opened) {
+        return ToolResult(
+          toolName: definition.name,
+          parameters: parameters,
+          result: 'WhatsApp konnte nicht geöffnet werden.',
+          isError: true,
+          displayText: 'WhatsApp nicht verfügbar',
+        );
+      }
       var sent = false;
       if (message.isNotEmpty) {
         await Future<void>.delayed(const Duration(milliseconds: 1200));

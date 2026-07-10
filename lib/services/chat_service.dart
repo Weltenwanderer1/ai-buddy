@@ -103,6 +103,7 @@ class ChatService {
     required List<ChatMessage> history,
     PersonaEvolutionService? personaEvolution,
     ToolDisplayCallback? onToolActivity,
+    void Function(Map<String, dynamic> metadata)? onMetadata,
     Map<String, dynamic>? fileMetadata,
   }) {
     final controller = StreamController<String>();
@@ -136,6 +137,9 @@ class ChatService {
         if (registry != null && registry.getToolDefinitions().isNotEmpty) {
           onToolCall = (String toolName, Map<String, dynamic> args) async {
             final result = await registry.execute(toolName, args);
+            if (result.extraData != null && result.extraData!.isNotEmpty) {
+              onMetadata?.call(result.extraData!);
+            }
             return result.result;
           };
         }
@@ -174,18 +178,16 @@ class ChatService {
             _saveMemory(memory, userMessage, fullReply);
             _maybeEvolve(personaEvolution, history, userMessage, fullReply, memory);
           }
-        } catch (e) {
+        } catch (e, stack) {
           debugPrint('Streaming failed: $e');
           if (!controller.isClosed) {
-            final short = e.toString();
-            final msg = short.length > 120 ? '${short.substring(0, 120)}...' : short;
-            controller.add('Verbindungsproblem: $msg');
+            controller.addError(e, stack);
           }
         }
-      } catch (e) {
+      } catch (e, stack) {
         debugPrint('streamResponse outer error: $e');
         if (!controller.isClosed) {
-          controller.add('Es ist ein Fehler aufgetreten. Bitte versuche es erneut.');
+          controller.addError(e, stack);
         }
       } finally {
         if (!controller.isClosed) {
@@ -570,16 +572,13 @@ class ChatService {
       parts.add(toolHints);
     }
 
-    // Standort — nur wenn wirklich da
+    // Standort darf die Antwort nicht blockieren. GPS + Reverse-Geocoding kann
+    // 15+ Sekunden dauern; für den Prompt reicht der bereits bekannte Cache.
     final locService = _locationService;
     if (locService != null) {
-      try {
-        final locContext = await locService.buildContextString();
-        if (locContext.isNotEmpty) {
-          parts.add('\n📍 $locContext');
-        }
-      } catch (e) {
-        debugPrint('Location context error: $e');
+      final location = locService.currentLocation;
+      if (location != null) {
+        parts.add('\n📍 Aktueller Standort: ${location.toContextString()}');
       }
     }
 
