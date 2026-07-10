@@ -702,7 +702,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: c.pill.withValues(alpha: 0.60),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xCC1B1F2E),
+                    Color(0xCC2D6B6B),
+                    Color(0xCCF5E6CC),
+                    Color(0xCCF27A1A),
+                    Color(0xCC6B2D1A),
+                  ],
+                ),
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: c.border, width: 1),
               ),
@@ -713,9 +721,9 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.25),
+                      color: Colors.white24,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.4)),
+                      border: Border.all(color: Colors.white38),
                     ),
                     child: const Center(
                       child: Icon(
@@ -729,10 +737,11 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                   Expanded(
                     child: Text(
                       name,
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: c.t1,
+                        color: Colors.white,
+                        shadows: [Shadow(blurRadius: 4, color: Colors.black38)],
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -751,7 +760,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                         padding: const EdgeInsets.all(8),
                         child: Icon(
                           Icons.tune_rounded,
-                          color: c.t3.withValues(alpha: 0.7),
+                          color: Colors.white70,
                           size: 18,
                         ),
                       ),

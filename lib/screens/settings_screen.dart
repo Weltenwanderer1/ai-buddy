@@ -780,7 +780,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () => setState(() => _secBuddy = !_secBuddy),
           )),
           if (_secBuddy) SliverToBoxAdapter(child: Column(children: [
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.face_5_rounded,
               title: t.buddy_persona_edit,
               subtitle: persona.name.isEmpty ? 'Standard' : persona.name,
@@ -790,7 +790,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const PersonaEditorScreen()),
               ),
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.self_improvement_rounded,
               title: t.buddy_self_identity,
               subtitle: t.buddy_persona_desc,
@@ -800,7 +800,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const SelfIdentityScreen()),
               ),
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.psychology_rounded,
               title: t.buddy_evolution,
               subtitle: '${evolution.learnedTraits.length} ${t.buddy_evolution_traits}',
@@ -808,7 +808,7 @@ class _SettingsScreenState extends State<SettingsScreen>
               trailing: SettingsBadge('${evolution.learnedTraits.length}'),
               onTap: _showKIEntwicklung,
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.memory_rounded,
               title: t.buddy_memories,
               subtitle: t.memory_core_long_short,
@@ -828,7 +828,7 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () => setState(() => _secTools = !_secTools),
           )),
           if (_secTools) SliverToBoxAdapter(child: Column(children: [
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.accessibility_new_rounded,
               title: 'App-Steuerung & WhatsApp senden',
               subtitle: 'Einmalig Android-Bedienungshilfe aktivieren',
@@ -847,7 +847,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 }
               },
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.map_rounded,
               title: t.buddy_offline_maps,
               subtitle: t.buddy_offline_maps_desc,
@@ -866,7 +866,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 }
               },
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.notes_rounded,
               title: t.buddy_notes,
               subtitle: t.tools_desc,
@@ -876,7 +876,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
               ),
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.auto_fix_high_rounded,
               title: t.buddy_capabilities,
               subtitle: t.buddy_capabilities_desc,
@@ -1446,31 +1446,31 @@ class _SettingsScreenState extends State<SettingsScreen>
           )),
           if (_secData) ...[
           SliverToBoxAdapter(child: Column(children: [
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.backup_outlined,
               title: t.data_backup_create,
               color: context.buddy.success,
               onTap: _createBackup,
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.restore_outlined,
               title: t.common_restore,
               color: context.buddy.accent,
               onTap: _restoreBackup,
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.delete_forever_outlined,
               title: t.data_chat_delete,
               color: context.buddy.error,
               onTap: _clearChatHistory,
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.memory_outlined,
               title: t.data_memories_delete,
               color: context.buddy.error,
               onTap: _clearMemories,
             ),
-            SettingsButton(
+            SettingsButton(nested: true,
               icon: Icons.restart_alt_rounded,
               title: t.data_reset,
               subtitle: t.data_reset_desc,
@@ -1497,7 +1497,7 @@ class _SettingsScreenState extends State<SettingsScreen>
           if (_secAbout) SliverToBoxAdapter(
             child: FutureBuilder<PackageInfo>(
               future: _packageInfoFuture,
-              builder: (context, snap) => SettingsButton(
+              builder: (context, snap) => SettingsButton(nested: true,
                 icon: Icons.favorite_rounded,
                 title: 'AI-Buddy',
                 // Echte Laufzeit-Version aus dem Build — die Konstante in

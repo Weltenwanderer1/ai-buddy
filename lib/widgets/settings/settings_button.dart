@@ -12,6 +12,7 @@ class SettingsButton extends StatelessWidget {
   final Color color;
   final Widget? trailing;
   final VoidCallback onTap;
+  final bool nested;
 
   const SettingsButton({
     super.key,
@@ -21,37 +22,56 @@ class SettingsButton extends StatelessWidget {
     required this.color,
     this.trailing,
     required this.onTap,
+    this.nested = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final c = context.buddy;
+    final iconSize = nested ? 36.0 : 42.0;
+    final iconRadius = nested ? 11.0 : 13.0;
+    final hMargin = nested ? 24.0 : 16.0;
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
+      margin: EdgeInsets.symmetric(horizontal: hMargin, vertical: 4),
       decoration: BoxDecoration(
-        color: c.card.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(20),
+        color: c.card.withValues(alpha: nested ? 0.4 : 0.6),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(nested ? 4 : 20),
+          bottomLeft: Radius.circular(nested ? 4 : 20),
+          topRight: Radius.circular(nested ? 16 : 20),
+          bottomRight: Radius.circular(nested ? 16 : 20),
+        ),
         border: Border.all(color: c.border),
-        boxShadow: c.cardShadow,
+        boxShadow: nested ? null : c.cardShadow,
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(nested ? 4 : 20),
+          bottomLeft: Radius.circular(nested ? 4 : 20),
+          topRight: Radius.circular(nested ? 16 : 20),
+          bottomRight: Radius.circular(nested ? 16 : 20),
+        ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(nested ? 4 : 20),
+            bottomLeft: Radius.circular(nested ? 4 : 20),
+            topRight: Radius.circular(nested ? 16 : 20),
+            bottomRight: Radius.circular(nested ? 16 : 20),
+          ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            padding: EdgeInsets.symmetric(horizontal: nested ? 12 : 16, vertical: nested ? 10 : 14),
             child: Row(
               children: [
                 Container(
-                  width: 42,
-                  height: 42,
+                  width: iconSize,
+                  height: iconSize,
                   decoration: BoxDecoration(
                     color: color.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(13),
+                    borderRadius: BorderRadius.circular(iconRadius),
                   ),
-                  child: Icon(icon, color: color, size: 21),
+                  child: Icon(icon, color: color, size: nested ? 18 : 21),
                 ),
                 const SizedBox(width: 14),
                 Expanded(

@@ -8,16 +8,11 @@ class AccentColorPicker extends StatelessWidget {
   const AccentColorPicker({super.key});
 
   static const _presets = <Color>[
-    Color(0xFF6B8DD6), // Periwinkle (default)
-    Color(0xFF5B9BD5), // Blue
-    Color(0xFF34C759), // Green
-    Color(0xFFFF9500), // Orange
-    Color(0xFFFF3B30), // Red
-    Color(0xFFFF6B9D), // Pink
-    Color(0xFFA855F7), // Purple
-    Color(0xFF64D2FF), // Cyan
-    Color(0xFFD4AF37), // Gold
-    Color(0xFF9BA0A3), // Gray
+    Color(0xFF1B1F2E), // Deep Navy
+    Color(0xFF2D6B6B), // Dark Teal
+    Color(0xFFF5E6CC), // Warm Cream
+    Color(0xFFF27A1A), // Vivid Orange
+    Color(0xFF6B2D1A), // Dark Rust
   ];
 
   @override
