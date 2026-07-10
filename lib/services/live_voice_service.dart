@@ -134,45 +134,81 @@ class LiveVoiceService extends ChangeNotifier {
       _lastTranscript = transcript;
       notifyListeners();
 
-      // 2. Think (send to LLM via ChatService)
+      // 2. Think + 3. Speak — STREAMED sentence-by-sentence. As soon as the
+      // first sentence is generated it starts speaking while the rest of the
+      // reply is still being produced, so the user hears a response within a
+      // second or two instead of waiting for the whole answer + full synthesis.
       _setState(LiveVoiceState.thinking);
-      debugPrint('LiveVoice [$iteration]: thinking...');
+      debugPrint('LiveVoice [$iteration]: thinking (streaming)...');
 
       try {
         final userMsg = ChatMessage(text: transcript, isUser: true, type: MessageType.voice);
         await _chatHistory.add(userMsg);
 
-        final reply = await _chatService.sendMessage(
+        final full = StringBuffer();     // complete reply (for history)
+        final pending = StringBuffer();  // text not yet handed to TTS
+        Future<void> speakChain = Future.value();
+        bool startedSpeaking = false;
+        bool ttsFailed = false;
+
+        void enqueue(String sentence) {
+          final s = sentence.trim();
+          if (s.isEmpty) return;
+          // Chain sentences so they play in order, one after another, while
+          // later ones are still streaming in.
+          speakChain = speakChain.then((_) async {
+            if (!_active || ttsFailed) return;
+            if (!startedSpeaking) {
+              startedSpeaking = true;
+              _setState(LiveVoiceState.speaking);
+            }
+            final ok = await _tts.speak(s);
+            if (!ok) ttsFailed = true;
+          });
+        }
+
+        final stream = _chatService.streamResponse(
           userMessage: transcript,
           persona: _persona,
           memory: _memory,
           history: _chatHistory.messages,
         );
 
-        if (!_active) break;
-
-        debugPrint('LiveVoice [$iteration]: reply = "${reply.text.length > 80 ? '${reply.text.substring(0, 80)}…' : reply.text}"');
-
-        final assistantMsg = ChatMessage(
-          text: reply.text,
-          isUser: false,
-          metadata: reply.metadata,
-        );
-        await _chatHistory.add(assistantMsg);
-
-        _lastReply = reply.text;
-        notifyListeners();
-
-        // 3. Speak
-        _setState(LiveVoiceState.speaking);
-        debugPrint('LiveVoice [$iteration]: speaking...');
-        final sanitizedReply = _sanitizeForTts(reply.text);
-        debugPrint('LiveVoice [$iteration]: sanitized = "${sanitizedReply.length > 80 ? '${sanitizedReply.substring(0, 80)}...' : sanitizedReply}"');
-        final spoken = await _tts.speak(sanitizedReply);
+        await for (final chunk in stream) {
+          if (!_active) break;
+          if (chunk == '🔧') continue; // tool-execution marker, not speech
+          full.write(chunk);
+          pending.write(chunk);
+          // Flush every complete sentence as soon as it is available.
+          for (var idx = _firstSentenceEnd(pending.toString());
+              idx > 0;
+              idx = _firstSentenceEnd(pending.toString())) {
+            final text = pending.toString();
+            enqueue(text.substring(0, idx));
+            final rest = text.substring(idx);
+            pending.clear();
+            pending.write(rest);
+          }
+        }
 
         if (!_active) break;
 
-        if (!spoken) {
+        // Speak any trailing text that had no sentence terminator.
+        if (pending.toString().trim().isNotEmpty) enqueue(pending.toString());
+        // Wait until everything queued has finished playing.
+        await speakChain;
+
+        if (!_active) break;
+
+        final replyText = full.toString().trim();
+        debugPrint('LiveVoice [$iteration]: reply = "${replyText.length > 80 ? '${replyText.substring(0, 80)}…' : replyText}"');
+        if (replyText.isNotEmpty) {
+          await _chatHistory.add(ChatMessage(text: replyText, isUser: false));
+          _lastReply = replyText;
+          notifyListeners();
+        }
+
+        if (ttsFailed) {
           final ttsError = _tts.lastError ?? 'TTS nicht konfiguriert';
           debugPrint('LiveVoice [$iteration]: TTS failed: $ttsError');
           _setError('Sprachausgabe fehlgeschlagen: $ttsError');
@@ -181,9 +217,8 @@ class LiveVoiceService extends ChangeNotifier {
           _setState(LiveVoiceState.idle);
         }
 
-        // Echo avoidance
-        debugPrint('LiveVoice [$iteration]: waiting 1s after speaking');
-        await Future.delayed(const Duration(seconds: 1));
+        // Short echo-avoidance gap before listening again.
+        await Future.delayed(const Duration(milliseconds: 400));
       } catch (e) {
         if (!_active) break;
         debugPrint('LiveVoice [$iteration]: error: $e');
@@ -219,17 +254,14 @@ class LiveVoiceService extends ChangeNotifier {
     return s.length > 120 ? '${s.substring(0, 120)}…' : s;
   }
 
-  /// Strip formatting characters that TTS engines read aloud literally.
-  String _sanitizeForTts(String text) {
-    var cleaned = text
-        .replaceAll(RegExp(r'\*[^*]+\*'), '')
-        .replaceAll('*', '')
-        .replaceAll('_', '')
-        .replaceAll('~~', '')
-        .replaceAll('`', '')
-        .replaceAll(RegExp(r'[\u{1F600}-\u{1F64F}\u{1F300}-\u{1F5FF}\u{1F680}-\u{1F6FF}\u{1F1E0}-\u{1F1FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]', unicode: true), '')
-        .replaceAll(RegExp(r'  +'), ' ')
-        .trim();
-    return cleaned;
+  /// Index just past the first sentence terminator in [text], or -1 if none.
+  /// Requires a small minimum length so abbreviations and tiny fragments don't
+  /// trigger choppy one-word synthesis. TTS sanitizing happens in the TTS
+  /// service, so raw text (with markdown) is fine here.
+  int _firstSentenceEnd(String text) {
+    for (final m in RegExp(r'[.!?…\n]').allMatches(text)) {
+      if (m.end >= 15) return m.end;
+    }
+    return -1;
   }
 }

@@ -5,17 +5,20 @@ import 'package:path_provider/path_provider.dart';
 import 'package:just_audio/just_audio.dart';
 import 'piper_tts_service.dart';
 import 'device_tts_service.dart';
+import 'cloud_tts_service.dart';
 import 'secure_config_service.dart';
 
 /// TTS engine selection.
 enum TtsEngine {
   piper,
-  device;
-  
+  device,
+  cloud;
+
   String get label {
     switch (this) {
       case TtsEngine.piper: return 'Piper (Offline)';
       case TtsEngine.device: return 'Gerät';
+      case TtsEngine.cloud: return 'Cloud';
     }
   }
 }
@@ -25,6 +28,7 @@ enum TtsEngine {
 class TtsPlaybackService extends ChangeNotifier {
   final PiperTtsService _piper;
   final DeviceTtsService _deviceTts = DeviceTtsService();
+  final CloudTtsService _cloudTts = CloudTtsService();
   final AudioPlayer _player = AudioPlayer();
   String? currentlyPlayingId;
   bool autoPlay = false;
@@ -48,7 +52,24 @@ class TtsPlaybackService extends ChangeNotifier {
     switch (_engine) {
       case TtsEngine.piper: return _piper.isLoaded;
       case TtsEngine.device: return _deviceTts.isAvailable;
+      case TtsEngine.cloud: return _cloudTts.isConfigured;
     }
+  }
+
+  /// Cloud TTS provider handle (for settings / test).
+  CloudTtsService get cloudTts => _cloudTts;
+
+  /// Push cloud-TTS config (provider + keys + voices) from secure config.
+  void configureCloud(SecureConfigService config) {
+    _cloudTts.updateConfig(
+      provider: config.ttsCloudProvider,
+      openAiKey: config.openAiTtsKey,
+      openAiVoice: config.openAiTtsVoice,
+      openAiModel: config.openAiTtsModel,
+      elevenKey: config.elevenLabsKey,
+      elevenVoice: config.elevenLabsVoice,
+      elevenModel: config.elevenLabsModel,
+    );
   }
 
   /// Switch TTS engine.
@@ -81,12 +102,28 @@ class TtsPlaybackService extends ChangeNotifier {
 
   /// Load engine preference from secure config.
   Future<void> loadEnginePreference(SecureConfigService config) async {
+    // Always keep the cloud engine configured so it's ready if selected.
+    configureCloud(config);
+
     final pref = config.ttsEngine;
     _engine = switch (pref) {
       'device' => TtsEngine.device,
       'piper' => TtsEngine.piper,
+      'cloud' => TtsEngine.cloud,
       _ => TtsEngine.piper,
     };
+
+    // Cloud engine needs no local asset — but fall back to device if the user
+    // selected it without configuring a key.
+    if (_engine == TtsEngine.cloud) {
+      if (!_cloudTts.isConfigured) {
+        debugPrint('TTS: cloud selected but no key — falling back to device TTS');
+        _engine = TtsEngine.device;
+        await _deviceTts.init();
+      }
+      notifyListeners();
+      return;
+    }
 
     // Try to auto-load Piper voice if configured
     if (_engine == TtsEngine.piper) {
@@ -130,6 +167,61 @@ class TtsPlaybackService extends ChangeNotifier {
           return _speakDevice(cleanText, messageId: messageId);
         }
         return true;
+      case TtsEngine.cloud:
+        final ok = await _speakCloud(cleanText, messageId: messageId);
+        if (!ok) {
+          debugPrint('TTS: Cloud failed ($lastError). Falling back to device TTS.');
+          return _speakDevice(cleanText, messageId: messageId);
+        }
+        return true;
+    }
+  }
+
+  Future<bool> _speakCloud(String text, {String? messageId}) async {
+    if (text.trim().isEmpty) {
+      lastError = 'Leerer Text — nichts zu sagen';
+      return false;
+    }
+    try {
+      final path = await _cloudTts.synthesizeToFile(text);
+      if (path == null) {
+        lastError = _cloudTts.lastError ?? 'Cloud-TTS Synthese fehlgeschlagen';
+        debugPrint('TTS: $lastError');
+        return false;
+      }
+
+      currentlyPlayingId = messageId;
+      notifyListeners();
+
+      await _player.setFilePath(path);
+      await _player.setSpeed(1.0);
+
+      final completer = Completer<void>();
+      _playbackCompleter = completer;
+      final subscription = _player.playerStateStream.listen((state) {
+        if (state.processingState == ProcessingState.completed) {
+          if (!completer.isCompleted) completer.complete();
+        }
+      }, onError: (e) {
+        if (!completer.isCompleted) completer.completeError(e);
+      });
+
+      try {
+        await _player.play();
+        await completer.future;
+      } finally {
+        await subscription.cancel();
+        _playbackCompleter = null;
+        currentlyPlayingId = null;
+        notifyListeners();
+      }
+      return true;
+    } catch (e) {
+      currentlyPlayingId = null;
+      lastError = 'Cloud TTS Fehler: $e';
+      debugPrint('TTS: $lastError');
+      notifyListeners();
+      return false;
     }
   }
 

@@ -53,6 +53,14 @@ class SecureConfigService {
   static const keyTtsEngine = 'TTS_ENGINE';
   static const keyPiperVoice = 'PIPER_VOICE';
   static const keyPiperSpeed = 'PIPER_SPEED';
+  // Cloud TTS (optional, higher quality): OpenAI TTS + ElevenLabs
+  static const keyTtsCloudProvider = 'TTS_CLOUD_PROVIDER'; // 'openai' | 'elevenlabs'
+  static const keyOpenAiTtsKey = 'OPENAI_TTS_API_KEY';
+  static const keyOpenAiTtsVoice = 'OPENAI_TTS_VOICE';
+  static const keyOpenAiTtsModel = 'OPENAI_TTS_MODEL';
+  static const keyElevenLabsKey = 'ELEVENLABS_API_KEY';
+  static const keyElevenLabsVoice = 'ELEVENLABS_VOICE_ID';
+  static const keyElevenLabsModel = 'ELEVENLABS_MODEL';
 
   // Buddy name
   static const keyBuddyName = 'BUDDY_NAME';
@@ -98,6 +106,13 @@ class SecureConfigService {
       keyTtsEngine,
       keyPiperVoice,
       keyPiperSpeed,
+      keyTtsCloudProvider,
+      keyOpenAiTtsKey,
+      keyOpenAiTtsVoice,
+      keyOpenAiTtsModel,
+      keyElevenLabsKey,
+      keyElevenLabsVoice,
+      keyElevenLabsModel,
       keyBuddyName,
       keyProactivityLevel,
     ];
@@ -251,6 +266,47 @@ class SecureConfigService {
   // TTS config
   String get ttsEngine => _cache[keyTtsEngine] ?? _env(keyTtsEngine) ?? 'piper';
   String get piperVoice => _cache[keyPiperVoice] ?? _env(keyPiperVoice) ?? 'de_DE-thorsten-high';
+
+  // Cloud TTS getters
+  String get ttsCloudProvider =>
+      _cache[keyTtsCloudProvider] ?? _env(keyTtsCloudProvider) ?? 'openai';
+  /// OpenAI TTS key — falls back to the OpenAI LLM key so a user who already
+  /// configured OpenAI doesn't have to enter it twice.
+  String get openAiTtsKey {
+    final dedicated = _cache[keyOpenAiTtsKey] ?? _env(keyOpenAiTtsKey) ?? '';
+    return dedicated.isNotEmpty ? dedicated : openAIApiKey;
+  }
+  String get openAiTtsVoice =>
+      _cache[keyOpenAiTtsVoice] ?? _env(keyOpenAiTtsVoice) ?? 'alloy';
+  String get openAiTtsModel =>
+      _cache[keyOpenAiTtsModel] ?? _env(keyOpenAiTtsModel) ?? 'tts-1';
+  String get elevenLabsKey =>
+      _cache[keyElevenLabsKey] ?? _env(keyElevenLabsKey) ?? '';
+  String get elevenLabsVoice =>
+      _cache[keyElevenLabsVoice] ?? _env(keyElevenLabsVoice) ?? 'JBFqnCBsd6RMkjVDRZzb';
+  String get elevenLabsModel =>
+      _cache[keyElevenLabsModel] ?? _env(keyElevenLabsModel) ?? 'eleven_multilingual_v2';
+
+  Future<void> setTtsCloudProvider(String value) async {
+    await _storage.write(key: keyTtsCloudProvider, value: value);
+    _cache[keyTtsCloudProvider] = value;
+  }
+  Future<void> setOpenAiTtsKey(String value) async {
+    await _storage.write(key: keyOpenAiTtsKey, value: value);
+    _cache[keyOpenAiTtsKey] = value;
+  }
+  Future<void> setOpenAiTtsVoice(String value) async {
+    await _storage.write(key: keyOpenAiTtsVoice, value: value);
+    _cache[keyOpenAiTtsVoice] = value;
+  }
+  Future<void> setElevenLabsKey(String value) async {
+    await _storage.write(key: keyElevenLabsKey, value: value);
+    _cache[keyElevenLabsKey] = value;
+  }
+  Future<void> setElevenLabsVoice(String value) async {
+    await _storage.write(key: keyElevenLabsVoice, value: value);
+    _cache[keyElevenLabsVoice] = value;
+  }
   /// Buddy display name (e.g. "Buddy" or a custom name).
   String get buddyName => _cache[keyBuddyName] ?? 'Buddy';
 
