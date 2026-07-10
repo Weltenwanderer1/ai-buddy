@@ -4,7 +4,7 @@ import '../../core/theme/buddy_colors.dart';
 import '../../services/piper_tts_service.dart';
 import 'small_button.dart';
 
-class PiperVoiceTile extends StatelessWidget {
+class PiperVoiceTile extends StatefulWidget {
   const PiperVoiceTile({
     super.key,
     required this.voice,
@@ -22,13 +22,30 @@ class PiperVoiceTile extends StatelessWidget {
   final VoidCallback onDownload;
 
   @override
+  State<PiperVoiceTile> createState() => _PiperVoiceTileState();
+}
+
+class _PiperVoiceTileState extends State<PiperVoiceTile> {
+  // Cache the "is downloaded" check. The parent rebuilds this tile on every
+  // download-progress tick; re-running the filesystem check inline in build
+  // would hit disk many times per second. Recompute only on idle rebuilds
+  // (download finished / voice deleted), never during an active download.
+  Future<bool>? _downloaded;
+
+  @override
   Widget build(BuildContext context) {
+    final voice = widget.voice;
+    final piper = widget.piper;
+    final isCurrent = widget.isCurrent;
     final t = AppLocalizations.of(context);
+    final isThisDownloading = piper.isDownloadingVoice(voice);
+    if (_downloaded == null || !isThisDownloading) {
+      _downloaded = piper.isVoiceDownloaded(voice);
+    }
     return FutureBuilder<bool>(
-      future: piper.isVoiceDownloaded(voice),
+      future: _downloaded,
       builder: (context, snapshot) {
         final isDownloaded = snapshot.data ?? false;
-        final isThisDownloading = piper.isDownloadingVoice(voice);
         final isLoaded = piper.isLoaded && piper.currentVoice == voice;
 
         return Container(
@@ -84,21 +101,21 @@ class PiperVoiceTile extends StatelessWidget {
                 SmallButton(
                   icon: Icons.download_rounded,
                   label: t.common_download,
-                  onTap: onDownload,
+                  onTap: widget.onDownload,
                   color: context.buddy.accent,
                 ),
               if (isDownloaded && !isCurrent)
                 SmallButton(
                   icon: Icons.play_arrow_rounded,
                   label: t.common_load,
-                  onTap: onLoad,
+                  onTap: widget.onLoad,
                   color: context.buddy.success,
                 ),
               if (isDownloaded && !isCurrent)
                 SmallButton(
                   icon: Icons.delete_outline_rounded,
                   label: t.common_delete,
-                  onTap: onDelete,
+                  onTap: widget.onDelete,
                   color: context.buddy.error,
                 ),
             ],

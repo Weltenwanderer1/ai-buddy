@@ -85,7 +85,7 @@ class TimerService extends ChangeNotifier {
     }
 
     await _restoreTimers();
-    _startTicker();
+    _ensureTicker();
   }
 
   /// Start a new timer. Returns the timer ID.
@@ -102,6 +102,7 @@ class TimerService extends ChangeNotifier {
     _timers[id] = entry;
     _scheduleAlarm(entry);
     await _persistTimers();
+    _ensureTicker();
     notifyListeners();
     return id;
   }
@@ -130,8 +131,12 @@ class TimerService extends ChangeNotifier {
         .toList();
   }
 
-  void _startTicker() {
-    _ticker?.cancel();
+  /// Start the 1 Hz ticker only while there are running timers. When the last
+  /// timer finishes the ticker stops, so an idle app is not rebuilt every
+  /// second forever. Call again whenever a new timer is added.
+  void _ensureTicker() {
+    if (_ticker != null) return;
+    if (_timers.values.every((t) => t.isExpired)) return;
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       bool changed = false;
       for (final entry in _timers.values) {
@@ -144,7 +149,13 @@ class TimerService extends ChangeNotifier {
       if (changed) {
         _persistTimers();
       }
+      // Per-second notify is needed for the live countdown UI — but only while
+      // at least one timer is still running.
       notifyListeners();
+      if (_timers.values.every((t) => t.isExpired)) {
+        _ticker?.cancel();
+        _ticker = null;
+      }
     });
   }
 

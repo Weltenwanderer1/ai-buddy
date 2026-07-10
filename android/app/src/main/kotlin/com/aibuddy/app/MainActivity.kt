@@ -9,8 +9,6 @@ import android.media.MediaRecorder
 import android.os.Bundle
 import android.provider.ContactsContract
 import android.util.Log
-import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.runBlocking
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -32,8 +30,6 @@ class MainActivity : FlutterActivity() {
     private val mediaChannel = "com.aibuddy.app/media"
     private var mediaRecorder: MediaRecorder? = null
     private var speechRecognizer: android.speech.SpeechRecognizer? = null
-    private var sttResult: String? = null
-    private var sttCompleter: CompletableDeferred<String?>? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -188,9 +184,22 @@ class MainActivity : FlutterActivity() {
                     // Der Recognizer kann onError UND onResults liefern —
                     // result darf aber nur genau einmal beantwortet werden.
                     var replied = false
+                    // Some OEM recognizers (or a dead recognizer service) never
+                    // fire onResults/onError; without this timeout the Dart
+                    // Future would hang forever and wedge the voice flow.
+                    val timeoutHandler = android.os.Handler(android.os.Looper.getMainLooper())
+                    val timeoutRunnable = Runnable {
+                        if (!replied) {
+                            replied = true
+                            stopOfflineListening()
+                            result.success(null)
+                        }
+                    }
+                    timeoutHandler.postDelayed(timeoutRunnable, 20000)
                     startOfflineListening(preferOffline, locale) { text ->
                         if (!replied) {
                             replied = true
+                            timeoutHandler.removeCallbacks(timeoutRunnable)
                             result.success(text)
                         }
                     }

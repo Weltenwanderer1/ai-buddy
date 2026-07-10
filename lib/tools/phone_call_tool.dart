@@ -78,17 +78,20 @@ class PhoneCallTool implements ToolInterface {
 
     if (mode == 'dialer') {
       final ok = await _channel.invokeMethod('openDialer', {'number': cleanNumber});
-      if (ok == true) {
-        return ToolResult(
-          toolName: definition.name,
-          parameters: parameters,
-          result: 'Waehlscheibe fuer $number wurde geoeffnet.',
-          displayText: '📞 Waehlscheibe geoeffnet',
-        );
-      }
+      // Always return here — never fall through to a direct call. A failed
+      // dialer must NOT silently place a real phone call.
+      return ToolResult(
+        toolName: definition.name,
+        parameters: parameters,
+        result: ok == true
+            ? 'Waehlscheibe fuer $number wurde geoeffnet.'
+            : 'Waehlscheibe konnte nicht geoeffnet werden.',
+        isError: ok != true,
+        displayText: ok == true ? '📞 Waehlscheibe geoeffnet' : '❌ Waehlscheibe fehlgeschlagen',
+      );
     }
 
-    // Direct call
+    // Direct call (mode == 'direct')
     final perm = await Permission.phone.request();
     if (!perm.isGranted) {
       return ToolResult(

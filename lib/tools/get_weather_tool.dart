@@ -33,7 +33,7 @@ class GetWeatherTool implements ToolInterface {
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
-    final days = (parameters['forecast_days'] as int?)?.clamp(1, 3) ?? 1;
+    final days = (parameters['forecast_days'] as num?)?.toInt().clamp(1, 3) ?? 1;
 
     try {
       final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
@@ -72,9 +72,10 @@ class GetWeatherTool implements ToolInterface {
 
       final temp = (current['temperature_2m'] as num?)?.toDouble() ?? 0.0;
       final feelsLike = (current['apparent_temperature'] as num?)?.toDouble() ?? temp;
-      final humidity = current['relative_humidity_2m'] as int? ?? 0;
-      final code = current['weather_code'] as int? ?? 0;
-      final isDay = (current['is_day'] as int?) == 1;
+      // Open-Meteo may return these as doubles — as int? would throw.
+      final humidity = (current['relative_humidity_2m'] as num?)?.toInt() ?? 0;
+      final code = (current['weather_code'] as num?)?.toInt() ?? 0;
+      final isDay = (current['is_day'] as num?)?.toInt() == 1;
 
       final icon = _weatherIcon(code, isDay);
       final description = _weatherDescription(code);
@@ -90,7 +91,7 @@ class GetWeatherTool implements ToolInterface {
           final now = DateTime.now();
           for (int i = 1; i < codes.length && i < days; i++) {
             final day = now.add(Duration(days: i));
-            final dayCode = codes[i] as int? ?? 0;
+            final dayCode = (codes[i] as num?)?.toInt() ?? 0;
             final dayMax = (maxs[i] as num).toDouble().round();
             final dayMin = (mins[i] as num).toDouble().round();
             result += '\n${day.day}.${day.month}.: ${_weatherIcon(dayCode, true)} $dayMin°–$dayMax° ${_weatherDescription(dayCode)}';

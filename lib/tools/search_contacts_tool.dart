@@ -34,7 +34,10 @@ class SearchContactsTool implements ToolInterface {
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final query = parameters['query'] as String? ?? '';
-    final limit = parameters['limit'] as int? ?? 10;
+    // The LLM may send limit as a double or string — as int? would crash.
+    final limit = (parameters['limit'] as num?)?.toInt() ??
+        int.tryParse('${parameters['limit'] ?? ''}') ??
+        10;
 
     if (query.isEmpty) {
       return ToolResult(

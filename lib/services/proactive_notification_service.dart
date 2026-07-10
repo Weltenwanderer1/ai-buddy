@@ -109,7 +109,10 @@ class ProactiveNotificationService extends ChangeNotifier {
   static const _maxStored = 50;
 
   final List<ProactiveNotification> _history = [];
-  int _nextId = 1000;
+  // Seed from launch time (kept within 32-bit range) so notification IDs don't
+  // collide with ones still in the tray from a previous run — a fixed 1000
+  // start would silently replace/cancel them after every restart.
+  int _nextId = DateTime.now().millisecondsSinceEpoch.remainder(100000000);
 
   /// Registered action handlers by action ID.
   final Map<String, ProactiveActionCallback> _actionHandlers = {};
