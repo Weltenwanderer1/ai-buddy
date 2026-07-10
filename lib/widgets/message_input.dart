@@ -139,7 +139,7 @@ class _MessageInputState extends State<MessageInput> {
     super.dispose();
   }
 
-  /// Live-Voice button color based on state.
+  /// Live-Voice accent based on state.
   Color _liveButtonColor() {
     switch (widget.liveVoiceState) {
       case LiveVoiceState.listening:
@@ -341,7 +341,8 @@ class _CircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bgColor = color ?? const Color(0xFF6B8DD6).withValues(alpha: 0.9);
+    final accent = color ?? AppColors.primary;
+    final bgColor = accent.withValues(alpha: 0.25);
 
     return Material(
       color: Colors.transparent,
@@ -356,6 +357,7 @@ class _CircleButton extends StatelessWidget {
           decoration: BoxDecoration(
             shape: BoxShape.circle,
             color: bgColor,
+            border: Border.all(color: accent.withValues(alpha: 0.4)),
           ),
           child: Icon(
             icon,

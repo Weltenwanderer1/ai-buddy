@@ -9,10 +9,13 @@ import 'tool_result.dart';
 /// If a name is given, it resolves to a phone number via the contacts channel.
 class SendMessageToContactTool implements ToolInterface {
   static const _channel = MethodChannel('com.ai-buddy.app/contacts');
+  static const _accessibilityChannel =
+      MethodChannel('com.aibuddy.app/accessibility');
 
   static const _definition = ToolDefinition(
     name: 'send_message_to_contact',
-    description: 'Sendet Nachricht an Kontakt per SMS/WhatsApp. Kontakt per Name oder Nummer.',
+    description:
+        'Sendet Nachricht an Kontakt per SMS/WhatsApp. Kontakt per Name oder Nummer.',
     parametersSchema: {
       'type': 'object',
       'properties': {
@@ -78,7 +81,8 @@ class SendMessageToContactTool implements ToolInterface {
         return ToolResult(
           toolName: definition.name,
           parameters: parameters,
-          result: 'Kontaktberechtigung benoetigt, um Namen aufzuloesen. Bitte erlauben und erneut versuchen.',
+          result:
+              'Kontaktberechtigung benoetigt, um Namen aufzuloesen. Bitte erlauben und erneut versuchen.',
           isError: true,
           displayText: 'Kontaktberechtigung fehlt',
         );
@@ -102,7 +106,8 @@ class SendMessageToContactTool implements ToolInterface {
           );
         }
 
-        final Map<String, dynamic> c = Map<String, dynamic>.from(contacts.first as Map);
+        final Map<String, dynamic> c =
+            Map<String, dynamic>.from(contacts.first as Map);
         final phones = c['phones'] is List ? c['phones'] as List : const [];
         if (phones.isEmpty || phones.first is! Map) {
           return ToolResult(
@@ -115,7 +120,8 @@ class SendMessageToContactTool implements ToolInterface {
         }
 
         // Use the first phone number
-        final Map<String, dynamic> firstPhone = Map<String, dynamic>.from(phones.first as Map);
+        final Map<String, dynamic> firstPhone =
+            Map<String, dynamic>.from(phones.first as Map);
         phone = firstPhone['number'] as String? ?? '';
         final resolvedName = c['name'] ?? contact;
 
@@ -133,7 +139,8 @@ class SendMessageToContactTool implements ToolInterface {
           return ToolResult(
             toolName: definition.name,
             parameters: parameters,
-            result: 'Kontaktberechtigung verweigert. Bitte in den App-Einstellungen erlauben.',
+            result:
+                'Kontaktberechtigung verweigert. Bitte in den App-Einstellungen erlauben.',
             isError: true,
             displayText: 'Kontaktberechtigung fehlt',
           );
@@ -153,7 +160,8 @@ class SendMessageToContactTool implements ToolInterface {
 
     try {
       if (channel == 'sms') {
-        final uri = Uri.parse('sms:$cleanPhone?body=${Uri.encodeComponent(message)}');
+        final uri =
+            Uri.parse('sms:$cleanPhone?body=${Uri.encodeComponent(message)}');
         await launchUrl(uri);
         return ToolResult(
           toolName: definition.name,
@@ -164,12 +172,25 @@ class SendMessageToContactTool implements ToolInterface {
       } else {
         // WhatsApp — wa.me erwartet die Nummer im internationalen Format ohne '+'
         final waPhone = cleanPhone.replaceAll('+', '');
-        final uri = Uri.parse('https://wa.me/$waPhone?text=${Uri.encodeComponent(message)}');
+        final uri = Uri.parse(
+            'https://wa.me/$waPhone?text=${Uri.encodeComponent(message)}');
         await launchUrl(uri);
+        await Future<void>.delayed(const Duration(milliseconds: 1200));
+        var sent = false;
+        try {
+          sent = await _accessibilityChannel.invokeMethod<bool>(
+                'tapWhatsAppSend',
+              ) ??
+              false;
+        } on PlatformException {
+          // Optional: without Accessibility WhatsApp stays open for confirmation.
+        }
         return ToolResult(
           toolName: definition.name,
           parameters: parameters,
-          result: 'WhatsApp-Nachricht an $cleanPhone vorbereitet.',
+          result: sent
+              ? 'WhatsApp-Nachricht an $cleanPhone gesendet.'
+              : 'WhatsApp-Nachricht an $cleanPhone vorbereitet. Fuer automatisches Senden AI-Buddy einmalig in den Android-Bedienungshilfen aktivieren.',
           displayText: '💬 WhatsApp an $contact',
         );
       }

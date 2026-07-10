@@ -299,6 +299,10 @@ class MainActivity : FlutterActivity() {
                     if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
                     else result.success(service.tapByText(text))
                 }
+                "tapWhatsAppSend" -> {
+                    if (service == null) result.error("NOT_ENABLED", "Accessibility service not enabled", null)
+                    else result.success(service.tapWhatsAppSend())
+                }
                 "tapAt" -> {
                     val x = call.argument<Int>("x") ?: 0
                     val y = call.argument<Int>("y") ?: 0

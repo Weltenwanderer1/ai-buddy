@@ -124,6 +124,15 @@ class BuddyAccessibilityService : AccessibilityService() {
         }
     }
 
+    /**
+     * Press WhatsApp's send button, but only while WhatsApp is foregrounded.
+     * This deliberately refuses to click in any other app.
+     */
+    fun tapWhatsAppSend(): Boolean {
+        if (currentPackage() !in setOf("com.whatsapp", "com.whatsapp.w4b")) return false
+        return listOf("Send", "Senden").any { tapByText(it) }
+    }
+
     private fun findByText(root: AccessibilityNodeInfo, query: String): AccessibilityNodeInfo? {
         val q = query.trim().lowercase()
         if (q.isEmpty()) return null

@@ -28,6 +28,7 @@ import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:package_info_plus/package_info_plus.dart';
 import '../tools/tool_registry.dart';
 import '../tools/read_email_tool.dart';
+import '../tools/control_screen_tool.dart';
 import '../widgets/settings/model_dropdown.dart';
 import '../widgets/settings/section_header.dart';
 import '../widgets/settings/expandable_section.dart';
@@ -827,6 +828,25 @@ class _SettingsScreenState extends State<SettingsScreen>
             onTap: () => setState(() => _secTools = !_secTools),
           )),
           if (_secTools) SliverToBoxAdapter(child: Column(children: [
+            SettingsButton(
+              icon: Icons.accessibility_new_rounded,
+              title: 'App-Steuerung & WhatsApp senden',
+              subtitle: 'Einmalig Android-Bedienungshilfe aktivieren',
+              color: context.buddy.accent,
+              onTap: () async {
+                final successColor = context.buddy.success;
+                final errorColor = context.buddy.error;
+                final result = await ControlScreenTool().execute(
+                  {'action': 'enable'},
+                );
+                if (mounted) {
+                  _showSnack(
+                    result.isError ? result.result : 'Android-Einstellung geöffnet',
+                    result.isError ? errorColor : successColor,
+                  );
+                }
+              },
+            ),
             SettingsButton(
               icon: Icons.map_rounded,
               title: t.buddy_offline_maps,

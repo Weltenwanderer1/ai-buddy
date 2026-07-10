@@ -36,6 +36,28 @@ class MusicIntentTool implements ToolInterface {
   @override
   ToolDefinition get definition => _definition;
 
+  static String? resolveMusicPackage(String app) {
+    return OpenAppTool.resolvePackageName(app.trim().toLowerCase());
+  }
+
+  /// Provider-specific search links prevent Android from resolving a generic
+  /// media search through the wrong app (notably YouTube instead of Spotify).
+  static Uri buildSearchUri({required String app, required String query}) {
+    final normalized = app.trim().toLowerCase();
+    if (normalized == 'spotify') {
+      return Uri.parse('spotify:search:${Uri.encodeComponent(query)}');
+    }
+    if (normalized == 'youtube' || normalized == 'youtube music') {
+      return Uri.https('www.youtube.com', '/results', {'search_query': query});
+    }
+    if (normalized == 'soundcloud') {
+      return Uri.https('soundcloud.com', '/search', {'q': query});
+    }
+    return Uri.parse(
+      'https://www.google.com/search?q=${Uri.encodeComponent(query)}',
+    );
+  }
+
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final query =
@@ -45,15 +67,20 @@ class MusicIntentTool implements ToolInterface {
 
     try {
       if (query.isNotEmpty) {
-        final appPackage = OpenAppTool.resolvePackageName(app);
+        final appPackage = resolveMusicPackage(app);
+        if (appPackage == null) {
+          return ToolResult(
+            toolName: definition.name,
+            parameters: parameters,
+            result: 'Unbekannte Musik-App: $app',
+            isError: true,
+            displayText: 'Musik-App nicht gefunden',
+          );
+        }
         final intent = AndroidIntent(
-          action: 'android.intent.action.MEDIA_SEARCH',
+          action: 'android.intent.action.VIEW',
+          data: buildSearchUri(app: app, query: query).toString(),
           package: appPackage,
-          arguments: {
-            'query': query,
-            'android.intent.extra.TITLE': query,
-            'android.intent.extra.TEXT': query,
-          },
           flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
         );
         await intent.launch();

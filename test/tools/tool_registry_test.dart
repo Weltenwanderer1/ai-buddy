@@ -14,6 +14,7 @@ import 'package:ai_buddy/tools/update_config_tool.dart';
 import 'package:ai_buddy/tools/get_calendar_events_tool.dart';
 import 'package:ai_buddy/tools/add_calendar_event_tool.dart';
 import 'package:ai_buddy/tools/open_app_tool.dart';
+import 'package:ai_buddy/tools/music_intent_tool.dart';
 import 'package:ai_buddy/tools/navigate_to_tool.dart';
 import 'package:ai_buddy/tools/send_email_tool.dart';
 import 'package:ai_buddy/tools/manage_shopping_list_tool.dart';
@@ -343,6 +344,25 @@ void main() {
     });
   });
 
+  group('MusicIntentTool', () {
+    test('builds a Spotify deep link when Spotify is requested', () {
+      final uri = MusicIntentTool.buildSearchUri(
+        app: 'spotify',
+        query: 'Beatles best playlist',
+      );
+
+      expect(uri.scheme, 'spotify');
+      expect(uri.toString(), contains('Beatles%20best%20playlist'));
+    });
+
+    test('never turns an explicit Spotify request into YouTube', () {
+      final package = MusicIntentTool.resolveMusicPackage('Spotify');
+
+      expect(package, 'com.spotify.music');
+      expect(package, isNot('com.google.android.youtube'));
+    });
+  });
+
   group('NavigateToTool', () {
     test('returns error for empty destination', () async {
       final tool = NavigateToTool();
@@ -434,7 +454,8 @@ void main() {
 
     test('returns error for empty body', () async {
       final tool = SendEmailTool();
-      final result = await tool.execute({'recipient': 'test@example.com', 'body': ''});
+      final result =
+          await tool.execute({'recipient': 'test@example.com', 'body': ''});
       expect(result.isError, isTrue);
       expect(result.result, contains('Inhalt'));
     });
