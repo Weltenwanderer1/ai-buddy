@@ -81,6 +81,12 @@ class _SettingsScreenState extends State<SettingsScreen>
   final _embeddingBaseUrlController = TextEditingController();
   final _embeddingApiKeyController = TextEditingController();
   final _embeddingModelController = TextEditingController();
+  // Cloud TTS controllers
+  final _openAiTtsKeyController = TextEditingController();
+  final _openAiTtsVoiceController = TextEditingController();
+  final _elevenLabsKeyController = TextEditingController();
+  final _elevenLabsVoiceController = TextEditingController();
+  String _ttsCloudProvider = 'openai';
 
   // Cached futures — creating these inline in build() re-runs the
   // filesystem/platform-channel call on every rebuild (every expand/collapse).
@@ -172,9 +178,16 @@ class _SettingsScreenState extends State<SettingsScreen>
     _embeddingApiKeyController.text = config.embeddingApiKey;
     _embeddingModelController.text = config.embeddingModel;
     _embeddingProvider = config.embeddingProvider;
+    // Cloud TTS: leave the OpenAI key field empty (it falls back to the OpenAI
+    // LLM key), prefill voices + the ElevenLabs key.
+    _ttsCloudProvider = config.ttsCloudProvider;
+    _openAiTtsVoiceController.text = config.openAiTtsVoice;
+    _elevenLabsKeyController.text = config.elevenLabsKey;
+    _elevenLabsVoiceController.text = config.elevenLabsVoice;
     _llmProvider = config.llmProvider;
     _ttsEngine = switch (config.ttsEngine) {
       'device' => TtsEngine.device,
+      'cloud' => TtsEngine.cloud,
       _ => TtsEngine.piper,
     };
   }
@@ -205,6 +218,10 @@ class _SettingsScreenState extends State<SettingsScreen>
     _embeddingBaseUrlController.dispose();
     _embeddingApiKeyController.dispose();
     _embeddingModelController.dispose();
+    _openAiTtsKeyController.dispose();
+    _openAiTtsVoiceController.dispose();
+    _elevenLabsKeyController.dispose();
+    _elevenLabsVoiceController.dispose();
     super.dispose();
   }
 
@@ -313,6 +330,17 @@ class _SettingsScreenState extends State<SettingsScreen>
     await config.setTtsEngine(_ttsEngine.name);
     tts.engine = _ttsEngine;
     await config.setPiperSpeed(tts.piperSpeed);
+
+    // Persist cloud-TTS config and push it into the live service.
+    await config.setTtsCloudProvider(_ttsCloudProvider);
+    if (_openAiTtsKeyController.text.trim().isNotEmpty) {
+      await config.setOpenAiTtsKey(_openAiTtsKeyController.text.trim());
+    }
+    await config.setOpenAiTtsVoice(_openAiTtsVoiceController.text.trim());
+    await config.setElevenLabsKey(_elevenLabsKeyController.text.trim());
+    await config.setElevenLabsVoice(_elevenLabsVoiceController.text.trim());
+    tts.configureCloud(config);
+
     if (_ttsEngine == TtsEngine.device) {
       await tts.initDeviceTts();
     }
@@ -1148,16 +1176,20 @@ class _SettingsScreenState extends State<SettingsScreen>
             expanded: _elevenExpanded,
             onToggle: () => setState(() => _elevenExpanded = !_elevenExpanded),
             children: [
-              // TTS Engine Selector
+              // TTS Engine Selector — chips wrap so three engines never
+              // overflow the row on narrow screens.
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: Row(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(t.config_tts_engine, style: TextStyle(color: context.buddy.t2, fontSize: 13, fontWeight: FontWeight.w600)),
-                    const SizedBox(width: 12),
-                    ...TtsEngine.values.map((e) => Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: GestureDetector(
+                    const SizedBox(height: 10),
+                    Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ...TtsEngine.values.map((e) => GestureDetector(
                         onTap: () => setState(() => _ttsEngine = e),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
@@ -1175,8 +1207,9 @@ class _SettingsScreenState extends State<SettingsScreen>
                             color: _ttsEngine == e ? Colors.white : context.buddy.t2,
                           )),
                         ),
-                      ),
-                    )),
+                      )),
+                    ],
+                    ),
                   ],
                 ),
               ),
@@ -1306,6 +1339,63 @@ class _SettingsScreenState extends State<SettingsScreen>
                 }),
               ],
 
+              // Cloud TTS (shown when cloud selected)
+              if (_ttsEngine == TtsEngine.cloud) ...[
+                Container(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: context.buddy.card.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: context.buddy.border),
+                  ),
+                  child: Row(children: [
+                    _cloudTtsTab('OpenAI', 'openai'),
+                    _cloudTtsTab('ElevenLabs', 'elevenlabs'),
+                  ]),
+                ),
+                if (_ttsCloudProvider == 'openai') ...[
+                  GlassTextField(
+                    label: 'OpenAI API-Key (leer = LLM-Key)',
+                    icon: Icons.key_rounded,
+                    controller: _openAiTtsKeyController,
+                    obscure: true,
+                  ),
+                  GlassTextField(
+                    label: 'Stimme (alloy, nova, shimmer, echo, fable, onyx)',
+                    icon: Icons.record_voice_over_rounded,
+                    controller: _openAiTtsVoiceController,
+                  ),
+                ] else ...[
+                  GlassTextField(
+                    label: 'ElevenLabs API-Key',
+                    icon: Icons.key_rounded,
+                    controller: _elevenLabsKeyController,
+                    obscure: true,
+                  ),
+                  GlassTextField(
+                    label: 'Voice ID',
+                    icon: Icons.record_voice_over_rounded,
+                    controller: _elevenLabsVoiceController,
+                  ),
+                ],
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Text(
+                    'Cloud-Stimmen klingen natürlicher und starten schneller als Piper. '
+                    'Der Antworttext wird an den Anbieter gesendet (kostenpflichtig, braucht Internet).',
+                    style: TextStyle(color: context.buddy.t3, fontSize: 12, height: 1.4)),
+                ),
+                const SizedBox(height: 8),
+                Row(children: [
+                  Expanded(child: GradientButton(
+                    icon: Icons.save_rounded,
+                    label: t.common_save,
+                    onTap: _saveTtsConfig,
+                  )),
+                ]),
+              ],
+
               // Device TTS (shown when device selected)
               if (_ttsEngine == TtsEngine.device) ...[
                 Padding(
@@ -1424,6 +1514,34 @@ class _SettingsScreenState extends State<SettingsScreen>
     return Expanded(
       child: GestureDetector(
         onTap: () => setState(() => _llmProvider = id),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: selected ? context.buddy.accent : null,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Text(
+            label,
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+            maxLines: 1,
+            style: TextStyle(
+              color: selected ? Colors.white : context.buddy.t2,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Cloud-TTS provider tab (OpenAI / ElevenLabs).
+  Widget _cloudTtsTab(String label, String id) {
+    final selected = _ttsCloudProvider == id;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _ttsCloudProvider = id),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(

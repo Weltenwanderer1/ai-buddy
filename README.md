@@ -7,7 +7,7 @@ Built with Flutter. Works with the LLM provider of your choice (Ollama Cloud, Op
 ## Features
 
 - 💬 **Chat** — streaming responses, vision (send photos), Telegram-style UI in light & dark mode
-- 🗣️ **Voice** — offline TTS via [Piper](https://github.com/rhasspy/piper) (German, English, Spanish, Mandarin voices; device TTS otherwise), dictation, hands-free live voice mode
+- 🗣️ **Voice** — offline TTS via [Piper](https://github.com/rhasspy/piper) (German, English, Spanish, Mandarin voices; device TTS otherwise) **or** optional cloud TTS (OpenAI / ElevenLabs) for higher quality; dictation and a hands-free live voice mode that streams the reply and speaks it sentence-by-sentence for low latency
 - 🧠 **Memory** — short-term / long-term / core memory tiers with semantic (embedding-based) retrieval; the assistant learns facts, routines and preferences over time
 - 🤖 **Persona & self-image** — configurable personality that evolves from your conversations
 - 🛠️ **50+ tools** — calendar (read/create/update/delete), contacts, SMS/WhatsApp/e-mail (IMAP read + send), phone calls, real system **alarms & timers** (clock app), reminders, navigation with offline maps (OpenStreetMap), weather, web search (DuckDuckGo, no API key), **photo search** (by name/album/date), file access (sandbox **or** full device storage), clipboard, app launcher, device settings, shopping list (Bring! integration), automation rules, and more
