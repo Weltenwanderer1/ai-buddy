@@ -23,6 +23,7 @@ import 'services/persona_evolution_service.dart';
 import 'services/self_identity_service.dart';
 import 'services/buddy_notes_service.dart';
 import 'services/buddy_capabilities_service.dart';
+import 'services/todo_service.dart';
 import 'services/notification_service.dart';
 import 'services/timer_service.dart';
 import 'services/proactive_notification_service.dart';
@@ -58,6 +59,7 @@ import 'tools/record_voice_memo_tool.dart';
 import 'tools/automation_rule_tool.dart';
 import 'tools/offline_stt_tool.dart';
 import 'tools/manage_password_tool.dart';
+// manage_shopping_list_tool, manage_todo_tool: registriert via registerTodo/register* in tool_registry.dart, nicht direkt in main.dart
 import 'tools/check_update_tool.dart';
 import 'tools/open_url_tool.dart';
 import 'tools/share_text_tool.dart';
@@ -106,6 +108,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late PersonaEvolutionService _personaEvolution;
   late BuddyNotesService _buddyNotes;
   late BuddyCapabilitiesService _buddyCapabilities;
+  late TodoService _todoService;
   late ToolRegistry _toolRegistry;
   late NotificationService _notificationService;
   late TimerService _timerService;
@@ -136,6 +139,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _settings.dispose(); _memory.dispose(); _persona.dispose();
       _chatHistory.dispose(); _personaEvolution.dispose();
       _selfIdentity.dispose(); _buddyNotes.dispose(); _buddyCapabilities.dispose();
+      _todoService.dispose();
       _notificationService.dispose();
       _timerService.dispose();
       _proactiveNotificationService.dispose();
@@ -180,6 +184,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _selfIdentity = SelfIdentityService();
       _buddyNotes = BuddyNotesService();
       _buddyCapabilities = BuddyCapabilitiesService();
+      _todoService = TodoService();
       _chatHistory = ChatHistoryService();
       _piperTtsService = PiperTtsService();
       _ttsPlaybackService = TtsPlaybackService(_piperTtsService);
@@ -210,6 +215,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         }),
         _selfIdentity.init(),
         _buddyNotes.init(),
+        _todoService.init(),
         _buddyCapabilities.init(),
         _chatHistory.init(),
         _ttsPlaybackService.loadEnginePreference(_secureConfig),
@@ -260,6 +266,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _toolRegistry.registerSearchMemories(_memory);
       _toolRegistry.registerSelfIdentity(_selfIdentity);
       _toolRegistry.registerBuddyNotes(_buddyNotes);
+      _toolRegistry.registerTodo(_todoService);
       _toolRegistry.registerSaveMemory(_memory);
       _toolRegistry.registerLearningService(_toolLearning);
 
@@ -781,6 +788,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _selfIdentity),
         ChangeNotifierProvider.value(value: _buddyNotes),
         ChangeNotifierProvider.value(value: _buddyCapabilities),
+        ChangeNotifierProvider.value(value: _todoService),
         ChangeNotifierProvider.value(value: _piperTtsService), Provider.value(value: _secureConfig),
         ChangeNotifierProvider.value(value: _ttsPlaybackService),
         Provider.value(value: _cloudService),

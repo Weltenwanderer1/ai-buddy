@@ -23,6 +23,7 @@ import 'persona_editor_screen.dart';
 import 'self_identity_screen.dart';
 import 'buddy_notes_screen.dart';
 import 'buddy_capabilities_screen.dart';
+import 'todo_screen.dart';
 import 'memory_browser_screen.dart';
 import 'package:share_plus/share_plus.dart' as share_plus;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -874,6 +875,16 @@ class _SettingsScreenState extends State<SettingsScreen>
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const BuddyNotesScreen()),
+              ),
+            ),
+            SettingsButton(nested: true,
+              icon: Icons.checklist_rounded,
+              title: 'Todo-Liste',
+              subtitle: 'Von AI verwaltete Aufgaben',
+              color: context.buddy.accent,
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const TodoScreen()),
               ),
             ),
             SettingsButton(nested: true,

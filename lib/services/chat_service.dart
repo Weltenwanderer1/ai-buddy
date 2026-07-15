@@ -566,6 +566,11 @@ class ChatService {
     // Proaktivitäts-Regel: Eigeninitiative statt Nachfragen
     parts.add('Zeige Eigeninitiative: Erkennst du einen nützlichen Timer, Erinnerung oder Vorschlag, HANDELE direkt. "Ich stelle einen Timer..." statt "Soll ich...". Bei kritischen Aktionen (Nachrichten, Löschen, Einkäufe) frag VORHER nach.');
 
+    // Todo-Liste: Nutze manage_todo bei Aufgaben-Erwähnungen
+    parts.add('TODO-Liste: Wenn der Nutzer eine Aufgabe erwähnt ("erinnere mich", "nicht vergessen", "to do", "muss ich noch"), '
+        'speichere sie sofort per manage_todo (action=add). Bei "was steht an?" → list. '
+        'Bei "erledigt"/"fertig" → toggle. Die Todo-Liste kann der Nutzer jederzeit in den Einstellungen einsehen und editieren.');
+
     // Gelernte Fehler-Tipps fuer Tools (durch ToolRegistry)
     final toolHints = _toolRegistry?.getToolHints() ?? '';
     if (toolHints.isNotEmpty) {

@@ -30,6 +30,8 @@ import '../services/memory_service.dart';
 import 'update_self_identity_tool.dart';
 import '../services/self_identity_service.dart';
 import 'save_memory_tool.dart';
+import '../services/todo_service.dart';
+import 'manage_todo_tool.dart';
 
 import 'buddy_notes_tool.dart';
 import '../services/buddy_notes_service.dart';
@@ -145,6 +147,11 @@ class ToolRegistry {
   /// Register the save_memory tool (requires MemoryService).
   void registerSaveMemory(MemoryService memory) {
     register(SaveMemoryTool(memory));
+  }
+
+  /// Register the manage_todo tool (requires TodoService).
+  void registerTodo(TodoService todo) {
+    register(ManageTodoTool(todo));
   }
 
   /// Register the get_location tool (requires LocationService).
