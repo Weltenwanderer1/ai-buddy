@@ -55,6 +55,7 @@ class _TodoScreenState extends State<TodoScreen> {
   }
 
   Future<void> _clearAll() async {
+    final todoService = context.read<TodoService>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -75,7 +76,6 @@ class _TodoScreenState extends State<TodoScreen> {
     );
     if (confirmed == true) {
       if (!context.mounted) return;
-      final todoService = context.read<TodoService>();
       await todoService.clear();
     }
   }
