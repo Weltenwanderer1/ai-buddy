@@ -75,7 +75,8 @@ class _TodoScreenState extends State<TodoScreen> {
     );
     if (confirmed == true) {
       if (!context.mounted) return;
-      await context.read<TodoService>().clear();
+      final todoService = context.read<TodoService>();
+      await todoService.clear();
     }
   }
 
