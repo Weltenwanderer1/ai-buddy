@@ -42,6 +42,7 @@ import '../services/location_service.dart';
 import 'send_email_tool.dart';
 import 'read_email_tool.dart';
 import 'manage_shopping_list_tool.dart';
+import 'manage_mdp_tool.dart';
 import 'set_reminder_tool.dart';
 import 'set_timer_tool.dart';
 import 'send_proactive_notification_tool.dart';
@@ -55,6 +56,8 @@ import 'update_calendar_event_tool.dart';
 import 'delete_calendar_event_tool.dart';
 import 'record_voice_memo_tool.dart';
 import 'automation_rule_tool.dart';
+import '../services/shopping_service.dart';
+import '../services/mdp_service.dart';
 import '../services/tool_learning_service.dart';
 import 'offline_stt_tool.dart';
 import 'device_settings_tool.dart';
@@ -159,13 +162,24 @@ class ToolRegistry {
     register(GetLocationTool(location));
   }
 
+  /// Register the manage_shopping_list tool (requires ShoppingService).
+  void registerShopping(ShoppingService shopping) {
+    register(ManageShoppingListTool(shopping));
+  }
+
+  /// Register the MDP tool (requires MdpService).
+  void registerMdp(MdpService mdp) {
+    register(ManageMdpTool(mdp));
+  }
+
   static ToolRegistry createDefault(
       {String? Function()? rootPathProvider,
       String imapServer = 'imap.gmail.com',
       int imapPort = 993,
       String emailAddress = '',
       String emailPassword = '',
-      bool imapUseSsl = true}) {
+      bool imapUseSsl = true,
+      LocationService? locationService}) {
     final r = ToolRegistry();
     r.register(GetCurrentTimeTool());
     r.register(GetDeviceInfoTool());
@@ -183,7 +197,8 @@ class ToolRegistry {
     r.register(OpenAppTool());
     r.register(GetBatteryInfoTool());
     r.register(GetClipboardTool());
-    r.register(GetWeatherTool());
+    r.register(GetWeatherTool(
+        locationService: locationService ?? FallbackLocationService()));
     r.register(NavigateToTool()); // OSRM-based open-source navigation
     r.register(MusicIntentTool());
     r.register(SendSmsTool());
@@ -200,9 +215,8 @@ class ToolRegistry {
       password: emailPassword,
       useSsl: imapUseSsl,
     ));
-    r.register(ManageShoppingListTool());
-    // War nie registriert — main.dart setzte nur den Callback, das LLM
-    // konnte set_reminder daher nicht aufrufen.
+    // ManageShoppingListTool is registered via registerShopping() instead.
+    // SetReminderTool was never registerd — main.dart set only the callback.
     r.register(SetReminderTool());
     r.register(SetTimerTool());
     r.register(SendProactiveNotificationTool());

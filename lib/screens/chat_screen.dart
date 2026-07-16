@@ -17,6 +17,7 @@ import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
 import '../services/live_voice_service.dart';
 import '../services/stt_service.dart';
+import '../services/buddy_notes_service.dart';
 import 'package:audio_session/audio_session.dart';
 import '../services/tts_playback_service.dart';
 import '../services/secure_config_service.dart';
@@ -28,6 +29,8 @@ import '../tools/tool_registry.dart';
 import '../models/chat_message.dart';
 import 'settings_screen.dart';
 import 'navigation_map_screen.dart';
+import 'mdp_screen.dart';
+import 'geofence_screen.dart';
 
 import '../services/proactive_engine.dart';
 import '../services/proactive_notification_service.dart';
@@ -424,18 +427,14 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     _scrollToBottom();
   }
 
-  void _scrollToBottom() {
+  void _scrollToBottom({bool force = false}) {
     if (!_scrollController.hasClients) return;
-    if (_scrollController.position.isScrollingNotifier.value) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-        );
-      }
-    });
+    if (!force && _scrollController.position.isScrollingNotifier.value) return;
+    _scrollController.animateTo(
+      _scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 200),
+      curve: Curves.easeOut,
+    );
   }
 
 
@@ -656,7 +655,7 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                         padding: const EdgeInsets.only(bottom: 8),
                         child: Center(
                           child: GestureDetector(
-                            onTap: _scrollToBottom,
+                            onTap: () => _scrollToBottom(force: true),
                             child: Container(
                               width: 36,
                               height: 36,
@@ -854,6 +853,62 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
     );
   }
 
+  // ─── Dictation ───
+
+  Future<void> _recordDictation() async {
+    final stt = SttService();
+    final available = await stt.init();
+    if (!mounted) return;
+    if (!available) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('🎙️ Spracherkennung nicht verfügbar', style: TextStyle(fontSize: 13)),
+        backgroundColor: AppColors.error.withValues(alpha: 0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 1),
+      ));
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('🎤 Sprachmemo läuft...', style: TextStyle(fontSize: 13)),
+      backgroundColor: AppColors.primary.withValues(alpha: 0.9),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 1),
+    ));
+    final text = await stt.listenonce(localeId: 'de_DE');
+
+    if (!mounted) return;
+    if (text == null || text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('⏹️ Keine Sprache erkannt', style: TextStyle(fontSize: 13)),
+        backgroundColor: AppColors.error.withValues(alpha: 0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ));
+      return;
+    }
+
+    final cleaned = text.trim();
+    final notesService = context.read<BuddyNotesService>();
+    await notesService.append('🎙️ $cleaned');
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text('✅ Notiz gespeichert: "$cleaned"', style: const TextStyle(fontSize: 13)),
+      backgroundColor: Colors.green.withValues(alpha: 0.8),
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      margin: const EdgeInsets.all(16),
+      duration: const Duration(seconds: 2),
+    ));
+  }
+
   // ─── Attachment Menu ───
   void _showAttachmentMenu() {
     final c = context.buddy;
@@ -898,6 +953,15 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                 },
               ),
               _MenuTile(
+                icon: Icons.mic_rounded,
+                label: 'Sprachnotiz',
+                color: c.t1,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _recordDictation();
+                },
+              ),
+              _MenuTile(
                 icon: Icons.map_rounded,
                 label: 'OSM Navigation',
                 color: c.t1,
@@ -907,6 +971,43 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
                     context,
                     MaterialPageRoute(
                       builder: (_) => const NavigationMapScreen(),
+                    ),
+                  );
+                },
+              ),
+              _MenuTile(
+                icon: Icons.receipt_long_rounded,
+                label: 'Bon scannen',
+                color: c.t1,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _scanReceipt();
+                },
+              ),
+              _MenuTile(
+                icon: Icons.medication_rounded,
+                label: 'Medikamentenplan',
+                color: c.t1,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const MdpScreen(),
+                    ),
+                  );
+                },
+              ),
+              _MenuTile(
+                icon: Icons.location_on_rounded,
+                label: 'Orts-Erinnerungen',
+                color: c.t1,
+                onTap: () {
+                  Navigator.pop(ctx);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const GeofenceScreen(),
                     ),
                   );
                 },
@@ -957,6 +1058,58 @@ class _ChatScreenState extends State<ChatScreen> with AutomaticKeepAliveClientMi
           margin: const EdgeInsets.all(16),
         ));
       }
+    }
+  }
+
+  // ─── Receipt Scanner ───
+
+  Future<void> _scanReceipt() async {
+    final picker = ImagePicker();
+    try {
+      final xfile = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 2048,
+        maxHeight: 2048,
+        imageQuality: 80,
+      );
+      if (xfile == null) return;
+
+      final file = File(xfile.path);
+      final bytes = await file.readAsBytes();
+      if (bytes.isEmpty) return;
+      if (!mounted) return;
+
+      // Send as a special user message with receipt metadata
+      // The LLM will see the image and extract items from the receipt
+      _sendMessage(
+        '🧾 Bon gescannt — extrahiere die Artikel und füge sie zur Einkaufsliste hinzu. '
+        'Erkannte Artikel direkt per manage_shopping_list-Tool hinzufügen.',
+        fileMetadata: {
+          'attachment_type': 'image',
+          'image_path': xfile.path,
+          'image_bytes_base64': base64Encode(bytes),
+          'scan_type': 'receipt',
+        },
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('🧾 Bon wird verarbeitet...', style: TextStyle(fontSize: 13)),
+        backgroundColor: AppColors.primary.withValues(alpha: 0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 2),
+      ));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Fehler beim Bon-Scannen: $e', style: const TextStyle(fontSize: 13)),
+        backgroundColor: AppColors.error.withValues(alpha: 0.9),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        margin: const EdgeInsets.all(16),
+      ));
     }
   }
 }

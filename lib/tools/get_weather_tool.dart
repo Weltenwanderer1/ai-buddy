@@ -1,17 +1,31 @@
 import 'dart:convert';
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'tool_interface.dart';
 import 'tool_definition.dart';
 import 'tool_result.dart';
+import '../services/location_service.dart';
 
 /// Fetches weather from Open-Meteo (free, no API key needed).
-/// Supports current conditions and short-term forecast.
+/// Uses the device's current location for accurate forecasts.
+/// Includes clothing recommendations based on temperature and conditions.
 class GetWeatherTool implements ToolInterface {
+  final LocationService _locationService;
+
+  GetWeatherTool({required LocationService locationService})
+      : _locationService = locationService;
+
+  /// Creates an instance that always uses Vienna as fallback.
+  GetWeatherTool.fallback()
+      : _locationService = FallbackLocationService();
+
   static const _definition = ToolDefinition(
     name: 'get_weather',
     description:
-        'Aktuelles Wetter und Kurzprognose. Nutze fuer Tagesplanung oder Kleidungstipps.',
+        'Aktuelles Wetter und Kurzprognose für den aktuellen Standort. '
+        'Enthält Kleidungs- und Regenschirm-Empfehlung für den Tag. '
+        'Nutze für Tagesplanung oder um zu wissen was die Kinder anziehen sollen.',
     parametersSchema: {
       'type': 'object',
       'properties': {
@@ -27,20 +41,35 @@ class GetWeatherTool implements ToolInterface {
   @override
   ToolDefinition get definition => _definition;
 
-  // Vienna default coordinates
-  static const _lat = 48.22;
-  static const _lon = 16.30;
+  // Vienna default coordinates (fallback)
+  static const _defaultLat = 48.22;
+  static const _defaultLon = 16.30;
 
   @override
   Future<ToolResult> execute(Map<String, dynamic> parameters) async {
     final days = (parameters['forecast_days'] as num?)?.toInt().clamp(1, 3) ?? 1;
 
+    // Get dynamic location
+    double lat = _defaultLat;
+    double lon = _defaultLon;
+    String locationName = 'Wien';
+    try {
+      final loc = await _locationService.getLocation();
+      if (loc != null) {
+        lat = loc.latitude;
+        lon = loc.longitude;
+        locationName = loc.toShortString();
+      }
+    } catch (e) {
+      debugPrint('GetWeatherTool: location failed, using default: $e');
+    }
+
     try {
       final uri = Uri.https('api.open-meteo.com', '/v1/forecast', {
-        'latitude': '$_lat',
-        'longitude': '$_lon',
-        'current': 'temperature_2m,relative_humidity_2m,weather_code,is_day,apparent_temperature',
-        'daily': 'weather_code,temperature_2m_max,temperature_2m_min',
+        'latitude': lat.toStringAsFixed(2),
+        'longitude': lon.toStringAsFixed(2),
+        'current': 'temperature_2m,relative_humidity_2m,weather_code,is_day,apparent_temperature,wind_speed_10m,precipitation',
+        'daily': 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,wind_speed_10m_max',
         'timezone': 'Europe/Vienna',
         'forecast_days': '$days',
       });
@@ -79,8 +108,48 @@ class GetWeatherTool implements ToolInterface {
 
       final icon = _weatherIcon(code, isDay);
       final description = _weatherDescription(code);
+      final wind = (current['wind_speed_10m'] as num?)?.toDouble() ?? 0.0;
+      final precip = (current['precipitation'] as num?)?.toDouble() ?? 0.0;
+      final isRainy = code >= 40 && code <= 67;
 
-      String result = 'Aktuell in Wien: $icon ${temp.round()}°C (gefühlt ${feelsLike.round()}°C), $description. Luftfeuchtigkeit $humidity%.';
+      String result = 'Aktuell in $locationName: $icon ${temp.round()}°C (gefühlt ${feelsLike.round()}°C), $description.';
+      result += '\n💨 Wind: ${wind.round()} km/h';
+      result += '\n💧 Luftfeuchtigkeit: $humidity%';
+
+      // ─── Clothing recommendation ───
+      result += '\n\n👕 Kleidungs-Tipp: ';
+      if (temp < 0) {
+        result += 'Winterjacke, Mütze, Handschuhe, Schal. Mehrere Schichten.';
+      } else if (temp < 8) {
+        result += 'Warme Jacke, Pullover, lange Hose. Mütze empfohlen.';
+      } else if (temp < 14) {
+        result += 'Leichte Jacke oder Strickjacke, langarm reicht meist.';
+      } else if (temp < 20) {
+        result += 'Pullover oder langarm reicht. Dünne Jacke für abends.';
+      } else if (temp < 27) {
+        result += 'T-Shirt, kurze Hose. Sonnencreme nicht vergessen!';
+      } else {
+        result += 'Leichte Kleidung, Sonnenhut, viel trinken. ☀️';
+      }
+
+      // ─── Kid-specific tip ───
+      result += '\n👶 Für Kinder: ';
+      if (temp > 25) {
+        result += 'Sonnenhut + Sonnencreme, leichte Kleidung, immer Wasser dabei.';
+      } else if (isRainy || precip > 0.3) {
+        result += 'Regenjacke oder Schirm nicht vergessen!';
+      } else if (temp < 10) {
+        result += 'Winterjacke oder dicker Anorak, Ohren warm halten!';
+      } else {
+        result += 'Eine dünne Jacke zum Überziehen reicht meist.';
+      }
+
+      // ─── Umbrella hint ───
+      if (isRainy && wind > 30) {
+        result += '\n☔ Es regnet UND es ist windig — Schirm bringt nix, Regenjacke ist besser!';
+      } else if (isRainy || precip > 0.5) {
+        result += '\n☂️ Regenschirm einpacken!';
+      }
 
       if (daily != null) {
         final codes = daily['weather_code'] as List<dynamic>?;

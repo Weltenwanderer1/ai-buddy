@@ -443,7 +443,7 @@ class ProactiveEngine {
   // ── Weather (high level) ──
   Future<void> _checkWeather(List<_ProactiveMsg> msgs) async {
     try {
-      final tool = GetWeatherTool();
+      final tool = GetWeatherTool(locationService: _locationService!);
       final result = await tool.execute({'forecast_days': 1});
       final text = result.result.toLowerCase();
 

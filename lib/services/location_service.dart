@@ -227,3 +227,27 @@ class LocationService extends ChangeNotifier {
     return 'Aktueller Standort: ${loc.toContextString()}';
   }
 }
+
+/// Static fallback location (Vienna) used when GPS is not available.
+class FallbackLocationService extends LocationService {
+  FallbackLocationService() : super(cacheDuration: const Duration(minutes: 60));
+
+  @override
+  LocationInfo? get currentLocation => const LocationInfo(
+        latitude: 48.22,
+        longitude: 16.30,
+        city: 'Wien',
+        country: 'Österreich',
+        countryCode: 'AT',
+      );
+
+  @override
+  Future<LocationInfo?> getLocation() async => currentLocation;
+
+  @override
+  Future<LocationInfo?> refreshLocation() => getLocation();
+
+  @override
+  Future<String> buildContextString() async =>
+      'Aktueller Standort: ${currentLocation!.toContextString()}';
+}

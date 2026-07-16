@@ -43,6 +43,9 @@ import 'services/anthropic_service.dart';
 import 'services/embedding_service.dart';
 import 'services/clipboard_history_service.dart';
 import 'services/password_service.dart';
+import 'services/mdp_service.dart';
+import 'services/geofence_service.dart';
+import 'services/shopping_service.dart' show ShoppingService;
 import 'services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
 import 'package:share_plus/share_plus.dart' as share_plus;
@@ -126,6 +129,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late ToolLearningService _toolLearning;
   late ClipboardHistoryService _clipboardHistory;
   late PasswordService _passwordService;
+  late ShoppingService _shoppingService;
+  late MdpService _mdpService;
+  late GeofenceService _geofenceService;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -200,6 +206,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _clipboardHistory = ClipboardHistoryService();
       _buddyScheduler = BuddyScheduler();
       _locationService = LocationService();
+      _shoppingService = ShoppingService();
+      _mdpService = MdpService();
+      _geofenceService = GeofenceService();
       BuddyNotifier.init();
 
       // ── Phase 3: Parallel init of all independent services ──
@@ -235,6 +244,9 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         _offlineSttService.checkOfflineAvailability().catchError((e) { debugPrint('OfflineSTT init: $e'); return false; }),
         _toolLearning.init().catchError((e) { debugPrint('ToolLearning init: $e'); return null; }),
         _clipboardHistory.init().then((_) => _clipboardHistory.capture()).catchError((e) { debugPrint('ClipboardHistory init: $e'); return false; }),
+        _shoppingService.init().catchError((e) { debugPrint('Shopping init: $e'); }),
+        _mdpService.init().catchError((e) { debugPrint('MDP init: $e'); }),
+        _geofenceService.init().catchError((e) { debugPrint('Geofence init: $e'); }),
         _buddyScheduler.init().catchError((e) => debugPrint('Scheduler init: $e')),
       ]);
 
@@ -269,6 +281,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _toolRegistry.registerTodo(_todoService);
       _toolRegistry.registerSaveMemory(_memory);
       _toolRegistry.registerLearningService(_toolLearning);
+      _toolRegistry.registerShopping(_shoppingService);
+      _toolRegistry.registerMdp(_mdpService);
 
       _cloudService = OllamaCloudService(
         baseUrl: _secureConfig.activeBaseUrl,
@@ -301,6 +315,11 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
 
       _passwordService = PasswordService();
       ManagePasswordTool.passwordService = _passwordService;
+
+      // Initial geofence check
+      _locationService.getLocation().then((loc) {
+        if (loc != null) _geofenceService.checkProximity(loc);
+      }).catchError((_) {});
 
       final updateService = UpdateService();
       CheckUpdateTool.updateService = updateService;
@@ -799,6 +818,8 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _proactiveNotificationService),
         ChangeNotifierProvider.value(value: _buddyScheduler),
         ChangeNotifierProvider.value(value: _timerService),
+        ChangeNotifierProvider.value(value: _mdpService),
+        ChangeNotifierProvider.value(value: _geofenceService),
       ],
       child: Consumer<SettingsService>(
         builder: (context, settings, _) {

@@ -18,6 +18,7 @@ import 'package:ai_buddy/tools/music_intent_tool.dart';
 import 'package:ai_buddy/tools/navigate_to_tool.dart';
 import 'package:ai_buddy/tools/send_email_tool.dart';
 import 'package:ai_buddy/tools/manage_shopping_list_tool.dart';
+import 'package:ai_buddy/services/shopping_service.dart';
 
 void main() {
   group('ToolRegistry', () {
@@ -464,12 +465,16 @@ void main() {
   });
 
   group('ManageShoppingListTool', () {
+    late ShoppingService shoppingService;
+
     setUp(() {
       SharedPreferences.setMockInitialValues({});
+      shoppingService = ShoppingService();
     });
 
     test('adds an item to list', () async {
-      final tool = ManageShoppingListTool();
+      await shoppingService.init();
+      final tool = ManageShoppingListTool(shoppingService);
       final result = await tool.execute({'action': 'add', 'item': 'Apfel'});
       expect(result.isError, isFalse);
       expect(result.result, contains('Apfel'));
@@ -477,7 +482,8 @@ void main() {
     });
 
     test('lists items', () async {
-      final tool = ManageShoppingListTool();
+      await shoppingService.init();
+      final tool = ManageShoppingListTool(shoppingService);
       final result = await tool.execute({'action': 'list'});
       expect(result.isError, isFalse);
       expect(result.result, contains('leer'));
