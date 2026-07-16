@@ -59,50 +59,60 @@ class ShoppingService extends ChangeNotifier {
         n.contains('salat') || n.contains('tomate') || n.contains('gurke') ||
         n.contains('karotte') || n.contains('zwiebel') || n.contains('knoblauch') ||
         n.contains('paprika') || n.contains('brokkoli') || n.contains('spinat') ||
-        n.contains('obst') || n.contains('gemüse') || n.contains('kartoffel'))
+        n.contains('obst') || n.contains('gemüse') || n.contains('kartoffel')) {
       return 'Obst & Gemüse';
+    }
 
     if (n.contains('milch') || n.contains('joghurt') || n.contains('käse') ||
         n.contains('butter') || n.contains('sahne') || n.contains('quark') ||
-        n.contains('ei') || n.contains('eier'))
+        n.contains('ei') || n.contains('eier')) {
       return 'Molkerei & Eier';
+    }
 
     if (n.contains('brot') || n.contains('brötchen') || n.contains('toast') ||
         n.contains('mehl') || n.contains('nudel') || n.contains('reis') ||
-        n.contains('müsli') || n.contains('haferflocken') || n.contains('cornflakes'))
+        n.contains('müsli') || n.contains('haferflocken') || n.contains('cornflakes')) {
       return 'Brot & Getreide';
+    }
 
     if (n.contains('fleisch') || n.contains('hack') || n.contains('hähnchen') ||
         n.contains('huhn') || n.contains('rind') || n.contains('schwein') ||
         n.contains('wurst') || n.contains('salami') || n.contains('schinken') ||
-        n.contains('fisch') || n.contains('lachs'))
+        n.contains('fisch') || n.contains('lachs')) {
       return 'Fleisch & Fisch';
+    }
 
     if (n.contains('wasser') || n.contains('saft') || n.contains('cola') ||
         n.contains('limo') || n.contains('bier') || n.contains('wein') ||
-        n.contains('sprite') || n.contains('fanta') || n.contains('schorle'))
+        n.contains('sprite') || n.contains('fanta') || n.contains('schorle')) {
       return 'Getränke';
+    }
 
     if (n.contains('eis') || n.contains('tiefkühl') || n.contains('pizza') ||
-        n.contains('pommes'))
+        n.contains('pommes')) {
       return 'Tiefkühl';
+    }
 
     if (n.contains('klopapier') || n.contains('putz') || n.contains('müll') ||
         n.contains('müllsack') || n.contains('spüli') || n.contains('wasch') ||
-        n.contains('reiniger') || n.contains('seife') || n.contains('schwamm'))
+        n.contains('reiniger') || n.contains('seife') || n.contains('schwamm')) {
       return 'Haushalt';
+    }
 
     if (n.contains('shampoo') || n.contains('dusch') || n.contains('zahn') ||
-        n.contains('deo') || n.contains('creme') || n.contains('rasier'))
+        n.contains('deo') || n.contains('creme') || n.contains('rasier')) {
       return 'Körperpflege';
+    }
 
     if (n.contains('windel') || n.contains('baby') || n.contains('brei') ||
-        n.contains('schnuller'))
+        n.contains('schnuller')) {
       return 'Baby & Kind';
+    }
 
     if (n.contains('hund') || n.contains('katze') || n.contains('futter') ||
-        n.contains('streu') || n.contains('tier'))
+        n.contains('streu') || n.contains('tier')) {
       return 'Tierbedarf';
+    }
 
     return 'Sonstiges';
   }
@@ -185,10 +195,12 @@ class ShoppingService extends ChangeNotifier {
     }
     // Unmatched categories
     final other = _items.where((i) => !categories.contains(i.category)).toList();
-    if (other.isNotEmpty) map['Sonstiges'] = [
-      ...(map['Sonstiges'] ?? []),
-      ...other,
-    ];
+    if (other.isNotEmpty) {
+      map['Sonstiges'] = [
+        ...(map['Sonstiges'] ?? []),
+        ...other,
+      ];
+    }
     return map;
   }
 }

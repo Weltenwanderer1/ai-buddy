@@ -112,7 +112,7 @@ class ManageMdpTool implements ToolInterface {
         );
         await _mdpService.addEntry(entry);
         resultText = '"$name${dosage.isNotEmpty ? ' ($dosage)' : ''}" '
-            'wurde zum Medikamentenplan hinzugefügt (${time} Uhr, ${entry.weekdayLabel}).';
+            'wurde zum Medikamentenplan hinzugefügt ($time Uhr, ${entry.weekdayLabel}).';
         displayVal = '💊 +$name';
         break;
 

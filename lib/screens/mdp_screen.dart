@@ -146,8 +146,11 @@ class _MdpScreenState extends State<MdpScreen> {
                 selected: selected,
                 onSelected: (val) {
                   setState(() {
-                    if (val) _selectedDays.add(day);
-                    else _selectedDays.remove(day);
+                    if (val) {
+                      _selectedDays.add(day);
+                    } else {
+                      _selectedDays.remove(day);
+                    }
                   });
                 },
                 selectedColor: c.accent,
@@ -225,7 +228,7 @@ class _MdpScreenState extends State<MdpScreen> {
 }
 
 class _Field extends StatelessWidget {
-  final c;
+  final BuddyColors c;
   final TextEditingController controller;
   final String hint;
   final IconData icon;
@@ -258,7 +261,7 @@ class _Field extends StatelessWidget {
 }
 
 class _EmptyTile extends StatelessWidget {
-  final c;
+  final BuddyColors c;
   final String text;
   const _EmptyTile(this.c, this.text);
 
@@ -280,7 +283,7 @@ class _EmptyTile extends StatelessWidget {
 
 class _MdpTile extends StatelessWidget {
   final MdpEntry entry;
-  final c;
+  final BuddyColors c;
   final bool taken;
   final VoidCallback? onTake;
   final VoidCallback? onSkip;
@@ -336,7 +339,7 @@ class _MdpTile extends StatelessWidget {
 
 class _MdpListTile extends StatelessWidget {
   final MdpEntry entry;
-  final c;
+  final BuddyColors c;
   final MdpService mdp;
 
   const _MdpListTile({required this.entry, required this.c, required this.mdp});
