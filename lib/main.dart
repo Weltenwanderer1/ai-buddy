@@ -45,6 +45,7 @@ import 'services/clipboard_history_service.dart';
 import 'services/password_service.dart';
 import 'services/mdp_service.dart';
 import 'services/geofence_service.dart';
+import 'services/obsidian_vault_service.dart';
 import 'services/shopping_service.dart' show ShoppingService;
 import 'services/update_service.dart';
 import 'package:url_launcher/url_launcher.dart' as url_launcher;
@@ -132,6 +133,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
   late ShoppingService _shoppingService;
   late MdpService _mdpService;
   late GeofenceService _geofenceService;
+  late ObsidianVaultService _obsidianVault;
 
   @override
   void initState() { super.initState(); _initServices(); }
@@ -154,6 +156,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _cloudService.dispose();
       _anthropicService.dispose();
       _toolLearning.dispose();
+      _obsidianVault.dispose();
     }
     super.dispose();
   }
@@ -209,6 +212,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _shoppingService = ShoppingService();
       _mdpService = MdpService();
       _geofenceService = GeofenceService();
+      _obsidianVault = ObsidianVaultService();
       BuddyNotifier.init();
 
       // ── Phase 3: Parallel init of all independent services ──
@@ -283,6 +287,13 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
       _toolRegistry.registerLearningService(_toolLearning);
       _toolRegistry.registerShopping(_shoppingService);
       _toolRegistry.registerMdp(_mdpService);
+      _toolRegistry.registerObsidianVault(_obsidianVault);
+
+      // Obsidian Vault — read path from settings, listen for changes
+      _obsidianVault.updatePath(_settings.obsidianVaultPath);
+      _settings.addListener(() {
+        _obsidianVault.updatePath(_settings.obsidianVaultPath);
+      });
 
       _cloudService = OllamaCloudService(
         baseUrl: _secureConfig.activeBaseUrl,
@@ -820,6 +831,7 @@ class _AIBuddyAppState extends State<AIBuddyApp> {
         ChangeNotifierProvider.value(value: _timerService),
         ChangeNotifierProvider.value(value: _mdpService),
         ChangeNotifierProvider.value(value: _geofenceService),
+        ChangeNotifierProvider.value(value: _obsidianVault),
       ],
       child: Consumer<SettingsService>(
         builder: (context, settings, _) {

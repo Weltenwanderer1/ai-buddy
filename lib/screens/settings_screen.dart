@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../core/theme/buddy_colors.dart';
 import '../core/version.dart';
 import '../services/secure_config_service.dart';
+import '../services/settings_service.dart';
 import '../services/tts_playback_service.dart';
 import '../services/piper_tts_service.dart';
 import '../services/backup_service.dart';
@@ -587,6 +588,44 @@ class _SettingsScreenState extends State<SettingsScreen>
     ));
   }
 
+  Future<void> _showVaultPathDialog() async {
+    final settings = context.read<SettingsService>();
+    final controller = TextEditingController(text: settings.obsidianVaultPath);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Obsidian Vault Pfad'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: '/storage/emulated/0/MyVault',
+            labelText: 'Vault-Pfad',
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Abbrechen'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            child: const Text('Speichern'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && mounted) {
+      settings.obsidianVaultPath = result;
+      _showSnack(
+        result.isEmpty ? 'Vault-Pfad entfernt' : 'Vault-Pfad gespeichert ✅',
+        context.buddy.success,
+      );
+    }
+  }
+
   Future<bool> _confirm(String title, String body) async {
     final t = AppLocalizations.of(context);
     return (await showDialog<bool>(
@@ -896,6 +935,15 @@ class _SettingsScreenState extends State<SettingsScreen>
                 context,
                 MaterialPageRoute(builder: (_) => const BuddyCapabilitiesScreen()),
               ),
+            ),
+            SettingsButton(nested: true,
+              icon: Icons.folder_open_rounded,
+              title: 'Obsidian Vault',
+              subtitle: context.read<SettingsService>().obsidianVaultPath.isNotEmpty
+                  ? context.read<SettingsService>().obsidianVaultPath
+                  : 'Pfad konfigurieren — Wissensbasis für AI',
+              color: context.buddy.accent,
+              onTap: () => _showVaultPathDialog(),
             ),
           ])),
 

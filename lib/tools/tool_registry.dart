@@ -44,6 +44,8 @@ import 'read_email_tool.dart';
 import 'manage_shopping_list_tool.dart';
 import 'manage_mdp_tool.dart';
 import 'set_reminder_tool.dart';
+import 'obsidian_vault_tool.dart';
+import '../services/obsidian_vault_service.dart';
 import 'set_timer_tool.dart';
 import 'send_proactive_notification_tool.dart';
 import 'delete_file_tool.dart';
@@ -170,6 +172,11 @@ class ToolRegistry {
   /// Register the MDP tool (requires MdpService).
   void registerMdp(MdpService mdp) {
     register(ManageMdpTool(mdp));
+  }
+
+  /// Register the obsidian_vault tool (requires ObsidianVaultService).
+  void registerObsidianVault(ObsidianVaultService vault) {
+    register(ObsidianVaultTool(vault));
   }
 
   static ToolRegistry createDefault(

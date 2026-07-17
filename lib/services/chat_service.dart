@@ -571,6 +571,12 @@ class ChatService {
         'speichere sie sofort per manage_todo (action=add). Bei "was steht an?" → list. '
         'Bei "erledigt"/"fertig" → toggle. Die Todo-Liste kann der Nutzer jederzeit in den Einstellungen einsehen und editieren.');
 
+    // Obsidian Vault: automatisch durchsuchen bei Suchanfragen
+    parts.add('OBSIDIAN VAULT: Durchsuche IMMER den Obsidian Vault (obsidian_vault, action=search) wenn der Nutzer '
+        'nach Informationen, Fakten, Notizen oder Wissen fragt. Antworte mit dem was du im Vault findest. '
+        'Speichere neue wichtige Informationen als Notizen (obsidian_vault, action=write). '
+        'Nutze Wikilinks [[Notiz-Titel]] für Verknüpfungen.');
+
     // Gelernte Fehler-Tipps fuer Tools (durch ToolRegistry)
     final toolHints = _toolRegistry?.getToolHints() ?? '';
     if (toolHints.isNotEmpty) {

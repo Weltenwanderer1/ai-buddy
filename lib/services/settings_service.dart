@@ -54,6 +54,7 @@ class SettingsService extends ChangeNotifier {
     _data.putIfAbsent('local_model_max_tokens', () => 512);
     _data.putIfAbsent('theme_mode', () => 'system'); // system | light | dark
     _data.putIfAbsent('accent_color', () => 0xFF6B8DD6); // Hex int for primary accent
+    _data.putIfAbsent('obsidian_vault_path', () => '');
   }
 
   void _scheduleSave() {
@@ -136,6 +137,15 @@ class SettingsService extends ChangeNotifier {
 
   set accentColor(Color value) {
     _data['accent_color'] = value.toARGB32();
+    notifyListeners();
+    _scheduleSave();
+  }
+
+  /// Obsidian Vault path for knowledge base integration.
+  String get obsidianVaultPath =>
+      _data['obsidian_vault_path'] as String? ?? '';
+  set obsidianVaultPath(String value) {
+    _data['obsidian_vault_path'] = value;
     notifyListeners();
     _scheduleSave();
   }
