@@ -4,6 +4,7 @@ import '../core/i18n/app_localizations.dart';
 import 'package:provider/provider.dart';
 import '../core/theme/buddy_colors.dart';
 import '../core/version.dart';
+import '../core/opencode_go_models.dart';
 import '../services/secure_config_service.dart';
 import '../services/settings_service.dart';
 import '../services/tts_playback_service.dart';
@@ -143,10 +144,8 @@ class _SettingsScreenState extends State<SettingsScreen>
     {'id': 'claude-opus-4-20250514', 'name': 'Claude Opus 4 (leistungsstark)'},
     {'id': 'claude-3-5-haiku-20241022', 'name': 'Claude 3.5 Haiku (schnell)'},
   ];
-  List<Map<String, String>> get _openCodeGoModels => [
-    {'id': 'glm-5.2', 'name': 'GLM-5.2 (Standard)'},
-    {'id': 'mimo-v2.5-pro', 'name': 'Mimo V2.5 Pro (Fallback)'},
-  ];
+  List<Map<String, String>> get _openCodeGoModels =>
+      openCodeGoModels.map((model) => model.toDropdownEntry()).toList();
 
   @override
   void initState() {
@@ -362,19 +361,37 @@ class _SettingsScreenState extends State<SettingsScreen>
         _ => 'Ollama',
       };
 
-      if (_llmProvider == 'anthropic') {
-        // Anthropic has its own API format
-        final key = _anthropicKeyController.text.trim().isNotEmpty
-            ? _anthropicKeyController.text.trim()
-            : config.anthropicApiKey;
-        final model = _anthropicModelController.text.trim().isNotEmpty
-            ? _anthropicModelController.text.trim()
-            : config.anthropicModel;
+      final openCodeModel = _openCodeGoModelController.text.trim().isNotEmpty
+          ? _openCodeGoModelController.text.trim()
+          : config.openCodeGoModel;
+      final useAnthropicApi = _llmProvider == 'anthropic' ||
+          (_llmProvider == 'opencode-go' && openCodeGoUsesAnthropicApi(openCodeModel));
+
+      if (useAnthropicApi) {
+        // OpenCode Go exposes MiniMax/Qwen through the Anthropic Messages API.
+        final isOpenCodeGo = _llmProvider == 'opencode-go';
+        final keyController = isOpenCodeGo ? _openCodeGoKeyController : _anthropicKeyController;
+        final key = keyController.text.trim().isNotEmpty
+            ? keyController.text.trim()
+            : (isOpenCodeGo ? config.openCodeGoApiKey : config.anthropicApiKey);
+        final model = isOpenCodeGo
+            ? openCodeModel
+            : (_anthropicModelController.text.trim().isNotEmpty
+                ? _anthropicModelController.text.trim()
+                : config.anthropicModel);
+        final configuredFallback = isOpenCodeGo
+            ? (_openCodeGoFallbackController.text.trim().isNotEmpty
+                ? _openCodeGoFallbackController.text.trim()
+                : config.openCodeGoFallbackModel)
+            : config.anthropicFallbackModel;
+        final fallback = isOpenCodeGo
+            ? openCodeGoFallbackForSameApi(model, configuredFallback)
+            : configuredFallback;
         final svc = AnthropicService(
-          baseUrl: config.anthropicBaseUrl,
+          baseUrl: isOpenCodeGo ? config.openCodeGoBaseUrl : config.anthropicBaseUrl,
           apiKey: key,
           defaultModel: model,
-          fallbackModel: config.anthropicFallbackModel,
+          fallbackModel: fallback,
         );
         try {
           final reply = await svc.chat(
@@ -414,11 +431,14 @@ class _SettingsScreenState extends State<SettingsScreen>
           'opencode-go' => (_openCodeGoFallbackController.text.trim().isNotEmpty ? _openCodeGoFallbackController.text.trim() : config.openCodeGoFallbackModel),
           _ => (_ollamaFallbackController.text.trim().isNotEmpty ? _ollamaFallbackController.text.trim() : config.ollamaFallbackModel),
         };
+        final effectiveFallback = _llmProvider == 'opencode-go'
+            ? openCodeGoFallbackForSameApi(model, fallback)
+            : fallback;
         final cloud = OllamaCloudService(
           baseUrl: baseUrl,
           apiKey: apiKey,
           defaultModel: model,
-          fallbackModel: fallback,
+          fallbackModel: effectiveFallback,
         );
         try {
           final reply = await cloud.chat(
@@ -1221,9 +1241,10 @@ class _SettingsScreenState extends State<SettingsScreen>
                   models: _openCodeGoModels,
                   controller: _openCodeGoModelController,
                 ),
-                GlassTextField(
+                _buildModelDropdown(
                   label: t.config_fallback,
                   icon: Icons.backup_rounded,
+                  models: _openCodeGoModels,
                   controller: _openCodeGoFallbackController,
                 ),
               ],

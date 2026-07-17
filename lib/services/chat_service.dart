@@ -8,6 +8,7 @@ import '../services/ollama_cloud_service.dart';
 import '../services/anthropic_provider.dart';
 import '../services/anthropic_service.dart';
 import '../services/secure_config_service.dart';
+import '../core/opencode_go_models.dart';
 import '../services/memory_service.dart';
 import '../services/persona_service.dart';
 import '../services/persona_evolution_service.dart';
@@ -61,20 +62,26 @@ class ChatService {
   };
 
   /// Resolve the active LLM provider based on config.
-  /// Supports: ollama, openrouter, openai (via OllamaCloudService),
-  /// and anthropic (via AnthropicService).
+  /// Supports OpenAI-compatible providers plus Anthropic and OpenCode Go's
+  /// model-dependent OpenAI/Anthropic endpoints.
   LlmProvider? _resolveProvider() {
     final config = _configService;
     final provider = config?.llmProvider ?? 'ollama';
 
     // Anthropic has its own service + provider (Messages API format)
-    if (provider == 'anthropic') {
+    final openCodeUsesAnthropic = provider == 'opencode-go' &&
+        config != null && openCodeGoUsesAnthropicApi(config.openCodeGoModel);
+    if (provider == 'anthropic' || openCodeUsesAnthropic) {
       if (_anthropicService != null && config != null) {
+        final fallback = openCodeUsesAnthropic
+            ? openCodeGoFallbackForSameApi(
+                config.openCodeGoModel, config.openCodeGoFallbackModel)
+            : config.anthropicFallbackModel;
         _anthropicService!.updateConfig(
-          baseUrl: config.anthropicBaseUrl,
-          apiKey: config.anthropicApiKey,
-          defaultModel: config.anthropicModel,
-          fallbackModel: config.anthropicFallbackModel,
+          baseUrl: openCodeUsesAnthropic ? config.openCodeGoBaseUrl : config.anthropicBaseUrl,
+          apiKey: openCodeUsesAnthropic ? config.openCodeGoApiKey : config.anthropicApiKey,
+          defaultModel: openCodeUsesAnthropic ? config.openCodeGoModel : config.anthropicModel,
+          fallbackModel: fallback,
         );
         return AnthropicProvider(_anthropicService!);
       }
@@ -84,11 +91,14 @@ class ChatService {
     // ollama, openrouter, openai — all use the OpenAI-compatible endpoint
     // via OllamaCloudService
     if (_cloudService != null && config != null) {
+      final fallback = provider == 'opencode-go'
+          ? openCodeGoFallbackForSameApi(config.activeModel, config.activeFallbackModel)
+          : config.activeFallbackModel;
       _cloudService!.updateConfig(
         baseUrl: config.activeBaseUrl,
         apiKey: config.activeApiKey,
         defaultModel: config.activeModel,
-        fallbackModel: config.activeFallbackModel,
+        fallbackModel: fallback,
       );
       return OllamaCloudProvider(_cloudService!);
     }

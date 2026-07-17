@@ -1,5 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import '../core/opencode_go_models.dart' as opencode_go;
 
 /// Manages API keys and config securely.
 /// Priority: Secure Storage > .env file > hardcoded defaults.
@@ -186,8 +187,8 @@ class SecureConfigService {
       _cache[keyAnthropicFallbackModel] ?? _env(keyAnthropicFallbackModel) ?? 'claude-3-5-haiku-20241022';
 
   // OpenCode Go getters
-  String get openCodeGoBaseUrl =>
-      _cache[keyOpenCodeGoBaseUrl] ?? _env(keyOpenCodeGoBaseUrl) ?? 'https://api.opencode.ai';
+  String get openCodeGoBaseUrl => opencode_go.normalizeOpenCodeGoBaseUrl(
+      _cache[keyOpenCodeGoBaseUrl] ?? _env(keyOpenCodeGoBaseUrl) ?? opencode_go.openCodeGoBaseUrl);
   String get openCodeGoApiKey =>
       _cache[keyOpenCodeGoApiKey] ?? _env(keyOpenCodeGoApiKey) ?? '';
   String get openCodeGoModel =>
