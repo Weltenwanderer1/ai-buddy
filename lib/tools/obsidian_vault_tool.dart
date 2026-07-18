@@ -207,8 +207,10 @@ class ObsidianVaultTool implements ToolInterface {
 
   Future<ToolResult> _list(Map<String, dynamic> parameters) async {
     final path = parameters['path'] as String? ?? '';
+    final rawLimit = parameters['limit'];
+    final limit = (rawLimit is num ? rawLimit.toInt() : 50).clamp(1, 200);
 
-    final notes = await _vault.listNotes(folder: path);
+    final notes = await _vault.listNotes(folder: path, limit: limit);
     if (notes.isEmpty) {
       return ToolResult(
         toolName: definition.name,

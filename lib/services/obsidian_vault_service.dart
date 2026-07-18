@@ -96,17 +96,19 @@ class ObsidianVaultService extends ChangeNotifier {
     }
   }
 
-  /// List .md files in a folder (relative to vault root).
-  Future<List<Map<String, String>>> listNotes({String folder = ''}) async {
+  /// List real .md files recursively below a folder (relative to vault root).
+  Future<List<Map<String, String>>> listNotes(
+      {String folder = '', int limit = 50}) async {
     if (!isConfigured) return [];
     final dirPath = folder.isEmpty ? _vaultPath : '$_vaultPath/$folder';
     final dir = Directory(dirPath);
     if (!await dir.exists()) return [];
 
     final results = <Map<String, String>>[];
-    await for (final entity in dir.list(recursive: false, followLinks: false)) {
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
       if (entity is! File) continue;
       if (!entity.path.endsWith('.md')) continue;
+      if (entity.path.contains('/.obsidian/')) continue;
 
       final relativePath = entity.path.replaceFirst('$_vaultPath/', '');
       String title;
@@ -122,7 +124,7 @@ class ObsidianVaultService extends ChangeNotifier {
 
     results.sort(
         (a, b) => (a['title'] ?? '').compareTo(b['title'] ?? ''));
-    return results;
+    return results.take(limit.clamp(1, 200)).toList();
   }
 
   String _extractTitle(String content, String filePath) {

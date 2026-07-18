@@ -1,5 +1,21 @@
 import 'dart:async';
 
+/// Never hide real tool output behind a generic success sentence. Some models
+/// emit no final text after a successful tool call; in that case the actual
+/// tool results are the only grounded answer we have.
+String resolveToolLoopText({
+  required String modelContent,
+  required List<String> toolResults,
+}) {
+  if (modelContent.trim().isNotEmpty) return modelContent;
+  final groundedResults = toolResults
+      .map((result) => result.trim())
+      .where((result) => result.isNotEmpty)
+      .toList();
+  if (groundedResults.isNotEmpty) return groundedResults.join('\n\n');
+  return 'Tool-Aufruf ausgeführt.';
+}
+
 /// Unified interface for all LLM providers (local, cloud, OpenRouter).
 ///
 /// Implementations encapsulate their own model lifecycle, API details,

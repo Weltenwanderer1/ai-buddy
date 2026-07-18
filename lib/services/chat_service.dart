@@ -571,6 +571,8 @@ class ChatService {
 
     // Tool-Hinweis — kompakt
     parts.add('\nNutze update_self_identity, save_memory, search_memories aktiv.');
+    parts.add('TOOL-WAHRHEIT: Behaupte niemals Zugriff, Dateien, Fakten oder Ergebnisse ohne einen erfolgreichen Tool-Aufruf. '
+        'Wenn ein Tool nichts findet oder fehlschlägt, sage das offen. Erfinde niemals Dateinamen oder Tool-Ergebnisse.');
     parts.add('Speichere NUR vollstaendige Saetze mit Kontext: "Der Nutzer heisst X und wohnt in Y" — NIEMALS nur "X".');
 
     // Proaktivitäts-Regel: Eigeninitiative statt Nachfragen
@@ -582,8 +584,10 @@ class ChatService {
         'Bei "erledigt"/"fertig" → toggle. Die Todo-Liste kann der Nutzer jederzeit in den Einstellungen einsehen und editieren.');
 
     // Obsidian Vault: automatisch durchsuchen bei Suchanfragen
-    parts.add('OBSIDIAN VAULT: Durchsuche IMMER den Obsidian Vault (obsidian_vault, action=search) wenn der Nutzer '
+    parts.add('OBSIDIAN VAULT: Prüfe Fragen nach Zugriff oder Inhalt sofort mit obsidian_vault (action=list). '
+        'Durchsuche IMMER den Obsidian Vault (obsidian_vault, action=search) wenn der Nutzer '
         'nach Informationen, Fakten, Notizen oder Wissen fragt. Antworte mit dem was du im Vault findest. '
+        'Nenne ausschließlich Pfade und Inhalte aus dem Tool-Ergebnis. '
         'Speichere neue wichtige Informationen als Notizen (obsidian_vault, action=write). '
         'Nutze Wikilinks [[Notiz-Titel]] für Verknüpfungen.');
 

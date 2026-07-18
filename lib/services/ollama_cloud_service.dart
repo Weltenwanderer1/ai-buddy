@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:http/io_client.dart';
 import 'package:flutter/foundation.dart';
 import 'tool_call_parser.dart';
+import 'llm_provider.dart' show resolveToolLoopText;
 
 /// Service for communicating with Ollama Cloud LLM API.
 /// Reads config from constructor params (injected from SecureConfigService).
@@ -194,6 +195,7 @@ class OllamaCloudService extends ChangeNotifier {
     final url = Uri.parse(_chatCompletionsPath);
     final hasTools =
         tools != null && tools.isNotEmpty && onToolCall != null;
+    final toolResults = <String>[];
 
     for (var round = 0; round <= maxToolRounds; round++) {
       final body = <String, dynamic>{
@@ -209,13 +211,23 @@ class OllamaCloudService extends ChangeNotifier {
       }
 
       final collected = <int, ToolCallDraft>{};
+      var yieldedText = false;
       await for (final chunk
           in _streamResponseWithToolCapture(url, _baseHeaders, body, collected)) {
+        yieldedText = true;
         yield chunk;
       }
 
       final toolCalls = _draftsToToolCalls(collected);
-      if (!hasTools || toolCalls.isEmpty) return;
+      if (!hasTools || toolCalls.isEmpty) {
+        if (!yieldedText && toolResults.isNotEmpty) {
+          yield resolveToolLoopText(
+            modelContent: '',
+            toolResults: toolResults,
+          );
+        }
+        return;
+      }
 
       // Assistant-Nachricht mit allen Tool-Calls in die History
       current.add({
@@ -245,6 +257,7 @@ class OllamaCloudService extends ChangeNotifier {
         }
         final trimmed =
             result.length > 2000 ? '${result.substring(0, 2000)}...' : result;
+        toolResults.add(trimmed);
         current.add({
           'role': 'tool',
           'tool_call_id': tc.id,

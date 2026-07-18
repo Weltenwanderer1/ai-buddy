@@ -130,6 +130,7 @@ class OllamaCloudProvider implements LlmProvider {
   }) async {
     var currentMessages = List<Map<String, dynamic>>.from(messages);
     var currentResponse = chatResponse;
+    final toolResults = <String>[];
     int rounds = 0;
 
     while (currentResponse.hasToolCalls && rounds < maxRounds) {
@@ -150,6 +151,7 @@ class OllamaCloudProvider implements LlmProvider {
         final trimmedResult = result.length > 2000
             ? '${result.substring(0, 2000)}...'
             : result;
+        toolResults.add(trimmedResult);
         // Add tool result message
         currentMessages.add({
           'role': 'tool',
@@ -168,8 +170,9 @@ class OllamaCloudProvider implements LlmProvider {
       rounds++;
     }
 
-    return currentResponse.content.isNotEmpty
-        ? currentResponse.content
-        : 'Tool-Aufruf ausgeführt.';
+    return resolveToolLoopText(
+      modelContent: currentResponse.content,
+      toolResults: toolResults,
+    );
   }
 }

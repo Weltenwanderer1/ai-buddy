@@ -109,6 +109,7 @@ class AnthropicProvider implements LlmProvider {
     required double temperature,
   }) async {
     var currentMessages = List<Map<String, dynamic>>.from(messages);
+    final toolResults = <String>[];
     int rounds = 0;
 
     while (true) {
@@ -120,9 +121,10 @@ class AnthropicProvider implements LlmProvider {
       );
 
       if (!response.hasToolCalls || rounds >= maxRounds) {
-        return response.content.isNotEmpty
-            ? response.content
-            : 'Tool-Aufruf ausgeführt.';
+        return resolveToolLoopText(
+          modelContent: response.content,
+          toolResults: toolResults,
+        );
       }
 
       // Add assistant response with ALL tool calls to history (parallel calls)
@@ -141,6 +143,7 @@ class AnthropicProvider implements LlmProvider {
         final trimmed = result.length > 2000
             ? '${result.substring(0, 2000)}...'
             : result;
+        toolResults.add(trimmed);
         currentMessages.add({
           'role': 'tool',
           'tool_call_id': tc.id,
